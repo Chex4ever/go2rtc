@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -274,8 +276,61 @@ func restartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Debug().Msgf("[api] restart %s", path)
+	Response(w, "OK", "text/plain")
+	scheduleRestart(path)
+}
 
-	go syscall.Exec(path, os.Args, os.Environ())
+var (
+	restartDelay      = 100 * time.Millisecond
+	scheduleRestartFn = defaultScheduleRestart
+)
+
+func defaultScheduleRestart(path string) {
+	go func() {
+		// Let the HTTP response flush before replacing the process.
+		time.Sleep(restartDelay)
+		restartProcess(path)
+	}()
+}
+
+func scheduleRestart(path string) {
+	scheduleRestartFn(path)
+}
+
+// useExecFirst reports whether restart should try syscall.Exec before spawning
+// a new process. Windows has no exec-in-place; syscall.Exec always fails there.
+func useExecFirst(goos string) bool {
+	return goos != "windows"
+}
+
+var (
+	syscallExec = syscall.Exec
+	osExit      = func(code int) { os.Exit(code) }
+)
+
+func restartProcess(path string) {
+	if useExecFirst(runtime.GOOS) {
+		if err := syscallExec(path, os.Args, os.Environ()); err == nil {
+			return
+		} else {
+			log.Error().Err(err).Msg("[api] restart")
+		}
+	}
+
+	if err := startRestartProcess(path); err != nil {
+		log.Error().Err(err).Msg("[api] restart")
+		return
+	}
+	osExit(0)
+}
+
+func startRestartProcess(path string) error {
+	cmd := exec.Command(path, os.Args[1:]...)
+	cmd.Env = os.Environ()
+	if dir, err := os.Getwd(); err == nil {
+		cmd.Dir = dir
+	}
+	return cmd.Start()
 }
 
 func logHandler(w http.ResponseWriter, r *http.Request) {
