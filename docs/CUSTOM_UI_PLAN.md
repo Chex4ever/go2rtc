@@ -42,7 +42,6 @@ The agent can handle multi-topic messages but will deliver faster, reviewable PR
 
 - Fine-grained security (roles beyond layout matrix, HTTPS client certs, SSO).
 - Mobile/tablet polish beyond v1 list/2-col layouts (e.g. native app, offline).
-- Record / snapshot from viewer (planned later).
 - Replacing go2rtc’s stream discovery/probing — we still use streams API and `video-rtc.js` / WebRTC/MSE.
 - Fixing “broken container” cameras via ffmpeg (deferred to **last phase**; not a simple strip-audio case).
 
@@ -302,6 +301,13 @@ Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.htm
 - [x] **Admin:** responsive tables/dialogs on narrow screens
 - Files: `device.js`, `viewer-mobile.css`, `viewer-app.js`, `tile-viewport.js`
 
+### Record & snapshot — **done**
+
+- [x] **📷 Snapshot** per tile — live frame from player (JPEG download); falls back to `/api/frame.jpeg` then `/api/frame.mp4`
+- [x] **⏺ Record** — in-browser `MediaRecorder` on the tile video (WebM download); ⏹ to stop
+- [x] **Auth** — logged-in viewers may call frame/stream snapshot APIs only for cameras on their layouts (`UserCanAccessStream`)
+- Files: `capture.js`, `internal/viewer/access.go`, `store.go`, `viewer-app.js`
+
 ### Phase 5 — Broken container / ffmpeg (last, TBD)
 
 - [ ] Investigate per failing camera (see Issue 1)
@@ -309,7 +315,6 @@ Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.htm
 
 ### Later (not v1)
 
-- [ ] Record / snapshot from viewer
 - [ ] SSO / reverse proxy in front of viewer (server already separate)
 
 ---
@@ -322,7 +327,7 @@ Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.htm
 | Grid sizes | **6, 7, 25, 36** presets |
 | Deployment | Dedicated go2rtc server; **LAN clients only** |
 | Mobile v1 | **Yes** — list on phone, 2-col tablet, touch controls |
-| Record / snapshot | **Later** |
+| Record / snapshot | **Yes** — client capture + server frame API for allowed cameras |
 | ffmpeg errors | **Deferred** — broken container, needs deeper work; not blocking UI phases 1–4 |
 
 ---

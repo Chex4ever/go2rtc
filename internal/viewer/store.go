@@ -208,6 +208,33 @@ func (s *Store) SetLayoutState(user, layoutID string, state *LayoutState) error 
 	return nil
 }
 
+func (s *Store) UserCanAccessStream(user, stream string) bool {
+	if stream == "" {
+		return false
+	}
+	u, ok := s.User(user)
+	if !ok || u == nil {
+		return false
+	}
+	for _, layoutID := range u.Layouts {
+		l, ok := s.Layout(layoutID)
+		if !ok || l == nil {
+			continue
+		}
+		for _, c := range l.Cameras {
+			if c == stream {
+				return true
+			}
+		}
+		for main, preview := range l.Preview {
+			if main == stream || preview == stream {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s *Store) TrustIP(ip, user string, expires time.Time) error {
 	if _, ok := s.User(user); !ok {
 		return errors.New("user not found")

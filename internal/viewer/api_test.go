@@ -99,3 +99,19 @@ func TestAPI_adminRequiresHeader(t *testing.T) {
 	apiAdminUsers(w2, req)
 	require.Equal(t, http.StatusOK, w2.Code)
 }
+
+func TestViewerStreamMediaAllowed(t *testing.T) {
+	setupAPI(t)
+
+	token, _ := sessions.Create("alice")
+	req := httptest.NewRequest(http.MethodGet, "/api/frame.jpeg?src=cam1", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: token})
+	require.True(t, viewerStreamMediaAllowed(req))
+
+	req2 := httptest.NewRequest(http.MethodGet, "/api/frame.jpeg?src=denied", nil)
+	req2.AddCookie(&http.Cookie{Name: cookieName, Value: token})
+	require.False(t, viewerStreamMediaAllowed(req2))
+
+	req3 := httptest.NewRequest(http.MethodGet, "/api/frame.jpeg?src=cam1", nil)
+	require.False(t, viewerStreamMediaAllowed(req3))
+}

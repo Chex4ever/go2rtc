@@ -36,6 +36,8 @@ Ultimate camera streaming application with support for dozens formats and protoc
 - [streaming stats](#streaming-stats) for all active connections
 - can be [integrated to any project](#projects-using-go2rtc) or be used as [standalone app](#go2rtc-binary)
 
+> **iRidi fork — camera wall:** For deployment with custom viewer (users, layouts, dual streams), see **[Sysadmin guide (EN)](docs/SYSADMIN_EN.md)** · **[Руководство администратора (RU)](docs/SYSADMIN_RU.md)**. Example config: [docs/viewer.yaml.example](docs/viewer.yaml.example).
+
 #### Inspired by
 
 - series of streaming projects from [@deepch](https://github.com/deepch)

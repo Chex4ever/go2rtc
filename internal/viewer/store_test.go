@@ -80,6 +80,23 @@ func TestValidateTiles(t *testing.T) {
 	require.Error(t, validateTiles([]Tile{{Stream: "cam2"}}, layout))
 }
 
+func TestUserCanAccessStream(t *testing.T) {
+	s := NewStore(t.TempDir() + "/viewer.yaml")
+	s.Users["alice"] = &User{Password: "x", Layouts: []string{"lobby", "other"}}
+	s.Layouts["lobby"] = &Layout{Grid: 6, Cameras: []string{"cam1", "cam2"}}
+	s.Layouts["other"] = &Layout{
+		Grid:    6,
+		Cameras: []string{"main"},
+		Preview: map[string]string{"main": "sub"},
+	}
+
+	require.True(t, s.UserCanAccessStream("alice", "cam1"))
+	require.True(t, s.UserCanAccessStream("alice", "main"))
+	require.True(t, s.UserCanAccessStream("alice", "sub"))
+	require.False(t, s.UserCanAccessStream("alice", "cam9"))
+	require.False(t, s.UserCanAccessStream("bob", "cam1"))
+}
+
 func TestValidGrid(t *testing.T) {
 	require.True(t, ValidGrid(25))
 	require.False(t, ValidGrid(8))

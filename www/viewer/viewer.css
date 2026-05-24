@@ -327,6 +327,9 @@ button:hover {
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: calc(100% - 16px);
     gap: 4px;
     padding: 4px 6px;
     background: rgba(0, 0, 0, 0.72);
@@ -354,6 +357,17 @@ button:hover {
 .tile-controls button.active {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.tile-controls button[data-act="record"].active {
+    border-color: #e55;
+    color: #e55;
+}
+
+.tile.recording .tile-bar .name::after {
+    content: ' ● REC';
+    color: #e55;
+    font-size: 0.75rem;
 }
 
 .drag-handle {

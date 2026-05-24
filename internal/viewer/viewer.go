@@ -69,15 +69,7 @@ func Init() {
 	api.AuthBypassPrefix(prefix)
 	api.AuthBypassPrefix(api.BasePath() + "/viewer")
 
-	api.AuthBypassRequest(func(r *http.Request) bool {
-		if isAdminRequest(r) && strings.Contains(r.URL.Path, "/api/streams") {
-			return true
-		}
-		if strings.Contains(r.URL.Path, "/api/ws") {
-			return resolveUser(r) != ""
-		}
-		return false
-	})
+	api.AuthBypassRequest(authBypassRequest)
 
 	log.Info().Str("path", path).Msg("[viewer] config")
 

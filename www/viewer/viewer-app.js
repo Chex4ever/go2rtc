@@ -2,6 +2,7 @@ import './viewer-stream.js';
 import {GRID_PRESETS, slotsFromLayout, tilesFromSlots} from './grids.js';
 import {TileViewport, toggleStreamAudio, refreshStream} from './tile-viewport.js';
 import {wallLayoutMode, isTouchDevice, tabletGrid, allowTileDrag} from './device.js';
+import {takeSnapshot, TileRecorder} from './capture.js';
 
 const $ = (sel) => document.querySelector(sel);
 const CHROME_HIDE_MS = 2000;
@@ -48,7 +49,18 @@ const state = {
     chromeTimer: null,
     wallLayoutMode: 'desktop',
     activeTile: null,
+    recorders: new Map(),
 };
+
+function stopAllRecordings() {
+    for (const [slot, rec] of state.recorders) {
+        if (rec.recording) {
+            const name = state.slots[slot] || 'recording';
+            rec.stop(name).catch(() => {});
+        }
+    }
+    state.recorders.clear();
+}
 
 function applyWallLayoutClasses() {
     const wall = $('#screen-wall');
@@ -285,6 +297,7 @@ function exitFocus() {
     if (state.focusSlot === null) {
         return;
     }
+    stopAllRecordings();
     state.focusSlot = null;
     const wall = $('#screen-wall');
     wall?.classList.remove('focus-mode', 'chrome-hidden', 'show-top-chrome');
@@ -308,6 +321,7 @@ function enterFocus(slotIndex) {
 }
 
 function renderWall() {
+    stopAllRecordings();
     state.tileViewports.forEach((vp) => vp.destroy());
     state.tileViewports.clear();
     setActiveTile(null);
@@ -383,7 +397,7 @@ function renderWall() {
     }
 }
 
-function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus) {
+function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, tile) {
     const bar = document.createElement('div');
     bar.className = 'tile-controls';
     bar.innerHTML = `
@@ -392,6 +406,8 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus) {
         <button type="button" data-act="zoom-in" title="Zoom in">+</button>
         <button type="button" data-act="reset" title="Reset view">⟲</button>
         <button type="button" data-act="audio" title="Sound (off by default)">🔇</button>
+        <button type="button" data-act="snapshot" title="Save snapshot">📷</button>
+        <button type="button" data-act="record" title="Record">⏺</button>
         <button type="button" data-act="refresh" title="Refresh stream">↻</button>
         ${inFocus ? '' : '<button type="button" data-act="focus" title="Full screen">⛶</button>'}
     `;
@@ -425,6 +441,58 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus) {
                 const on = toggleStreamAudio(vs, src);
                 btn.textContent = on ? '🔊' : '🔇';
                 btn.title = on ? 'Mute' : 'Unmute';
+                break;
+            }
+            case 'snapshot': {
+                btn.disabled = true;
+                takeSnapshot({video: viewport.video, streamName, apiUrlFn: apiUrl})
+                    .then(() => {
+                        btn.title = 'Saved';
+                        setTimeout(() => {
+                            btn.title = 'Save snapshot';
+                        }, 1500);
+                    })
+                    .catch(() => {
+                        btn.title = 'Snapshot failed';
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                    });
+                break;
+            }
+            case 'record': {
+                let rec = state.recorders.get(slotIndex);
+                if (!rec) {
+                    rec = new TileRecorder(viewport.video);
+                    state.recorders.set(slotIndex, rec);
+                }
+                if (rec.recording) {
+                    btn.disabled = true;
+                    rec.stop(streamName)
+                        .then(() => {
+                            btn.classList.remove('active');
+                            btn.textContent = '⏺';
+                            btn.title = 'Record';
+                            tile.classList.remove('recording');
+                        })
+                        .catch(() => {
+                            btn.title = 'Stop failed';
+                        })
+                        .finally(() => {
+                            btn.disabled = false;
+                        });
+                } else {
+                    try {
+                        rec.video = viewport.video;
+                        rec.start();
+                        btn.classList.add('active');
+                        btn.textContent = '⏹';
+                        btn.title = 'Stop recording';
+                        tile.classList.add('recording');
+                    } catch (err) {
+                        btn.title = err.message || 'Record failed';
+                    }
+                }
                 break;
             }
             case 'refresh':
@@ -494,7 +562,7 @@ function createTile(logicalName, slotIndex, inFocus) {
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);
-    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus));
+    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus, tile));
 
     body.addEventListener('dblclick', (e) => {
         if (e.target.closest('.tile-controls, .tile-bar')) {
@@ -551,6 +619,7 @@ async function saveTiles() {
 }
 
 async function logout(forget) {
+    stopAllRecordings();
     exitFocus();
     try {
         await fetch(apiUrl('/api/viewer/logout' + (forget ? '?forget=1' : '')), {
