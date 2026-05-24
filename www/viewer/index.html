@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera wall</title>
+    <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<div id="app">
+    <section id="screen-login" class="screen hidden">
+        <div class="panel">
+            <h1>Camera wall</h1>
+            <p>Sign in to view your layouts.</p>
+            <form id="login-form">
+                <label class="field">
+                    User
+                    <input id="login-user" type="text" name="user" autocomplete="username" required autofocus>
+                </label>
+                <label class="field">
+                    Password
+                    <input id="login-password" type="password" name="password" autocomplete="current-password" required>
+                </label>
+                <label class="check">
+                    <input id="login-remember" type="checkbox" checked>
+                    Remember this device (by IP)
+                </label>
+                <button type="submit" class="primary">Sign in</button>
+                <div id="login-error" class="error"></div>
+            </form>
+        </div>
+    </section>
+
+    <section id="screen-layouts" class="screen hidden">
+        <h1>Layouts</h1>
+        <p>Signed in as <strong id="layout-user"></strong>. Choose a layout.</p>
+        <div id="layout-list" class="layout-grid"></div>
+        <p style="margin-top: 24px;">
+            <button type="button" id="btn-logout">Sign out</button>
+            <button type="button" id="btn-logout-forget">Sign out &amp; forget device</button>
+        </p>
+    </section>
+
+    <section id="screen-wall" class="screen hidden">
+        <header class="wall-header">
+            <button type="button" id="btn-back-layouts" title="All layouts">←</button>
+            <h2 id="wall-title"></h2>
+            <select id="layout-select" aria-label="Switch layout"></select>
+            <span id="save-hint" class="save-hint"></span>
+            <button type="button" id="btn-logout-wall">Sign out</button>
+        </header>
+        <div id="wall-grid" class="wall-grid"></div>
+    </section>
+</div>
+
+<script type="module" src="viewer-app.js"></script>
+</body>
+</html>

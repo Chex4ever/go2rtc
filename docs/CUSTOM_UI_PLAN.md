@@ -264,12 +264,15 @@ Implementation: CSS grid with fixed slots; map `layout.cameras[]` to slots (1:1 
 
 See [`docs/viewer.yaml.example`](viewer.yaml.example) and **Viewer API** section below.
 
-### Phase 2 — Viewer UI MVP (3–5 days)
+### Phase 2 — Viewer UI MVP — **done**
 
-- [ ] `www/viewer/` — login, layout picker
-- [ ] Grid with presets **6 / 7 / 25 / 36**
-- [ ] Drag/reorder tiles; persist per user+layout
-- [ ] `media=video`, muted by default
+- [x] `www/viewer/` — login, layout picker, camera wall
+- [x] Grid presets **6 / 7 / 25 / 36**
+- [x] Drag tiles to swap positions; auto-save to API
+- [x] `viewer-stream`: video only, muted, lazy connect when visible
+- [x] `/viewer/` and `/api/ws` bypass go2rtc basic auth for logged-in viewer sessions
+
+Open **`/viewer/`** (or `{base_path}/viewer/`).
 
 ### Phase 3 — Fullscreen & interaction (2–4 days)
 

@@ -224,18 +224,29 @@ func AuthBypassPrefix(prefix string) {
 	authBypassPrefixes = append(authBypassPrefixes, prefix)
 }
 
-func authBypassed(path string) bool {
+func authBypassed(r *http.Request) bool {
+	path := r.URL.Path
 	for _, prefix := range authBypassPrefixes {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}
 	}
+	if authBypassRequest != nil && authBypassRequest(r) {
+		return true
+	}
 	return false
+}
+
+var authBypassRequest func(*http.Request) bool
+
+// AuthBypassRequest skips go2rtc HTTP basic auth when the function returns true.
+func AuthBypassRequest(fn func(*http.Request) bool) {
+	authBypassRequest = fn
 }
 
 func middlewareAuth(username, password string, localAuth bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if authBypassed(r.URL.Path) {
+		if authBypassed(r) {
 			next.ServeHTTP(w, r)
 			return
 		}

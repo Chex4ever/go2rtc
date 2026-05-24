@@ -1,0 +1,272 @@
+:root {
+    --bg: #0f1114;
+    --panel: #1a1d23;
+    --border: #2a3038;
+    --text: #e8eaed;
+    --muted: #9aa0a6;
+    --accent: #4a9eff;
+    --danger: #e57373;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#app {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 420px;
+    width: 100%;
+    margin: auto;
+}
+
+.panel h1 {
+    margin: 0 0 8px;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.panel p {
+    margin: 0 0 20px;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+label.field {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+label.field input {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+label.check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+button {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    width: 100%;
+}
+
+button:hover {
+    filter: brightness(1.08);
+}
+
+.error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    margin-top: 10px;
+}
+
+#screen-login {
+    flex: 1;
+    display: flex;
+    padding: 24px;
+}
+
+#screen-layouts {
+    flex: 1;
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.layout-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.layout-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.layout-card:hover {
+    border-color: var(--accent);
+}
+
+.layout-card h3 {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+}
+
+.layout-card span {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+#screen-wall {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.wall-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.wall-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.wall-header select {
+    padding: 6px 10px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+.save-hint {
+    font-size: 0.8rem;
+    color: var(--muted);
+    min-width: 4em;
+}
+
+.save-hint.ok {
+    color: #81c784;
+}
+
+.save-hint.err {
+    color: var(--danger);
+}
+
+.wall-grid {
+    flex: 1;
+    display: grid;
+    gap: 2px;
+    padding: 2px;
+    background: #000;
+    min-height: 0;
+}
+
+.cell {
+    position: relative;
+    background: #111;
+    min-height: 0;
+    min-width: 0;
+    border: 1px solid transparent;
+}
+
+.cell.drag-over {
+    border-color: var(--accent);
+    background: #1a2433;
+}
+
+.cell.empty {
+    background: #0a0a0a;
+}
+
+.tile {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.tile.dragging {
+    opacity: 0.45;
+}
+
+.tile-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.65);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    cursor: grab;
+    user-select: none;
+}
+
+.tile-bar:active {
+    cursor: grabbing;
+}
+
+.tile-bar .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tile-body {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+
+viewer-stream {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
