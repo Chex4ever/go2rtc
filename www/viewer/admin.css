@@ -1,0 +1,204 @@
+#admin-app {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#admin-login {
+    flex: 1;
+    display: flex;
+    padding: 24px;
+}
+
+.admin-links {
+    margin-top: 16px;
+    font-size: 0.9rem;
+}
+
+.admin-links a {
+    color: var(--accent);
+}
+
+.admin-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    flex: 1;
+    min-width: 120px;
+}
+
+.admin-tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.admin-tabs button {
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+.admin-tabs button.active {
+    border-color: var(--border);
+    background: var(--bg);
+}
+
+.admin-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+}
+
+.admin-status {
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+}
+
+.admin-status.ok {
+    color: #81c784;
+}
+
+.admin-status.err {
+    color: var(--danger);
+}
+
+.admin-tab {
+    padding: 16px 20px 32px;
+    flex: 1;
+}
+
+.admin-toolbar {
+    margin-bottom: 12px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.admin-table th,
+.admin-table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-table th {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.admin-table .empty {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.admin-table .actions {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.admin-table .actions button {
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    margin-left: 4px;
+}
+
+.admin-table button.danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+dialog {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0;
+    background: var(--panel);
+    color: var(--text);
+    max-width: 520px;
+    width: calc(100% - 32px);
+}
+
+dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+dialog form {
+    padding: 20px 24px 24px;
+}
+
+dialog h2 {
+    margin: 0 0 16px;
+    font-size: 1.15rem;
+}
+
+.checkbox-list {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 0 0 16px;
+}
+
+.checkbox-list legend {
+    padding: 0 6px;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.checkbox-list .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.camera-checks {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.dialog-actions .primary {
+    width: auto;
+}
+
+code {
+    font-size: 0.85em;
+    background: var(--bg);
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.panel code {
+    word-break: break-all;
+}

@@ -285,10 +285,13 @@ Open **`/viewer/`** (or `{base_path}/viewer/`).
 
 Open **`/viewer/`** → layout → use controls on each tile.
 
-### Phase 4 — Admin UI (2–3 days)
+### Phase 4 — Admin UI — **done**
 
-- [ ] Edit users, layout ↔ cameras, grid preset
-- [ ] Optional: link from `www/config.html` for operators who already use go2rtc admin
+- [x] **`/viewer/admin.html`** — users & layouts CRUD
+- [x] Camera picker from **`/api/streams`** (admin auth bypass)
+- [x] Links from camera wall login and **`config.html`**
+
+Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.html`**.
 
 ### Phase 5 — Broken container / ffmpeg (last, TBD)
 

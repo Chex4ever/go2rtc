@@ -70,10 +70,13 @@ func Init() {
 	api.AuthBypassPrefix(api.BasePath() + "/viewer")
 
 	api.AuthBypassRequest(func(r *http.Request) bool {
-		if !strings.Contains(r.URL.Path, "/api/ws") {
-			return false
+		if isAdminRequest(r) && strings.Contains(r.URL.Path, "/api/streams") {
+			return true
 		}
-		return resolveUser(r) != ""
+		if strings.Contains(r.URL.Path, "/api/ws") {
+			return resolveUser(r) != ""
+		}
+		return false
 	})
 
 	log.Info().Str("path", path).Msg("[viewer] config")
@@ -180,13 +183,20 @@ func requireUser(w http.ResponseWriter, r *http.Request) (string, bool) {
 }
 
 func requireAdmin(w http.ResponseWriter, r *http.Request) bool {
-	if adminPassword == "" {
-		http.Error(w, "viewer admin disabled", http.StatusForbidden)
-		return false
-	}
-	if r.Header.Get("X-Viewer-Admin") != adminPassword {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if !isAdminRequest(r) {
+		if adminPassword == "" {
+			http.Error(w, "viewer admin disabled", http.StatusForbidden)
+		} else {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		}
 		return false
 	}
 	return true
+}
+
+func isAdminRequest(r *http.Request) bool {
+	if adminPassword == "" {
+		return false
+	}
+	return r.Header.Get("X-Viewer-Admin") == adminPassword
 }

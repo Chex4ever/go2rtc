@@ -112,6 +112,16 @@ button:hover {
     margin-top: 10px;
 }
 
+.admin-links {
+    margin-top: 14px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.admin-links a {
+    color: var(--accent);
+}
+
 #screen-login {
     flex: 1;
     display: flex;

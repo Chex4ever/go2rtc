@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewer admin</title>
+    <link rel="stylesheet" href="viewer.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="admin-app">
+    <section id="admin-login" class="screen hidden">
+        <div class="panel">
+            <h1>Viewer admin</h1>
+            <p>Manage users, layouts, and camera access. Password is set in <code>go2rtc.yaml</code> → <code>viewer.admin_password</code>.</p>
+            <form id="admin-login-form">
+                <label class="field">
+                    Admin password
+                    <input id="admin-password" type="password" autocomplete="current-password" required autofocus>
+                </label>
+                <button type="submit" class="primary">Continue</button>
+                <div id="admin-login-error" class="error"></div>
+            </form>
+            <p class="admin-links"><a href="index.html">← Camera wall</a></p>
+        </div>
+    </section>
+
+    <section id="admin-main" class="screen hidden">
+        <header class="admin-header">
+            <h1>Viewer admin</h1>
+            <nav class="admin-tabs">
+                <button type="button" data-tab="users" class="active">Users</button>
+                <button type="button" data-tab="layouts">Layouts</button>
+            </nav>
+            <div class="admin-header-actions">
+                <a href="index.html" class="btn-link">Camera wall</a>
+                <button type="button" id="admin-logout">Lock</button>
+            </div>
+        </header>
+
+        <div id="admin-status" class="admin-status"></div>
+
+        <div id="tab-users" class="admin-tab">
+            <div class="admin-toolbar">
+                <button type="button" id="btn-add-user" class="primary">Add user</button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                <tr><th>User</th><th>Layouts</th><th></th></tr>
+                </thead>
+                <tbody id="users-list"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-layouts" class="admin-tab hidden">
+            <div class="admin-toolbar">
+                <button type="button" id="btn-add-layout" class="primary">Add layout</button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                <tr><th>Layout</th><th>Grid</th><th>Cameras</th><th></th></tr>
+                </thead>
+                <tbody id="layouts-list"></tbody>
+            </table>
+        </div>
+
+        <dialog id="dialog-user">
+            <form id="form-user" method="dialog">
+                <h2 id="dialog-user-title">User</h2>
+                <label class="field">
+                    Username
+                    <input name="name" required pattern="[a-zA-Z0-9_-]+">
+                </label>
+                <label class="field">
+                    Password
+                    <input name="password" type="password" autocomplete="new-password" placeholder="Leave empty to keep">
+                </label>
+                <fieldset class="checkbox-list">
+                    <legend>Allowed layouts</legend>
+                    <div id="user-layout-checks"></div>
+                </fieldset>
+                <div class="dialog-actions">
+                    <button type="submit" class="primary">Save</button>
+                    <button type="button" data-close>Cancel</button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog id="dialog-layout">
+            <form id="form-layout" method="dialog">
+                <h2 id="dialog-layout-title">Layout</h2>
+                <label class="field">
+                    Layout ID
+                    <input name="id" required pattern="[a-zA-Z0-9_-]+">
+                </label>
+                <label class="field">
+                    Grid preset
+                    <select name="grid" required>
+                        <option value="6">6 (3×2)</option>
+                        <option value="7">7 (4×2)</option>
+                        <option value="25">25 (5×5)</option>
+                        <option value="36">36 (6×6)</option>
+                    </select>
+                </label>
+                <fieldset class="checkbox-list">
+                    <legend>Cameras <span id="layout-camera-hint" class="hint"></span></legend>
+                    <div id="layout-camera-checks" class="camera-checks"></div>
+                </fieldset>
+                <div class="dialog-actions">
+                    <button type="submit" class="primary">Save</button>
+                    <button type="button" data-close>Cancel</button>
+                </div>
+            </form>
+        </dialog>
+    </section>
+</div>
+<script type="module" src="admin.js"></script>
+</body>
+</html>
