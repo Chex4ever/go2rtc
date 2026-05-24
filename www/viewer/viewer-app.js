@@ -1,6 +1,7 @@
 import './viewer-stream.js';
 import {GRID_PRESETS, slotsFromLayout, tilesFromSlots} from './grids.js';
 import {TileViewport, toggleStreamAudio, refreshStream} from './tile-viewport.js';
+import {wallLayoutMode, isTouchDevice, tabletGrid, allowTileDrag} from './device.js';
 
 const $ = (sel) => document.querySelector(sel);
 const CHROME_HIDE_MS = 2000;
@@ -45,7 +46,62 @@ const state = {
     focusSlot: null,
     tileViewports: new Map(),
     chromeTimer: null,
+    wallLayoutMode: 'desktop',
+    activeTile: null,
 };
+
+function applyWallLayoutClasses() {
+    const wall = $('#screen-wall');
+    if (!wall) {
+        return;
+    }
+    const mode = wallLayoutMode();
+    state.wallLayoutMode = mode;
+    wall.classList.toggle('wall-mobile', mode === 'mobile');
+    wall.classList.toggle('wall-tablet', mode === 'tablet');
+    document.body.classList.toggle('touch-device', isTouchDevice());
+}
+
+function configureWallGrid(grid, preset, focusSlot) {
+    grid.style.gridAutoRows = '';
+    grid.style.overflowY = '';
+
+    if (focusSlot !== null) {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows = '1fr';
+        return;
+    }
+
+    const mode = wallLayoutMode();
+    if (mode === 'mobile') {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows = '';
+        grid.style.gridAutoRows = 'minmax(min(42vw, 220px), auto)';
+        grid.style.overflowY = 'auto';
+        return;
+    }
+
+    if (mode === 'tablet') {
+        const tg = tabletGrid(preset);
+        grid.style.gridTemplateColumns = `repeat(${tg.cols}, 1fr)`;
+        grid.style.gridTemplateRows = `repeat(${tg.rows}, minmax(140px, 1fr))`;
+        grid.style.overflowY = 'auto';
+        return;
+    }
+
+    grid.style.gridTemplateColumns = `repeat(${preset.cols}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${preset.rows}, minmax(0, 1fr))`;
+}
+
+function setActiveTile(tile) {
+    if (state.activeTile) {
+        state.activeTile.classList.remove('tile-active');
+    }
+    state.activeTile = tile;
+    if (tile) {
+        tile.classList.add('tile-active');
+    }
+}
 
 function settingsKey(slot) {
     return `viewer:${state.currentLayoutId}:${slot}`;
@@ -121,6 +177,22 @@ function onWallMouseMove(e) {
         return;
     }
 
+    bumpChrome();
+}
+
+function onWallTouch(e) {
+    const wall = $('#screen-wall');
+    if (!wall || wall.classList.contains('hidden')) {
+        return;
+    }
+    if (state.focusSlot !== null) {
+        const y = e.touches?.[0]?.clientY ?? 0;
+        wall.classList.toggle('show-top-chrome', y < 56);
+        wall.classList.remove('chrome-hidden');
+        clearTimeout(state.chromeTimer);
+        state.chromeTimer = setTimeout(() => wall.classList.add('chrome-hidden'), CHROME_HIDE_MS);
+        return;
+    }
     bumpChrome();
 }
 
@@ -238,6 +310,7 @@ function enterFocus(slotIndex) {
 function renderWall() {
     state.tileViewports.forEach((vp) => vp.destroy());
     state.tileViewports.clear();
+    setActiveTile(null);
 
     const detail = state.layoutDetail;
     const preset = GRID_PRESETS[detail.grid];
@@ -246,6 +319,7 @@ function renderWall() {
     }
 
     const focusSlot = state.focusSlot;
+    applyWallLayoutClasses();
 
     $('#wall-title').textContent = detail.id;
     const sel = $('#layout-select');
@@ -259,19 +333,28 @@ function renderWall() {
     }
 
     const grid = $('#wall-grid');
-    grid.style.gridTemplateColumns = `repeat(${preset.cols}, 1fr)`;
-    grid.style.gridTemplateRows = `repeat(${preset.rows}, 1fr)`;
+    configureWallGrid(grid, preset, focusSlot);
     grid.innerHTML = '';
 
+    const dragEnabled = allowTileDrag() && focusSlot === null;
+
     for (let i = 0; i < state.slots.length; i++) {
+        if (focusSlot !== null && focusSlot !== i) {
+            continue;
+        }
+        const stream = state.slots[i];
+        if (wallLayoutMode() === 'mobile' && focusSlot === null && !stream) {
+            continue;
+        }
+
         const cell = document.createElement('div');
-        cell.className = 'cell' + (state.slots[i] ? '' : ' empty');
+        cell.className = 'cell' + (stream ? '' : ' empty');
         if (focusSlot === i) {
             cell.classList.add('focused');
         }
         cell.dataset.slot = String(i);
 
-        if (focusSlot === null) {
+        if (dragEnabled) {
             cell.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 cell.classList.add('drag-over');
@@ -288,7 +371,6 @@ function renderWall() {
             });
         }
 
-        const stream = state.slots[i];
         if (stream) {
             cell.appendChild(createTile(stream, i, focusSlot === i));
         }
@@ -371,7 +453,7 @@ function createTile(logicalName, slotIndex, inFocus) {
     if (inFocus) {
         bar.querySelector('.drag-handle')?.remove();
         tile.appendChild(bar);
-    } else {
+    } else if (allowTileDrag()) {
         const handle = bar.querySelector('.drag-handle');
         handle.draggable = true;
         handle.addEventListener('dragstart', (e) => {
@@ -381,6 +463,19 @@ function createTile(logicalName, slotIndex, inFocus) {
             tile.classList.add('dragging');
         });
         handle.addEventListener('dragend', () => tile.classList.remove('dragging'));
+        tile.appendChild(bar);
+    } else {
+        bar.querySelector('.drag-handle')?.remove();
+        const expand = document.createElement('button');
+        expand.type = 'button';
+        expand.className = 'tile-focus-btn';
+        expand.textContent = '⛶';
+        expand.title = 'Full screen';
+        expand.addEventListener('click', (e) => {
+            e.stopPropagation();
+            enterFocus(slotIndex);
+        });
+        bar.appendChild(expand);
         tile.appendChild(bar);
     }
 
@@ -409,6 +504,16 @@ function createTile(logicalName, slotIndex, inFocus) {
             enterFocus(slotIndex);
         }
     });
+
+    if (isTouchDevice() && !inFocus) {
+        tile.addEventListener('click', (e) => {
+            if (e.target.closest('.tile-controls button, .tile-focus-btn')) {
+                return;
+            }
+            setActiveTile(tile);
+            bumpChrome();
+        });
+    }
 
     tile.appendChild(body);
     return tile;
@@ -471,6 +576,21 @@ async function init() {
     $('#btn-exit-focus').addEventListener('click', exitFocus);
 
     document.addEventListener('mousemove', onWallMouseMove);
+    document.addEventListener('touchstart', onWallTouch, {passive: true});
+
+    let lastLayoutMode = wallLayoutMode();
+    window.addEventListener('resize', () => {
+        const mode = wallLayoutMode();
+        if (mode === lastLayoutMode) {
+            return;
+        }
+        lastLayoutMode = mode;
+        if (state.layoutDetail) {
+            renderWall();
+        } else {
+            applyWallLayoutClasses();
+        }
+    });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && state.focusSlot !== null) {
             exitFocus();

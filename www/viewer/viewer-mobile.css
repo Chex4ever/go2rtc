@@ -1,0 +1,156 @@
+/* Mobile & tablet layouts for camera wall viewer */
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body.touch-device .tile-controls,
+body.touch-device #screen-wall:not(.chrome-hidden) .tile-bar {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+body.touch-device .tile-controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 1rem;
+}
+
+body.touch-device button,
+body.touch-device .wall-header select {
+    min-height: 44px;
+}
+
+/* —— Tablet: 2-column scrollable grid —— */
+#screen-wall.wall-tablet:not(.focus-mode) .wall-grid {
+    overflow-y: auto;
+    align-content: start;
+}
+
+#screen-wall.wall-tablet:not(.focus-mode) .cell {
+    min-height: 140px;
+}
+
+/* —— Mobile: single-column list —— */
+#screen-wall.wall-mobile:not(.focus-mode) .wall-grid {
+    overflow-y: auto;
+    align-content: start;
+    -webkit-overflow-scrolling: touch;
+}
+
+#screen-wall.wall-mobile:not(.focus-mode) .cell.empty {
+    display: none;
+}
+
+#screen-wall.wall-mobile:not(.focus-mode) .cell:not(.empty) {
+    min-height: min(42vw, 220px);
+    aspect-ratio: 16 / 10;
+}
+
+#screen-wall.wall-tablet:not(.focus-mode) .drag-handle,
+#screen-wall.wall-mobile:not(.focus-mode) .drag-handle {
+    display: none;
+}
+
+.tile-focus-btn {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+#screen-wall.wall-mobile .wall-header {
+    flex-wrap: wrap;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+}
+
+#screen-wall.wall-mobile .wall-header h2 {
+    flex: 1 1 100%;
+    order: -1;
+    font-size: 0.95rem;
+}
+
+#screen-wall.wall-mobile .wall-header select {
+    flex: 1;
+    min-width: 0;
+}
+
+#screen-wall.wall-mobile #save-hint {
+    display: none;
+}
+
+#screen-wall.wall-mobile.focus-mode .cell.focused {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+#screen-wall.wall-mobile.focus-mode .tile-controls {
+    bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/* Touch: show controls when tile is active */
+body.touch-device .tile.tile-active .tile-controls,
+body.touch-device .tile.tile-active .tile-bar {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (max-width: 767px) {
+    #screen-login,
+    #screen-layouts {
+        padding: 16px;
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+
+    #screen-layouts h1 {
+        font-size: 1.25rem;
+    }
+
+    .layout-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .layout-card {
+        padding: 18px;
+    }
+
+    .panel {
+        padding: 20px;
+    }
+
+    label.field input {
+        font-size: 16px; /* prevent iOS zoom on focus */
+    }
+
+    #screen-layouts > p:last-of-type {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #screen-layouts > p:last-of-type button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 1024px) {
+    .wall-header {
+        padding-top: max(10px, env(safe-area-inset-top));
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    #screen-wall.chrome-hidden:not(.focus-mode) .tile-controls,
+    #screen-wall.chrome-hidden:not(.focus-mode) .tile-bar {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    #screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-controls,
+    #screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-bar {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}

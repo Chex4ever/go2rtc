@@ -15,6 +15,8 @@ export class TileViewport {
         this._onPointerDown = this._onPointerDown.bind(this);
         this._onPointerMove = this._onPointerMove.bind(this);
         this._onPointerUp = this._onPointerUp.bind(this);
+        this._pointers = new Map();
+        this._pinchStart = null;
     }
 
     mount(streamEl) {
@@ -34,6 +36,8 @@ export class TileViewport {
         this.inner.removeEventListener('pointerdown', this._onPointerDown);
         window.removeEventListener('pointermove', this._onPointerMove);
         window.removeEventListener('pointerup', this._onPointerUp);
+        window.removeEventListener('pointercancel', this._onPointerUp);
+        this._pointers.clear();
     }
 
     get video() {
@@ -93,10 +97,15 @@ export class TileViewport {
     }
 
     _onPointerDown(e) {
-        if (e.button !== 0 || this.scale <= 1) {
+        if (e.target.closest('.tile-controls, .tile-bar, .tile-focus-btn')) {
             return;
         }
-        if (e.target.closest('.tile-controls, .tile-bar')) {
+        this._pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+        if (this._pointers.size === 2) {
+            this._startPinch();
+            return;
+        }
+        if (e.button !== 0 || this.scale <= 1) {
             return;
         }
         e.preventDefault();
@@ -105,9 +114,40 @@ export class TileViewport {
         this.inner.setPointerCapture(e.pointerId);
         window.addEventListener('pointermove', this._onPointerMove);
         window.addEventListener('pointerup', this._onPointerUp);
+        window.addEventListener('pointercancel', this._onPointerUp);
+    }
+
+    _startPinch() {
+        this._panning = false;
+        const pts = [...this._pointers.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        this._pinchStart = {dist, scale: this.scale};
+    }
+
+    _pinchDistance() {
+        const pts = [...this._pointers.values()];
+        if (pts.length < 2) {
+            return 0;
+        }
+        return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     }
 
     _onPointerMove(e) {
+        if (this._pointers.has(e.pointerId)) {
+            this._pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
+        }
+        if (this._pinchStart && this._pointers.size >= 2) {
+            const dist = this._pinchDistance();
+            if (dist > 0 && this._pinchStart.dist > 0) {
+                this.scale = Math.min(4, Math.max(1, this._pinchStart.scale * (dist / this._pinchStart.dist)));
+                if (this.scale === 1) {
+                    this.tx = 0;
+                    this.ty = 0;
+                }
+                this.applyTransform();
+            }
+            return;
+        }
         if (!this._panning || !this._panStart) {
             return;
         }
@@ -116,11 +156,19 @@ export class TileViewport {
         this.applyTransform();
     }
 
-    _onPointerUp() {
+    _onPointerUp(e) {
+        this._pointers.delete(e.pointerId);
+        if (this._pointers.size < 2) {
+            this._pinchStart = null;
+        }
+        if (this._pointers.size > 0) {
+            return;
+        }
         this._panning = false;
         this._panStart = null;
         window.removeEventListener('pointermove', this._onPointerMove);
         window.removeEventListener('pointerup', this._onPointerUp);
+        window.removeEventListener('pointercancel', this._onPointerUp);
     }
 
     toJSON() {

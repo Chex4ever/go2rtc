@@ -230,3 +230,61 @@ code {
 .panel code {
     word-break: break-all;
 }
+
+@media (max-width: 767px) {
+    #admin-app {
+        padding: 16px;
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+
+    .admin-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .admin-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .admin-header .actions {
+        flex-wrap: wrap;
+    }
+
+    .admin-header button {
+        flex: 1;
+        min-height: 44px;
+    }
+
+    table.data-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .preview-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dialog {
+        width: min(100vw - 24px, 520px);
+        max-height: min(90vh, 720px);
+        margin: 12px;
+    }
+
+    .dialog-actions {
+        flex-wrap: wrap;
+    }
+
+    .dialog-actions button {
+        flex: 1;
+        min-height: 44px;
+    }
+
+    label.field input,
+    label.field select,
+    label.field textarea {
+        font-size: 16px;
+    }
+}

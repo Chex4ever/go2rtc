@@ -41,7 +41,7 @@ The agent can handle multi-topic messages but will deliver faster, reviewable PR
 ### Non-goals (for v1)
 
 - Fine-grained security (roles beyond layout matrix, HTTPS client certs, SSO).
-- Mobile/tablet-optimized UI (desktop LAN browsers first).
+- Mobile/tablet polish beyond v1 list/2-col layouts (e.g. native app, offline).
 - Record / snapshot from viewer (planned later).
 - Replacing go2rtc’s stream discovery/probing — we still use streams API and `video-rtc.js` / WebRTC/MSE.
 - Fixing “broken container” cameras via ffmpeg (deferred to **last phase**; not a simple strip-audio case).
@@ -293,6 +293,15 @@ Open **`/viewer/`** → layout → use controls on each tile.
 
 Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.html`**.
 
+### Mobile & tablet layout — **done**
+
+- [x] **Mobile (≤767px):** single-column scroll list; empty slots hidden
+- [x] **Tablet (≤1024px):** 2-column scroll grid
+- [x] **Touch:** 44px controls, tap tile to show chrome, ⛶ opens focus (drag swap desktop only)
+- [x] **Pinch-to-zoom** on tile viewport; safe-area insets; reflow on resize
+- [x] **Admin:** responsive tables/dialogs on narrow screens
+- Files: `device.js`, `viewer-mobile.css`, `viewer-app.js`, `tile-viewport.js`
+
 ### Phase 5 — Broken container / ffmpeg (last, TBD)
 
 - [ ] Investigate per failing camera (see Issue 1)
@@ -300,7 +309,6 @@ Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.htm
 
 ### Later (not v1)
 
-- [ ] Mobile/tablet layout
 - [ ] Record / snapshot from viewer
 - [ ] SSO / reverse proxy in front of viewer (server already separate)
 
@@ -313,7 +321,7 @@ Set **`viewer.admin_password`** in `go2rtc.yaml`, then open **`/viewer/admin.htm
 | Users / layouts / cameras | under 5 users, 5 layouts, ~25 cameras; **YAML** |
 | Grid sizes | **6, 7, 25, 36** presets |
 | Deployment | Dedicated go2rtc server; **LAN clients only** |
-| Mobile v1 | **No** |
+| Mobile v1 | **Yes** — list on phone, 2-col tablet, touch controls |
 | Record / snapshot | **Later** |
 | ffmpeg errors | **Deferred** — broken container, needs deeper work; not blocking UI phases 1–4 |
 
