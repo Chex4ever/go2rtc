@@ -24,6 +24,10 @@ html, body {
     display: none !important;
 }
 
+button.hidden {
+    display: none !important;
+}
+
 #app {
     min-height: 100%;
     display: flex;
@@ -157,6 +161,8 @@ button:hover {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    position: relative;
+    overflow: hidden;
 }
 
 .wall-header {
@@ -167,6 +173,8 @@ button:hover {
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    z-index: 20;
+    transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
 .wall-header h2 {
@@ -205,6 +213,145 @@ button:hover {
     padding: 2px;
     background: #000;
     min-height: 0;
+}
+
+/* —— Phase 3: chrome auto-hide —— */
+#screen-wall.chrome-hidden:not(.focus-mode) .wall-chrome-item {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#screen-wall.chrome-hidden:not(.focus-mode) .wall-header {
+    padding: 0;
+    min-height: 0;
+    border: none;
+    overflow: hidden;
+}
+
+#screen-wall.chrome-hidden:not(.focus-mode) .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile-controls {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-controls {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* —— Phase 3: 100% focus mode —— */
+#screen-wall.focus-mode .wall-grid {
+    padding: 0;
+    gap: 0;
+}
+
+#screen-wall.focus-mode .cell:not(.focused) {
+    display: none;
+}
+
+#screen-wall.focus-mode #save-hint {
+    display: none;
+}
+
+#screen-wall.focus-mode .cell.focused {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    border: none;
+}
+
+#screen-wall.focus-mode .cell.focused .tile {
+    background: #000;
+}
+
+#screen-wall.focus-mode.chrome-hidden:not(.show-top-chrome) .wall-header {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+#screen-wall.focus-mode.show-top-chrome .wall-header,
+#screen-wall.focus-mode:not(.chrome-hidden) .wall-header {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#screen-wall.focus-mode.chrome-hidden .tile-controls {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#screen-wall.focus-mode .cell.focused:hover .tile-controls,
+#screen-wall.focus-mode .cell.focused .tile-controls:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #000;
+}
+
+.viewport-inner {
+    width: 100%;
+    height: 100%;
+    transform-origin: center center;
+    will-change: transform;
+}
+
+.viewport-inner viewer-stream,
+.viewport-inner video {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.tile-controls {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    padding: 4px 6px;
+    background: rgba(0, 0, 0, 0.72);
+    border-radius: 6px;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.tile:hover .tile-controls,
+.tile-controls:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.tile-controls button {
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    min-width: 32px;
+    border: 1px solid var(--border);
+    background: rgba(26, 29, 35, 0.9);
+}
+
+.tile-controls button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.drag-handle {
+    cursor: grab;
+    padding: 0 4px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 .cell {
@@ -263,6 +410,7 @@ button:hover {
     flex: 1;
     min-height: 0;
     position: relative;
+    overflow: hidden;
 }
 
 viewer-stream {

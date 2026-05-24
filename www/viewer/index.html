@@ -42,12 +42,13 @@
     </section>
 
     <section id="screen-wall" class="screen hidden">
-        <header class="wall-header">
-            <button type="button" id="btn-back-layouts" title="All layouts">←</button>
-            <h2 id="wall-title"></h2>
-            <select id="layout-select" aria-label="Switch layout"></select>
-            <span id="save-hint" class="save-hint"></span>
-            <button type="button" id="btn-logout-wall">Sign out</button>
+        <header class="wall-header wall-chrome">
+            <button type="button" id="btn-back-layouts" class="wall-chrome-item" title="All layouts">←</button>
+            <h2 id="wall-title" class="wall-chrome-item"></h2>
+            <select id="layout-select" class="wall-chrome-item" aria-label="Switch layout"></select>
+            <button type="button" id="btn-exit-focus" class="hidden wall-chrome-item" title="Back to grid (Esc)">Grid</button>
+            <span id="save-hint" class="save-hint wall-chrome-item"></span>
+            <button type="button" id="btn-logout-wall" class="wall-chrome-item">Sign out</button>
         </header>
         <div id="wall-grid" class="wall-grid"></div>
     </section>

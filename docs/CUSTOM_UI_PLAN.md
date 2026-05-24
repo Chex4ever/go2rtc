@@ -274,11 +274,16 @@ See [`docs/viewer.yaml.example`](viewer.yaml.example) and **Viewer API** section
 
 Open **`/viewer/`** (or `{base_path}/viewer/`).
 
-### Phase 3 — Fullscreen & interaction (2–4 days)
+### Phase 3 — Fullscreen & interaction — **done**
 
-- [ ] 100% mode + auto-hide chrome (top bar + per-tile controls)
-- [ ] Zoom/pan + object-fit modes
-- [ ] Explicit unmute only
+- [x] **100% focus mode** — double-click tile or ⛶ button; **Esc** or **Grid** to exit
+- [x] **Auto-hide chrome** — header and tile controls hide after 2s idle; reappear on mouse move / hover
+- [x] **Focus top bar** — move mouse to top edge for layout switch / logout
+- [x] **Zoom/pan** — +/- buttons, Ctrl+wheel; drag when zoomed
+- [x] **Aspect** — cycle contain / cover / fill (◫)
+- [x] **Sound** — off by default; 🔇 enables audio (reconnects stream)
+
+Open **`/viewer/`** → layout → use controls on each tile.
 
 ### Phase 4 — Admin UI (2–3 days)
 
