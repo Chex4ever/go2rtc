@@ -1,0 +1,54 @@
+# Viewer access control (copy to viewer.yaml next to go2rtc.yaml)
+#
+# Enable in go2rtc.yaml:
+# viewer:
+#   admin_password: changeme
+#   session_ttl: 24h
+#   trust_ip_ttl: 720h
+
+users:
+  operator:
+    password: operator
+    layouts: [wall_6, wall_25]
+
+layouts:
+  wall_6:
+    grid: 6
+    cameras: [cam1, cam2, cam3, cam4, cam5, cam6]
+  wall_25:
+    grid: 25
+    cameras:
+      - cam1
+      - cam2
+      - cam3
+      - cam4
+      - cam5
+      - cam6
+      - cam7
+      - cam8
+      - cam9
+      - cam10
+      - cam11
+      - cam12
+      - cam13
+      - cam14
+      - cam15
+      - cam16
+      - cam17
+      - cam18
+      - cam19
+      - cam20
+      - cam21
+      - cam22
+      - cam23
+      - cam24
+      - cam25
+
+user_layout_state:
+  operator:
+    wall_6:
+      tiles:
+        - {stream: cam1, x: 0, y: 0, w: 1, h: 1}
+        - {stream: cam2, x: 1, y: 0, w: 1, h: 1}
+
+trusted_ips: {}

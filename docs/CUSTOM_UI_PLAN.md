@@ -16,11 +16,11 @@ Living document for the iRidi go2rtc fork. Update checkboxes and “Decisions”
 
 Suggested message split for upcoming work:
 
-1. **Stream fixes** — AAC/audio stripping in `go2rtc.yaml` / ffmpeg templates (no new UI).
-2. **Data model + API** — users, layouts, camera allow-lists, saved tile positions (JSON file or SQLite).
-3. **Viewer MVP** — login, pick layout, grid of cameras from allow-list, drag rearrange.
-4. **Fullscreen & controls** — 100% mode, auto-hide chrome, sound off by default, zoom/pan.
-5. **Admin UI** — manage users, layouts, which cameras appear on each layout.
+1. **Data model + API** — `viewer.yaml`, users, layouts, camera allow-lists, tile state.
+2. **Viewer MVP** — login, IP remember, grid presets (6/7/25/36), drag rearrange.
+3. **Fullscreen & controls** — 100% mode, auto-hide chrome, sound off by default, zoom/pan.
+4. **Admin UI** — manage users, layouts, which cameras appear on each layout.
+5. **Stream fixes (last)** — broken containers / AAC; needs deeper ffmpeg investigation.
 
 The agent can handle multi-topic messages but will deliver faster, reviewable PRs when tasks are phased.
 
@@ -40,8 +40,11 @@ The agent can handle multi-topic messages but will deliver faster, reviewable PR
 
 ### Non-goals (for v1)
 
-- Fine-grained security (roles beyond layout matrix, HTTPS client certs, etc.).
+- Fine-grained security (roles beyond layout matrix, HTTPS client certs, SSO).
+- Mobile/tablet-optimized UI (desktop LAN browsers first).
+- Record / snapshot from viewer (planned later).
 - Replacing go2rtc’s stream discovery/probing — we still use streams API and `video-rtc.js` / WebRTC/MSE.
+- Fixing “broken container” cameras via ffmpeg (deferred to **last phase**; not a simple strip-audio case).
 
 ---
 
@@ -66,11 +69,14 @@ The agent can handle multi-topic messages but will deliver faster, reviewable PR
 └───────────────────────────────────────────────────────────────┘
 ```
 
-**Decisions (fill in):**
+**Decisions (2026-05-24):**
 
-- [ ] Persist viewer data in `viewer.yaml` vs SQLite vs extra keys in `go2rtc.yaml`
-- [ ] New path prefix: `/viewer/` static vs embed under `www/`
-- [ ] Reuse go2rtc `api.username/password` for admin only, separate viewer users
+- [x] **Persistence:** `viewer.yaml` (separate from `go2rtc.yaml`) — scale is small.
+- [x] **Scale:** under 5 users, **5 layouts**, up to **~25 cameras** per installation.
+- [x] **Grid presets required:** layouts must support **6, 7, 25, and 36** camera tiles (admin picks preset or camera count drives template).
+- [x] **Deployment:** go2rtc on a **dedicated server**; clients on **LAN only** (no public internet requirement for v1).
+- [x] **Admin auth:** keep go2rtc `api.username/password` for built-in admin/config; **separate viewer users** in `viewer.yaml`.
+- [ ] **Static UI path:** `/viewer/` under `www/viewer/` (default unless we change).
 
 ---
 
@@ -88,12 +94,11 @@ users:
 
 layouts:
   lobby:
+    grid: 25          # preset: 6 | 7 | 25 | 36 (columns×rows template)
+    cameras: [cam1, cam2, ...]   # admin allow-list (subset of go2rtc streams)
   parking:
-
-# Per layout: admin sets allowed stream names (must exist in go2rtc streams)
-layout_cameras:
-  lobby: [cam1, cam2, cam3]
-  parking: [cam4, cam5]
+    grid: 6
+    cameras: [cam4, cam5, cam6, cam7, cam8, cam9]
 
 # Per user + layout: saved UI state (admin does NOT edit)
 user_layout_state:
@@ -120,44 +125,51 @@ API sketch:
 
 Stream URLs for playback: existing `api/ws?src=...` with **`media=video`** until audio is fixed per camera.
 
+### Viewer API (Phase 1)
+
+Configure in `go2rtc.yaml`:
+
+```yaml
+viewer:
+  config: viewer.yaml      # default; resolved next to go2rtc.yaml
+  admin_password: changeme # required for admin endpoints
+  session_ttl: 24h
+  trust_ip_ttl: 720h       # IP remember duration
+  cookie_secure: false     # set true behind HTTPS
+```
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/api/viewer/login` | — | JSON `{user, password, remember?}` → session cookie |
+| POST | `/api/viewer/logout` | session | `?forget=1` removes IP trust |
+| GET | `/api/viewer/me` | session or trusted IP | user + layout list |
+| GET | `/api/viewer/layouts` | session | layouts for user |
+| GET | `/api/viewer/layouts/{id}` | session | grid, cameras, saved tiles |
+| PUT | `/api/viewer/layouts/{id}/tiles` | session | JSON `{tiles:[...]}` |
+| GET/PUT | `/api/viewer/admin/config` | `X-Viewer-Admin` | full `viewer.yaml` body |
+| GET/PUT/DELETE | `/api/viewer/admin/users` … | admin header | user CRUD |
+| GET/PUT/DELETE | `/api/viewer/admin/layouts` … | admin header | layout CRUD |
+
 ---
 
-## Issue 1: FFmpeg / AAC / container problems
+## Issue 1: FFmpeg / broken container (deferred — last phase)
 
-### What usually breaks
+**Status:** Not a simple AAC strip-audio case. ffmpeg may refuse to decode **video-only** when the **container/mux is invalid**, so workarounds need deeper investigation (probe, remux, or full transcode path per camera).
 
-Cameras often send **H.264 + AAC in RTSP/MP4**, but go2rtc may repackage for **WebRTC (Opus)** or **MSE (fMP4)**. Typical failures:
+### What we know
 
-| Symptom | Common cause |
-|---------|----------------|
-| ffmpeg errors on probe/transcode | AAC **ADTS** vs **ASC** in fMP4; wrong sample rate/channels |
-| MSE plays video, no audio or codec error | Browser MSE expects specific AAC in MP4 fragment |
-| “Works if I drop audio” | Audio track invalid or incompatible with chosen output |
+- Some cameras fail inside go2rtc/ffmpeg with mux/container errors, not only “bad AAC”.
+- Dropping audio in yaml helps on some devices but is **not sufficient** for all.
+- Until fixed server-side, viewer should still use **`media=video`** and **muted by default** so browsers do not autostart broken audio tracks.
 
-Your workaround (strip audio) is valid for **video-only** monitoring.
+### Phase 5 tasks (when we get to it)
 
-### Fixes (try in order — no UI required)
+- [ ] Capture `ffprobe -show_streams -show_format` + go2rtc log for one failing camera.
+- [ ] Classify: invalid MP4/FLV wrap, ADTS vs ASC, duplicate timestamps, etc.
+- [ ] Per-camera ffmpeg child in `go2rtc.yaml` (remux vs transcode — case by case).
+- [ ] Document known-bad models in config comments.
 
-1. **Consumer: video only** (browser / WS):
-   - `video-stream` / `video-rtc`: set `media=video` (not `video,audio`).
-   - URL: `api/ws?src=camera1&media=video` (confirm param name in `video-rtc.js`).
-
-2. **Stream definition in `go2rtc.yaml`** — per problematic camera:
-   ```yaml
-   streams:
-     cam_bad:
-       - rtsp://... #video=copy
-       - ffmpeg:rtsp://...#video=copy#audio=none
-   ```
-   Or dedicated ffmpeg child that drops audio (exact fragment depends on your fork; see `internal/ffmpeg` README).
-
-3. **ffmpeg template** — only if needed:
-   - `-an` or `#audio=none` / map video only.
-   - Avoid re-encoding video (`#video=copy`) when only audio is bad.
-
-4. **Document “bad cameras” list** in config comments so admins know which streams are audio-less.
-
-**Task:** Collect one failing camera’s go2rtc log line + `ffprobe` output → pick smallest fix (usually `media=video` + yaml alias).
+**Interim:** use direct RTSP/child streams that already work; exclude broken streams from layout allow-lists until Phase 5.
 
 ---
 
@@ -221,47 +233,78 @@ Then: `ffmpeg` filter e.g. `setdar=16/9`, `scale` — **per-camera opt-in**, not
 - Extend [`www/video-stream.js`](../www/video-stream.js) / [`www/video-rtc.js`](../www/video-rtc.js) rather than rewriting WebRTC/MSE.
 - New pages under `www/viewer/` (or separate Vite app built into `embed`).
 
+### Grid presets (6 / 7 / 25 / 36)
+
+Layouts declare a **grid preset** (tile count + default rows/cols). User drag-resize stays within that grid.
+
+| Preset | Suggested template | Notes |
+|--------|-------------------|--------|
+| **6** | 3×2 or 2×3 | Small wall |
+| **7** | 4×2 with one double-height, or 3×3 with 2 empty | Asymmetric OK |
+| **25** | 5×5 | Common control-room density |
+| **36** | 6×6 | Max wall; verify LAN bandwidth (~25 streams active) |
+
+Implementation: CSS grid with fixed slots; map `layout.cameras[]` to slots (1:1 up to preset size; admin must not assign more cameras than preset).
+
 ---
 
 ## Implementation phases
 
-### Phase 0 — Done / in progress
+### Phase 0 — Done
 
 - [x] Restart reloads config on Windows (`internal/api` restart fix + tests)
 
-### Phase 1 — Stream reliability (1–2 days)
+### Phase 1 — Viewer backend + schema — **done**
 
-- [ ] Identify AAC failure mode per camera (logs)
-- [ ] Standard yaml pattern for “no audio” cameras
-- [ ] Verify `media=video` in custom player prototype
+- [x] `viewer.yaml` schema + load/save (`internal/viewer/`)
+- [x] Login + session cookie + **IP remember** (LAN `RemoteAddr` / `X-Forwarded-For`)
+- [x] CRUD API for layouts, users, allow-lists, tile state
+- [x] `/api/viewer/*` bypasses go2rtc basic auth (module auth only)
+- [ ] CORS: use existing `api.origin: "*"` if needed for cross-host viewer (Phase 2 UI)
 
-### Phase 2 — Viewer MVP (3–5 days)
+See [`docs/viewer.yaml.example`](viewer.yaml.example) and **Viewer API** section below.
 
-- [ ] `viewer.yaml` schema + load/save
-- [ ] Login + IP remember middleware
-- [ ] List layouts / cameras for user
-- [ ] Grid viewer + persist tile layout
+### Phase 2 — Viewer UI MVP (3–5 days)
+
+- [ ] `www/viewer/` — login, layout picker
+- [ ] Grid with presets **6 / 7 / 25 / 36**
+- [ ] Drag/reorder tiles; persist per user+layout
+- [ ] `media=video`, muted by default
 
 ### Phase 3 — Fullscreen & interaction (2–4 days)
 
-- [ ] 100% mode + auto-hide chrome
+- [ ] 100% mode + auto-hide chrome (top bar + per-tile controls)
 - [ ] Zoom/pan + object-fit modes
-- [ ] Sound off by default
+- [ ] Explicit unmute only
 
-### Phase 4 — Admin (2–3 days)
+### Phase 4 — Admin UI (2–3 days)
 
-- [ ] Admin page or API-only: users, layout ↔ cameras matrix
-- [ ] Optional: link from existing `www/config.html` for superuser
+- [ ] Edit users, layout ↔ cameras, grid preset
+- [ ] Optional: link from `www/config.html` for operators who already use go2rtc admin
+
+### Phase 5 — Broken container / ffmpeg (last, TBD)
+
+- [ ] Investigate per failing camera (see Issue 1)
+- [ ] Per-stream yaml fixes; no global recompress
+
+### Later (not v1)
+
+- [ ] Mobile/tablet layout
+- [ ] Record / snapshot from viewer
+- [ ] SSO / reverse proxy in front of viewer (server already separate)
 
 ---
 
-## Open questions for you
+## Decisions log
 
-1. **How many users/layouts/cameras** (order of magnitude)? → drives SQLite vs YAML.
-2. **Same machine as go2rtc** or separate reverse proxy with SSO later?
-3. **Mobile/tablet** required in v1?
-4. **Record / snapshot** from viewer?
-5. Can you paste **one ffmpeg error line** from a bad camera? → we lock the right yaml fix.
+| Question | Answer |
+|----------|--------|
+| Users / layouts / cameras | under 5 users, 5 layouts, ~25 cameras; **YAML** |
+| Grid sizes | **6, 7, 25, 36** presets |
+| Deployment | Dedicated go2rtc server; **LAN clients only** |
+| Mobile v1 | **No** |
+| Record / snapshot | **Later** |
+| ffmpeg errors | **Deferred** — broken container, needs deeper work; not blocking UI phases 1–4 |
 
 ---
 

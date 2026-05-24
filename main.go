@@ -6,6 +6,7 @@ import (
 	"github.com/AlexxIT/go2rtc/internal/alsa"
 	"github.com/AlexxIT/go2rtc/internal/api"
 	"github.com/AlexxIT/go2rtc/internal/api/ws"
+	"github.com/AlexxIT/go2rtc/internal/viewer"
 	"github.com/AlexxIT/go2rtc/internal/app"
 	"github.com/AlexxIT/go2rtc/internal/bubble"
 	"github.com/AlexxIT/go2rtc/internal/debug"
@@ -62,8 +63,9 @@ func main() {
 
 	modules := []module{
 		{"", app.Init},    // init config and logs
-		{"api", api.Init}, // init API before all others
-		{"ws", ws.Init},   // init WS API endpoint
+		{"api", api.Init},     // init API before all others
+		{"viewer", viewer.Init}, // viewer auth API (after api, before clients)
+		{"ws", ws.Init},       // init WS API endpoint
 		{"", streams.Init},
 		// Main sources and servers
 		{"http", http.Init},     // rtsp source, HTTP server

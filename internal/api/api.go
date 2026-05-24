@@ -200,6 +200,11 @@ var allowPaths []string
 var basePath string
 var log zerolog.Logger
 
+// BasePath returns the API/UI path prefix from config (e.g. "" or "/go2rtc").
+func BasePath() string {
+	return basePath
+}
+
 func middlewareLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Trace().Msgf("[api] %s %s %s", r.Method, r.URL, r.RemoteAddr)
@@ -211,8 +216,30 @@ func isLoopback(remoteAddr string) bool {
 	return strings.HasPrefix(remoteAddr, "127.") || strings.HasPrefix(remoteAddr, "[::1]") || remoteAddr == "@"
 }
 
+var authBypassPrefixes []string
+
+// AuthBypassPrefix skips go2rtc HTTP basic auth for paths with this prefix
+// (module handles its own auth, e.g. internal/viewer).
+func AuthBypassPrefix(prefix string) {
+	authBypassPrefixes = append(authBypassPrefixes, prefix)
+}
+
+func authBypassed(path string) bool {
+	for _, prefix := range authBypassPrefixes {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func middlewareAuth(username, password string, localAuth bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if authBypassed(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		if localAuth || !isLoopback(r.RemoteAddr) {
 			user, pass, ok := r.BasicAuth()
 			if !ok || user != username || pass != password {
