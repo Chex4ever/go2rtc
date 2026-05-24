@@ -189,6 +189,26 @@ function streamSrc(name) {
     return apiUrl('/api/ws?src=' + encodeURIComponent(name));
 }
 
+/** Grid uses preview sub-stream when configured; fullscreen uses main (layout camera name). */
+function playbackStream(logicalName, forFocus) {
+    const preview = state.layoutDetail?.preview?.[logicalName];
+    if (forFocus || !preview) {
+        return logicalName;
+    }
+    return preview;
+}
+
+function tileLabel(logicalName, inFocus) {
+    const preview = state.layoutDetail?.preview?.[logicalName];
+    if (inFocus && preview) {
+        return `${logicalName} (main)`;
+    }
+    if (!inFocus && preview) {
+        return `${logicalName} → ${preview}`;
+    }
+    return logicalName;
+}
+
 function exitFocus() {
     if (state.focusSlot === null) {
         return;
@@ -270,7 +290,7 @@ function renderWall() {
 
         const stream = state.slots[i];
         if (stream) {
-            cell.appendChild(createTile(stream, i, focusSlot !== null));
+            cell.appendChild(createTile(stream, i, focusSlot === i));
         }
         grid.appendChild(cell);
     }
@@ -337,16 +357,21 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus) {
     return bar;
 }
 
-function createTile(streamName, slotIndex, inFocus) {
-    const src = streamSrc(streamName);
+function createTile(logicalName, slotIndex, inFocus) {
+    const playback = playbackStream(logicalName, inFocus);
+    const src = streamSrc(playback);
     const tile = document.createElement('div');
     tile.className = 'tile';
+    tile.dataset.logicalStream = logicalName;
 
     const bar = document.createElement('div');
     bar.className = 'tile-bar';
-    bar.innerHTML = `<span class="name">${escapeHtml(streamName)}</span><span class="drag-handle" title="Drag to swap">⠿</span>`;
+    bar.innerHTML = `<span class="name">${escapeHtml(tileLabel(logicalName, inFocus))}</span><span class="drag-handle" title="Drag to swap">⠿</span>`;
 
-    if (!inFocus) {
+    if (inFocus) {
+        bar.querySelector('.drag-handle')?.remove();
+        tile.appendChild(bar);
+    } else {
         const handle = bar.querySelector('.drag-handle');
         handle.draggable = true;
         handle.addEventListener('dragstart', (e) => {
@@ -374,7 +399,7 @@ function createTile(streamName, slotIndex, inFocus) {
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);
-    body.appendChild(createTileControls(viewport, streamName, slotIndex, src, vs, inFocus));
+    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus));
 
     body.addEventListener('dblclick', (e) => {
         if (e.target.closest('.tile-controls, .tile-bar')) {

@@ -69,6 +69,18 @@ func validateAdminConfig(cfg *Config) error {
 		if len(l.Cameras) > l.Grid {
 			return errString("layout " + id + ": more cameras than grid slots")
 		}
+		cameraSet := map[string]bool{}
+		for _, cam := range l.Cameras {
+			cameraSet[cam] = true
+		}
+		for main, preview := range l.Preview {
+			if !cameraSet[main] {
+				return errString("layout " + id + ": preview key not in cameras: " + main)
+			}
+			if preview == "" || preview == main {
+				return errString("layout " + id + ": invalid preview for " + main)
+			}
+		}
 	}
 	for name, u := range cfg.Users {
 		if u == nil {
@@ -179,18 +191,16 @@ func apiAdminLayouts(w http.ResponseWriter, r *http.Request) {
 				if l == nil {
 					continue
 				}
-				out[id] = &Layout{
-					Grid:    l.Grid,
-					Cameras: append([]string(nil), l.Cameras...),
-				}
+				out[id] = cloneLayout(l)
 			}
 			store.mu.RUnlock()
 			api.ResponseJSON(w, out)
 		case http.MethodPut:
 			var body struct {
-				ID      string   `json:"id"`
-				Grid    int      `json:"grid"`
-				Cameras []string `json:"cameras"`
+				ID      string            `json:"id"`
+				Grid    int               `json:"grid"`
+				Cameras []string          `json:"cameras"`
+				Preview map[string]string `json:"preview"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -208,11 +218,28 @@ func apiAdminLayouts(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "too many cameras for grid", http.StatusBadRequest)
 				return
 			}
-			store.mu.Lock()
-			store.Layouts[body.ID] = &Layout{
+			layout := &Layout{
 				Grid:    body.Grid,
 				Cameras: append([]string(nil), body.Cameras...),
 			}
+			if len(body.Preview) > 0 {
+				layout.Preview = map[string]string{}
+				cameraSet := map[string]bool{}
+				for _, cam := range body.Cameras {
+					cameraSet[cam] = true
+				}
+				for main, preview := range body.Preview {
+					if !cameraSet[main] || preview == "" || preview == main {
+						continue
+					}
+					layout.Preview[main] = preview
+				}
+				if len(layout.Preview) == 0 {
+					layout.Preview = nil
+				}
+			}
+			store.mu.Lock()
+			store.Layouts[body.ID] = layout
 			store.mu.Unlock()
 			if err := store.Save(); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -260,6 +287,23 @@ func removeString(ss []string, s string) []string {
 	for _, v := range ss {
 		if v != s {
 			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func cloneLayout(l *Layout) *Layout {
+	if l == nil {
+		return nil
+	}
+	out := &Layout{
+		Grid:    l.Grid,
+		Cameras: append([]string(nil), l.Cameras...),
+	}
+	if len(l.Preview) > 0 {
+		out.Preview = map[string]string{}
+		for k, v := range l.Preview {
+			out.Preview[k] = v
 		}
 	}
 	return out

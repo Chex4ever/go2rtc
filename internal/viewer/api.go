@@ -32,10 +32,11 @@ type meResponse struct {
 }
 
 type layoutResponse struct {
-	ID      string   `json:"id"`
-	Grid    int      `json:"grid"`
-	Cameras []string `json:"cameras"`
-	Tiles   []Tile   `json:"tiles"`
+	ID      string            `json:"id"`
+	Grid    int               `json:"grid"`
+	Cameras []string          `json:"cameras"`
+	Preview map[string]string `json:"preview,omitempty"`
+	Tiles   []Tile            `json:"tiles"`
 }
 
 type tilesRequest struct {
@@ -179,12 +180,19 @@ func apiLayouts(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			st := store.LayoutState(user, layoutID)
-			api.ResponseJSON(w, layoutResponse{
+			resp := layoutResponse{
 				ID:      layoutID,
 				Grid:    layout.Grid,
 				Cameras: append([]string(nil), layout.Cameras...),
 				Tiles:   st.Tiles,
-			})
+			}
+			if len(layout.Preview) > 0 {
+				resp.Preview = map[string]string{}
+				for k, v := range layout.Preview {
+					resp.Preview[k] = v
+				}
+			}
+			api.ResponseJSON(w, resp)
 		default:
 			http.Error(w, "", http.StatusMethodNotAllowed)
 		}

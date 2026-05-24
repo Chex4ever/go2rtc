@@ -15,6 +15,9 @@ layouts:
   wall_6:
     grid: 6
     cameras: [cam1, cam2, cam3, cam4, cam5, cam6]
+    preview:
+      cam1: cam1_sub
+      cam2: cam2_sub
   wall_25:
     grid: 25
     cameras:

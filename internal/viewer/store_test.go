@@ -26,6 +26,35 @@ func TestStoreSaveLoad(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, 6, l.Grid)
 	require.Equal(t, []string{"cam1", "cam2"}, l.Cameras)
+
+	s.Layouts["wall"] = &Layout{
+		Grid:    6,
+		Cameras: []string{"cam_main"},
+		Preview: map[string]string{"cam_main": "cam_sub"},
+	}
+	require.NoError(t, s.Save())
+
+	s3 := NewStore(path)
+	require.NoError(t, s3.Load())
+	l2, ok := s3.Layout("wall")
+	require.True(t, ok)
+	require.Equal(t, "cam_sub", l2.Preview["cam_main"])
+}
+
+func TestValidateAdminConfigPreview(t *testing.T) {
+	cfg := &Config{
+		Layouts: map[string]*Layout{
+			"x": {
+				Grid:    6,
+				Cameras: []string{"main"},
+				Preview: map[string]string{"main": "sub"},
+			},
+		},
+	}
+	require.NoError(t, validateAdminConfig(cfg))
+
+	cfg.Layouts["x"].Preview["other"] = "sub"
+	require.Error(t, validateAdminConfig(cfg))
 }
 
 func TestStoreTrustIP(t *testing.T) {

@@ -128,7 +128,7 @@ function renderLayouts() {
         tr.innerHTML = `
             <td><strong>${escapeHtml(id)}</strong></td>
             <td>${l.grid}</td>
-            <td>${(l.cameras || []).length}: ${escapeHtml((l.cameras || []).slice(0, 4).join(', '))}${(l.cameras || []).length > 4 ? '…' : ''}</td>
+            <td>${(l.cameras || []).length}${previewCount(l)}: ${escapeHtml((l.cameras || []).slice(0, 3).join(', '))}${(l.cameras || []).length > 3 ? '…' : ''}</td>
             <td class="actions">
                 <button type="button" data-edit-layout="${escapeHtml(id)}">Edit</button>
                 <button type="button" data-del-layout="${escapeHtml(id)}" class="danger">Delete</button>
@@ -152,10 +152,11 @@ function layoutCheckboxes(container, selected) {
     }
 }
 
-function cameraCheckboxes(container, selected, maxCount) {
+function cameraCheckboxes(container, selected, maxCount, previewMap) {
     container.innerHTML = '';
     if (!state.streams.length) {
         container.innerHTML = '<p class="hint">No streams in go2rtc. Add cameras in go2rtc.yaml first.</p>';
+        updatePreviewRows([], previewMap || {});
         return;
     }
     for (const name of state.streams) {
@@ -164,10 +165,63 @@ function cameraCheckboxes(container, selected, maxCount) {
         const checked = selected.includes(name);
         label.innerHTML = `<input type="checkbox" value="${escapeHtml(name)}" ${checked ? 'checked' : ''}> ${escapeHtml(name)}`;
         const input = label.querySelector('input');
-        input.addEventListener('change', () => enforceCameraLimit(container, maxCount));
+        input.addEventListener('change', () => {
+            enforceCameraLimit(container, maxCount);
+            updatePreviewRows(selectedCameras(container), collectPreviewMap());
+        });
         container.appendChild(label);
     }
     updateCameraHint(container, maxCount);
+    updatePreviewRows(selected, previewMap || {});
+}
+
+function collectPreviewMap() {
+    const preview = {};
+    for (const sel of document.querySelectorAll('#layout-preview-rows select[data-preview-for]')) {
+        const main = sel.dataset.previewFor;
+        if (sel.value && sel.value !== main) {
+            preview[main] = sel.value;
+        }
+    }
+    return preview;
+}
+
+function updatePreviewRows(cameras, previewMap) {
+    const section = $('#layout-preview-section');
+    const rows = $('#layout-preview-rows');
+    if (!cameras.length) {
+        section.classList.add('hidden');
+        rows.innerHTML = '';
+        return;
+    }
+    section.classList.remove('hidden');
+    rows.innerHTML = '';
+    for (const cam of cameras) {
+        const row = document.createElement('div');
+        row.className = 'preview-row';
+        const label = document.createElement('label');
+        label.className = 'field';
+        label.textContent = cam;
+        const sel = document.createElement('select');
+        sel.dataset.previewFor = cam;
+        const optSame = document.createElement('option');
+        optSame.value = '';
+        optSame.textContent = 'Same as main (no separate preview)';
+        sel.appendChild(optSame);
+        for (const s of state.streams) {
+            if (s === cam) {
+                continue;
+            }
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            sel.appendChild(opt);
+        }
+        sel.value = previewMap[cam] || '';
+        row.appendChild(label);
+        row.appendChild(sel);
+        rows.appendChild(row);
+    }
 }
 
 function enforceCameraLimit(container, maxCount) {
@@ -196,6 +250,11 @@ function openUserDialog(name) {
     $('#dialog-user').showModal();
 }
 
+function previewCount(layout) {
+    const n = layout.preview ? Object.keys(layout.preview).length : 0;
+    return n ? ` (${n} preview)` : '';
+}
+
 function openLayoutDialog(id) {
     state.editingLayout = id;
     const form = $('#form-layout');
@@ -205,9 +264,14 @@ function openLayoutDialog(id) {
     form.grid.value = String(l?.grid || 6);
     $('#dialog-layout-title').textContent = id ? `Edit layout: ${id}` : 'Add layout';
     const max = parseInt(form.grid.value, 10);
-    cameraCheckboxes($('#layout-camera-checks'), l?.cameras || [], max);
+    cameraCheckboxes($('#layout-camera-checks'), l?.cameras || [], max, l?.preview || {});
     form.grid.onchange = () => {
-        cameraCheckboxes($('#layout-camera-checks'), selectedCameras($('#layout-camera-checks')), parseInt(form.grid.value, 10));
+        cameraCheckboxes(
+            $('#layout-camera-checks'),
+            selectedCameras($('#layout-camera-checks')),
+            parseInt(form.grid.value, 10),
+            collectPreviewMap(),
+        );
     };
     $('#dialog-layout').showModal();
 }
@@ -254,7 +318,12 @@ async function saveLayout(ev) {
         return;
     }
     try {
-        await adminApi('PUT', '/api/viewer/admin/layouts', {id, grid, cameras});
+        await adminApi('PUT', '/api/viewer/admin/layouts', {
+            id,
+            grid,
+            cameras,
+            preview: collectPreviewMap(),
+        });
         $('#dialog-layout').close();
         setStatus('Layout saved');
         await loadAll();

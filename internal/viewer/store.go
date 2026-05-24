@@ -28,8 +28,9 @@ type User struct {
 }
 
 type Layout struct {
-	Grid    int      `json:"grid" yaml:"grid"`
-	Cameras []string `json:"cameras" yaml:"cameras"`
+	Grid    int               `json:"grid" yaml:"grid"`
+	Cameras []string          `json:"cameras" yaml:"cameras"`
+	Preview map[string]string `json:"preview,omitempty" yaml:"preview,omitempty"`
 }
 
 type LayoutState struct {
@@ -117,6 +118,19 @@ func normalizeConfig(cfg *Config) {
 	}
 	if cfg.TrustedIPs == nil {
 		cfg.TrustedIPs = map[string]*TrustedIP{}
+	}
+	for _, l := range cfg.Layouts {
+		if l == nil || len(l.Preview) == 0 {
+			continue
+		}
+		for k, v := range l.Preview {
+			if v == "" || k == v {
+				delete(l.Preview, k)
+			}
+		}
+		if len(l.Preview) == 0 {
+			l.Preview = nil
+		}
 	}
 }
 
