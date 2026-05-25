@@ -80,6 +80,27 @@ streams:
 
 If preview is not set, the same stream is used everywhere.
 
+### Hikvision DVR / ISAPI (analog cameras via NVR)
+
+On Hikvision NVR/DVR units, main and sub streams use **RTSP channel IDs** in the path (this is separate from the `isapi://` scheme in go2rtc, which is only for **two-way audio** — see [internal/isapi/README.md](../internal/isapi/README.md)):
+
+| Stream | Typical RTSP (camera 1 on DVR) | Typical RTSP (camera 2) |
+|--------|--------------------------------|-------------------------|
+| **Main** | `rtsp://user:pass@DVR:554/Streaming/Channels/101` | `…/Channels/201` |
+| **Preview (sub)** | `…/Channels/102` | `…/Channels/202` |
+
+Rule: in the three-digit channel number, change the **last digit from `1` to `2`** (101→102, 201→202). Use the sub stream for grid tiles and the main stream for fullscreen.
+
+In **Config → Settings**, **Detect preview channels** can add `name_sub` with the `…102` URL when the main stream is already `…101`.
+
+```yaml
+streams:
+  dvr_cam1: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/101
+  dvr_cam1_sub: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/102
+  dvr_cam2: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/201
+  dvr_cam2_sub: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/202
+```
+
 ---
 
 ## Layouts and grids

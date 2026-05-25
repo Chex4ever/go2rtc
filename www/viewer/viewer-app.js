@@ -257,12 +257,30 @@ function showLayoutsScreen() {
 }
 
 async function openLayout(id) {
-    exitFocus();
-    state.currentLayoutId = id;
-    state.layoutDetail = await api('GET', `/api/viewer/layouts/${encodeURIComponent(id)}`);
-    state.slots = slotsFromLayout(state.layoutDetail);
-    renderWall();
-    showScreen('screen-wall');
+    const errEl = $('#layout-open-error');
+    if (errEl) {
+        errEl.textContent = '';
+    }
+    try {
+        exitFocus();
+        state.currentLayoutId = id;
+        const detail = await api('GET', `/api/viewer/layouts/${encodeURIComponent(id)}`);
+        const grid = Number(detail?.grid);
+        if (!detail?.id || !GRID_PRESETS[grid]) {
+            throw new Error('Invalid layout from server (check grid is 6, 7, 25, or 36)');
+        }
+        state.layoutDetail = {...detail, grid};
+        state.slots = slotsFromLayout(state.layoutDetail);
+        showScreen('screen-wall');
+        renderWall();
+    } catch (e) {
+        const msg = e.message || 'Failed to open layout';
+        if (errEl) {
+            errEl.textContent = msg;
+        } else {
+            alert(msg);
+        }
+    }
 }
 
 function escapeHtml(s) {
@@ -327,8 +345,16 @@ function renderWall() {
     setActiveTile(null);
 
     const detail = state.layoutDetail;
-    const preset = GRID_PRESETS[detail.grid];
+    if (!detail) {
+        return;
+    }
+    const grid = Number(detail.grid);
+    const preset = GRID_PRESETS[grid];
     if (!preset) {
+        const gridEl = $('#wall-grid');
+        if (gridEl) {
+            gridEl.innerHTML = '<p class="error" style="padding:16px">Invalid layout grid. Ask admin to set grid to 6, 7, 25, or 36.</p>';
+        }
         return;
     }
 

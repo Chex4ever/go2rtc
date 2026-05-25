@@ -12,7 +12,8 @@ export function gridSize(grid) {
 }
 
 export function slotsFromLayout(layout) {
-    const preset = GRID_PRESETS[layout.grid];
+    const grid = Number(layout?.grid);
+    const preset = GRID_PRESETS[grid];
     if (!preset) {
         return [];
     }

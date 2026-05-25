@@ -1,0 +1,1018 @@
+/**
+ * go2rtc Settings tab — friendly forms + ONVIF dual-channel cameras.
+ */
+
+/** @see viewer/stream-pairs.js — duplicated here so config.html works without ES modules */
+function suggestPreviewStream(main, streams) {
+    if (!main || !streams?.length) {
+        return null;
+    }
+    const names = new Set(streams);
+    const exact = [
+        `${main}_sub`,
+        `${main}_substream`,
+        `${main}_preview`,
+        `${main}_low`,
+        `${main}_substream1`,
+        `${main}2`,
+        `${main}_2`,
+        `${main}-sub`,
+        `${main}_chn2`,
+        `${main}_channel2`,
+        `${main}02`,
+        `${main}_102`,
+    ];
+    for (const c of exact) {
+        if (names.has(c)) {
+            return c;
+        }
+    }
+    const mainLower = main.toLowerCase();
+    for (const s of streams) {
+        if (s === main) {
+            continue;
+        }
+        const lower = s.toLowerCase();
+        if (!lower.startsWith(mainLower)) {
+            continue;
+        }
+        const tail = lower.slice(mainLower.length);
+        if (/^[_-]?(sub|preview|low|minor|chn2|channel2|stream2|102|02|2)/.test(tail)) {
+            return s;
+        }
+    }
+    return null;
+}
+
+const $ = (sel, root = document) => root.querySelector(sel);
+
+function yamlLoad(text) {
+    if (!window.jsyaml) {
+        throw new Error('js-yaml not loaded');
+    }
+    return window.jsyaml.load(text) || {};
+}
+
+function yamlDump(obj) {
+    return window.jsyaml.dump(obj, {lineWidth: 120, noRefs: true});
+}
+
+const state = {
+    config: {},
+    streams: {},
+    onvifDevices: [],
+    onvifProfiles: [],
+    probeSrc: '',
+    serviceBusy: false,
+    settingsLoaded: false,
+    bandwidth: {},
+    bandwidthPollId: null,
+    settingsTabActive: false,
+};
+
+function setStatus(msg, isError = false) {
+    const el = $('#settings-save-status');
+    if (el) {
+        el.textContent = msg || '';
+        el.className = 'settings-status' + (isError ? ' err' : msg ? ' ok' : '');
+    }
+    const cam = $('#camera-actions-status');
+    if (cam && msg) {
+        cam.textContent = msg;
+        cam.className = 'settings-status' + (isError ? ' err' : ' ok');
+    }
+}
+
+function apiFetch(url, opts = {}) {
+    return fetch(url, {credentials: 'include', cache: 'no-cache', ...opts});
+}
+
+async function fetchConfig() {
+    const r = await apiFetch('api/config');
+    if (r.status === 410) {
+        throw new Error('Config file is disabled (run with -config path)');
+    }
+    if (!r.ok) {
+        throw new Error(r.statusText || String(r.status));
+    }
+    state.config = yamlLoad(await r.text());
+}
+
+async function patchConfig(partial) {
+    const r = await apiFetch('api/config', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/yaml'},
+        body: yamlDump(partial),
+    });
+    if (!r.ok) {
+        throw new Error(await r.text() || r.statusText);
+    }
+    await fetchConfig();
+}
+
+async function loadStreams() {
+    const r = await apiFetch('api/streams');
+    if (!r.ok) {
+        throw new Error(await r.text() || r.statusText);
+    }
+    state.streams = await r.json();
+}
+
+function fillSettingsForm() {
+    const api = state.config.api || {};
+    const viewer = state.config.viewer || {};
+    $('#set-api-listen').value = api.listen || ':1984';
+    $('#set-api-user').value = api.username || '';
+    $('#set-api-pass').value = api.password || '';
+    $('#set-viewer-admin').value = viewer.admin_password || '';
+    $('#set-viewer-session').value = viewer.session_ttl || '24h';
+    $('#set-viewer-trust').value = viewer.trust_ip_ttl || '720h';
+    $('#set-viewer-secure').checked = !!viewer.cookie_secure;
+}
+
+function readSettingsPatch() {
+    const patch = {
+        api: {},
+        viewer: {},
+    };
+    const listen = $('#set-api-listen').value.trim();
+    if (listen) {
+        patch.api.listen = listen;
+    }
+    const user = $('#set-api-user').value.trim();
+    const pass = $('#set-api-pass').value;
+    if (user) {
+        patch.api.username = user;
+    }
+    if (pass) {
+        patch.api.password = pass;
+    }
+    const admin = $('#set-viewer-admin').value;
+    if (admin) {
+        patch.viewer.admin_password = admin;
+    }
+    const session = $('#set-viewer-session').value.trim();
+    if (session) {
+        patch.viewer.session_ttl = session;
+    }
+    const trust = $('#set-viewer-trust').value.trim();
+    if (trust) {
+        patch.viewer.trust_ip_ttl = trust;
+    }
+    patch.viewer.cookie_secure = $('#set-viewer-secure').checked;
+    return patch;
+}
+
+function streamUrls(entry) {
+    if (typeof entry === 'string') {
+        return [entry];
+    }
+    if (Array.isArray(entry)) {
+        return entry;
+    }
+    if (entry?.producers?.length) {
+        const urls = [];
+        for (const p of entry.producers) {
+            if (typeof p?.url === 'string') {
+                urls.push(p.url);
+            } else if (typeof p?.source === 'string') {
+                urls.push(p.source);
+            }
+        }
+        if (urls.length) {
+            return urls;
+        }
+    }
+    return [];
+}
+
+function groupCameraRows() {
+    const names = Object.keys(state.streams).sort();
+    const shown = new Set();
+    const rows = [];
+
+    for (const name of names) {
+        if (shown.has(name)) {
+            continue;
+        }
+        const subName = `${name}_sub`;
+        const hasSub = names.includes(subName);
+        if (hasSub) {
+            shown.add(name);
+            shown.add(subName);
+            rows.push({
+                name,
+                main: streamUrls(state.streams[name])[0] || '',
+                sub: streamUrls(state.streams[subName])[0] || '',
+                subName,
+            });
+            continue;
+        }
+        if (name.endsWith('_sub')) {
+            const base = name.slice(0, -4);
+            if (names.includes(base)) {
+                continue;
+            }
+        }
+        shown.add(name);
+        const guess = suggestPreviewStream(name, names);
+        rows.push({
+            name,
+            main: streamUrls(state.streams[name])[0] || '',
+            sub: '',
+            subName,
+            guessedPreview: guess && guess !== name ? guess : '',
+        });
+    }
+    return rows;
+}
+
+function streamEntryRecv(entry) {
+    if (!entry || typeof entry === 'string') {
+        return null;
+    }
+    const producers = entry.producers;
+    if (!Array.isArray(producers)) {
+        return null;
+    }
+    let total = 0;
+    let any = false;
+    for (const p of producers) {
+        if (p && typeof p.bytes_recv === 'number') {
+            total += p.bytes_recv;
+            any = true;
+        }
+    }
+    return any ? total : null;
+}
+
+function formatKbps(bytesPerSec) {
+    if (bytesPerSec == null || Number.isNaN(bytesPerSec)) {
+        return '—';
+    }
+    if (bytesPerSec <= 0) {
+        return '0 KB/s';
+    }
+    const kb = bytesPerSec / 1024;
+    if (kb >= 100) {
+        return `${Math.round(kb)} KB/s`;
+    }
+    if (kb >= 10) {
+        return `${kb.toFixed(1)} KB/s`;
+    }
+    return `${kb.toFixed(2)} KB/s`;
+}
+
+function streamRateLabel(streamName) {
+    const snap = state.bandwidth[streamName];
+    if (!snap) {
+        return {text: 'offline', cls: 'offline'};
+    }
+    if (snap.rate == null) {
+        return {text: snap.online ? 'connecting…' : 'offline', cls: 'offline'};
+    }
+    return {text: formatKbps(snap.rate), cls: ''};
+}
+
+function updateBandwidthFromStreams(streams) {
+    const now = Date.now();
+    for (const [name, entry] of Object.entries(streams)) {
+        const bytes = streamEntryRecv(entry);
+        const online = bytes != null;
+        const prev = state.bandwidth[name];
+        let rate = null;
+        if (online && prev?.bytes != null && prev.t && now > prev.t) {
+            const dt = (now - prev.t) / 1000;
+            if (dt > 0.2) {
+                const db = bytes - prev.bytes;
+                if (db >= 0) {
+                    rate = db / dt;
+                }
+            }
+        }
+        state.bandwidth[name] = {
+            bytes: bytes ?? prev?.bytes ?? null,
+            t: now,
+            online,
+            rate: rate ?? (online && prev?.rate != null ? prev.rate : null),
+        };
+    }
+}
+
+function renderCameraStats() {
+    const host = $('#camera-stats-list');
+    if (!host) {
+        return;
+    }
+    const rows = groupCameraRows();
+    if (!rows.length) {
+        host.innerHTML = '<p class="settings-note">No cameras in config yet.</p>';
+        return;
+    }
+    host.innerHTML = '';
+    for (const row of rows) {
+        const block = document.createElement('div');
+        block.className = 'cam-stat-block';
+        const mainRate = streamRateLabel(row.name);
+        const subRate = row.sub ? streamRateLabel(row.subName) : null;
+        let previewLine;
+        if (row.sub) {
+            previewLine = `
+                <div class="cam-stat-line">
+                    <span class="label">preview</span>
+                    <span class="rate ${subRate.cls}">${escapeHtml(subRate.text)}</span>
+                    <code class="stream-url">${escapeHtml(row.sub)}</code>
+                </div>`;
+        } else {
+            const hint = row.guessedPreview
+                ? ` <span class="rate warn">found as ${escapeHtml(row.guessedPreview)}</span>`
+                : '';
+            previewLine = `
+                <div class="cam-stat-line">
+                    <span class="label">preview</span>
+                    <button type="button" class="linkish" data-add-preview="${escapeHtml(row.name)}">add preview channel</button>${hint}
+                </div>`;
+        }
+        block.innerHTML = `
+            <h3>${escapeHtml(row.name)}</h3>
+            <div class="cam-stat-line">
+                <span class="label">main</span>
+                <span class="rate ${mainRate.cls}">${escapeHtml(mainRate.text)}</span>
+                <code class="stream-url">${escapeHtml(row.main)}</code>
+            </div>
+            ${previewLine}
+            <div class="cam-stat-actions">
+                <button type="button" data-del-stream="${escapeHtml(row.name)}">Remove main</button>
+                ${row.sub ? `<button type="button" data-del-stream="${escapeHtml(row.subName)}">Remove preview</button>` : ''}
+            </div>`;
+        host.appendChild(block);
+    }
+}
+
+function subStreamUrlVariants(mainUrl) {
+    if (typeof go2rtcSubStreamUrlVariants === 'function') {
+        return go2rtcSubStreamUrlVariants(mainUrl);
+    }
+    return rtspSubUrlVariantsFallback(mainUrl);
+}
+
+function rtspSubUrlVariantsFallback(mainUrl) {
+    const variants = [];
+    if (!mainUrl || typeof mainUrl !== 'string') {
+        return variants;
+    }
+    try {
+        const u = new URL(mainUrl);
+        if (u.searchParams.has('subtype')) {
+            const v = u.searchParams.get('subtype');
+            const u2 = new URL(mainUrl);
+            u2.searchParams.set('subtype', v === '0' ? '1' : '0');
+            variants.push(u2.toString());
+        }
+        if (u.searchParams.has('channel')) {
+            const v = u.searchParams.get('channel');
+            const u2 = new URL(mainUrl);
+            u2.searchParams.set('channel', v === '1' ? '2' : '1');
+            variants.push(u2.toString());
+        }
+    } catch {
+        /* not a URL */
+    }
+    const reps = [
+        [/stream1/gi, 'stream2'],
+        [/\/main\b/gi, '/sub'],
+        [/_main\b/gi, '_sub'],
+        [/channel1/gi, 'channel2'],
+    ];
+    for (const [re, to] of reps) {
+        if (re.test(mainUrl)) {
+            variants.push(mainUrl.replace(re, to));
+        }
+    }
+    return [...new Set(variants)].filter((u) => u && u !== mainUrl);
+}
+
+function credentialsFromStreamUrl(url) {
+    try {
+        const u = new URL(url);
+        return {
+            user: decodeURIComponent(u.username || '') || 'admin',
+            pass: decodeURIComponent(u.password || ''),
+            host: u.hostname,
+            port: u.port,
+        };
+    } catch {
+        const m = url.match(/\/\/([^@]+)@([^/:]+)/);
+        if (m) {
+            const [user, pass] = m[1].split(':');
+            return {user: user || 'admin', pass: pass || '', host: m[2], port: ''};
+        }
+        return {user: 'admin', pass: '', host: '', port: ''};
+    }
+}
+
+/** RTSP ports — never use for ONVIF HTTP device_service */
+const RTSP_PORTS = new Set(['554', '8554', '10554', '1935']);
+
+/** Common ONVIF HTTP ports (Reolink 8000, Tapo 2020, etc.) */
+const ONVIF_PORTS = ['8000', '80', '8080', '8899', '2020', ''];
+
+function onvifSrcCandidatesFromMain(mainUrl) {
+    if (!mainUrl) {
+        return [];
+    }
+    const trimmed = mainUrl.trim();
+    if (trimmed.toLowerCase().startsWith('onvif://')) {
+        const {user, pass} = credentialsFromStreamUrl(trimmed);
+        return [buildOnvifSrc(trimmed, user, pass)];
+    }
+
+    const {user, pass, host, port} = credentialsFromStreamUrl(mainUrl);
+    if (!host) {
+        return [];
+    }
+
+    const ports = [];
+    if (port && !RTSP_PORTS.has(port) && !ports.includes(port)) {
+        ports.push(port);
+    }
+    for (const p of ONVIF_PORTS) {
+        if (!ports.includes(p)) {
+            ports.push(p);
+        }
+    }
+
+    return ports.map((p) => {
+        const portPart = p ? `:${p}` : '';
+        return buildOnvifSrc(`onvif://${host}${portPart}`, user, pass);
+    });
+}
+
+function onvifSrcForMain(mainUrl) {
+    const candidates = onvifSrcCandidatesFromMain(mainUrl);
+    return candidates[0] || null;
+}
+
+async function probeOnvifProfilesForSrc(src) {
+    const url = new URL('api/onvif', location.href);
+    url.searchParams.set('src', src);
+    const r = await apiFetch(url);
+    if (!r.ok) {
+        return null;
+    }
+    const data = await r.json();
+    return data.sources || [];
+}
+
+/** Try ONVIF HTTP ports until profiles are returned (avoids RTSP :554). */
+async function discoverOnvifProfiles(mainUrl) {
+    for (const src of onvifSrcCandidatesFromMain(mainUrl)) {
+        const profiles = await probeOnvifProfilesForSrc(src);
+        if (profiles?.length) {
+            return profiles;
+        }
+    }
+    return [];
+}
+
+function pickSubProfile(profiles, mainUrl) {
+    const list = profiles.filter((p) => p.url && !p.url.includes('snapshot'));
+    if (list.length < 2) {
+        return null;
+    }
+    const norm = (s) => String(s || '').replace(/\/$/, '');
+    const mainN = norm(mainUrl);
+    let mainIdx = list.findIndex((p) => {
+        const u = norm(p.url);
+        return u === mainN || mainN.includes(u) || u.includes(mainN);
+    });
+    if (mainIdx < 0) {
+        mainIdx = 0;
+    }
+    const rest = list.filter((_, i) => i !== mainIdx);
+    const hinted = rest.find((p) => /sub|low|minor|2|second|preview/i.test(p.name || ''));
+    return hinted || rest[0] || null;
+}
+
+async function detectPreviewChannels() {
+    setStatus('Scanning cameras for preview channels…');
+    await loadStreams();
+    let names = Object.keys(state.streams);
+    const rows = groupCameraRows();
+    let added = 0;
+    let onvifMiss = 0;
+
+    for (const row of rows) {
+        if (row.sub) {
+            continue;
+        }
+        const subName = row.subName;
+
+        const guess = suggestPreviewStream(row.name, names);
+        if (guess && guess !== row.name && !names.includes(subName)) {
+            const url = streamUrls(state.streams[guess])[0];
+            if (url) {
+                await putStream(subName, url);
+                names.push(subName);
+                added++;
+                continue;
+            }
+        }
+
+        const profiles = await discoverOnvifProfiles(row.main);
+        if (!profiles.length) {
+            onvifMiss++;
+            const variants = subStreamUrlVariants(row.main);
+            if (variants.length && !names.includes(subName)) {
+                await putStream(subName, variants[0]);
+                names.push(subName);
+                added++;
+            }
+            continue;
+        }
+        const subProf = pickSubProfile(profiles, row.main);
+        if (subProf?.url && subProf.url !== row.main && !names.includes(subName)) {
+            await putStream(subName, subProf.url);
+            names.push(subName);
+            added++;
+        }
+    }
+
+    await loadStreams();
+    renderCameraStats();
+    let msg = added
+        ? `Added ${added} preview channel(s) (*_sub) to config`
+        : 'No new preview channels found (already configured or device has one stream)';
+    if (onvifMiss && !added) {
+        msg += `. ONVIF failed for ${onvifMiss} camera(s) — use “Add camera — ONVIF” with correct device port (often :8000, not :554).`;
+    } else if (onvifMiss) {
+        msg += ` (${onvifMiss} without ONVIF; RTSP subtype guess used where possible)`;
+    }
+    setStatus(msg);
+}
+
+async function addPreviewForCamera(baseName) {
+    const subName = `${baseName}_sub`;
+    const names = Object.keys(state.streams);
+    if (names.includes(subName)) {
+        return;
+    }
+    const main = streamUrls(state.streams[baseName])[0] || '';
+    if (!main) {
+        throw new Error('Main stream URL missing');
+    }
+    $('#manual-cam-name').value = baseName;
+    $('#manual-main-url').value = main;
+    const variants = subStreamUrlVariants(main);
+    if (variants.length) {
+        $('#manual-sub-url').value = variants[0];
+    }
+    $('#manual-sub-url').focus();
+    setStatus(`Enter preview URL for ${baseName} below, or use Detect preview channels`);
+}
+
+async function wakeOfflineStreams() {
+    const rows = groupCameraRows();
+    const tasks = [];
+    for (const row of rows) {
+        for (const name of [row.name, row.sub ? row.subName : null].filter(Boolean)) {
+            if (streamEntryRecv(state.streams[name]) != null) {
+                continue;
+            }
+            const u = new URL('api/frame.jpeg', location.href);
+            u.searchParams.set('src', name);
+            u.searchParams.set('width', '2');
+            u.searchParams.set('height', '2');
+            tasks.push(apiFetch(u).catch(() => {}));
+        }
+    }
+    if (!tasks.length) {
+        setStatus('All listed streams already active');
+        return;
+    }
+    setStatus('Waking offline streams…');
+    await Promise.all(tasks);
+    await loadStreams();
+    renderCameraStats();
+    setStatus('Wake requested — rates appear within a few seconds');
+}
+
+function startBandwidthPoll() {
+    stopBandwidthPoll();
+    state.settingsTabActive = true;
+    state.bandwidthPollId = setInterval(async () => {
+        if (!state.settingsTabActive || document.hidden) {
+            return;
+        }
+        try {
+            await loadStreams();
+            updateBandwidthFromStreams(state.streams);
+            renderCameraStats();
+        } catch {
+            /* ignore transient errors while polling */
+        }
+    }, 2000);
+}
+
+function stopBandwidthPoll() {
+    state.settingsTabActive = false;
+    if (state.bandwidthPollId) {
+        clearInterval(state.bandwidthPollId);
+        state.bandwidthPollId = null;
+    }
+}
+
+function escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function sanitizeName(s) {
+    return String(s)
+        .replace(/[^a-zA-Z0-9_-]+/g, '_')
+        .replace(/^[_-]+|[_-]+$/g, '')
+        .slice(0, 48) || 'cam';
+}
+
+function buildOnvifSrc(hostUrl, user, pass) {
+    const u = new URL(hostUrl);
+    if (user) {
+        u.username = user;
+    }
+    if (pass) {
+        u.password = pass;
+    }
+    return u.toString();
+}
+
+async function refreshServiceStatus() {
+    const serviceStatus = $('#service-status');
+    const serviceLabel = $('#service-install-label');
+    const serviceCheck = $('#service-install');
+    if (!serviceStatus) {
+        return;
+    }
+    try {
+        const r = await apiFetch('api/service');
+        if (!r.ok) {
+            serviceStatus.textContent = await r.text() || r.statusText;
+            return;
+        }
+        const st = await r.json();
+        if (!st.supported) {
+            serviceStatus.textContent = st.message || 'Service control is only available on Windows.';
+            serviceLabel?.classList.add('hidden');
+            return;
+        }
+        serviceLabel?.classList.remove('hidden');
+        if (serviceCheck) {
+            serviceCheck.checked = st.installed;
+            serviceCheck.disabled = state.serviceBusy;
+        }
+        const parts = [];
+        if (st.installed) {
+            parts.push('Service installed');
+            parts.push(st.running ? 'running' : 'stopped');
+        } else {
+            parts.push('Service not installed');
+        }
+        if (st.message) {
+            parts.push(st.message);
+        }
+        serviceStatus.textContent = parts.join(' · ');
+    } catch (e) {
+        serviceStatus.textContent = String(e);
+    }
+}
+
+async function putStream(name, src) {
+    const url = new URL('api/streams', location.href);
+    url.searchParams.set('name', name);
+    url.searchParams.set('src', src);
+    const r = await apiFetch(url.toString(), {method: 'PUT'});
+    if (!r.ok) {
+        throw new Error(await r.text() || r.statusText);
+    }
+}
+
+async function deleteStream(name) {
+    const url = new URL('api/streams', location.href);
+    url.searchParams.set('src', name);
+    const r = await apiFetch(url.toString(), {method: 'DELETE'});
+    if (!r.ok) {
+        throw new Error(await r.text() || r.statusText);
+    }
+}
+
+async function scanOnvif() {
+    const host = $('#onvif-scan-status');
+    if (host) {
+        host.textContent = 'Scanning LAN for ONVIF devices…';
+    }
+    const r = await apiFetch('api/onvif');
+    if (!r.ok) {
+        throw new Error(await r.text() || r.statusText);
+    }
+    const data = await r.json();
+    state.onvifDevices = data.sources || [];
+    renderOnvifDevices();
+    if (host) {
+        host.textContent = state.onvifDevices.length
+            ? `Found ${state.onvifDevices.length} device(s)`
+            : 'No ONVIF devices found on the network';
+    }
+}
+
+function renderOnvifDevices() {
+    const tbody = $('#onvif-device-tbody');
+    if (!tbody) {
+        return;
+    }
+    tbody.innerHTML = '';
+    if (!state.onvifDevices.length) {
+        tbody.innerHTML = '<tr><td colspan="3">No devices — click Scan ONVIF</td></tr>';
+        return;
+    }
+    for (const dev of state.onvifDevices) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${escapeHtml(dev.name || dev.url)}</td>
+            <td>${escapeHtml(dev.info || '')}</td>
+            <td><button type="button" data-probe-url="${escapeHtml(dev.url)}">Probe streams</button></td>`;
+        tbody.appendChild(tr);
+    }
+}
+
+function renderOnvifProfiles() {
+    const box = $('#onvif-profiles-box');
+    const list = $('#onvif-profiles-list');
+    if (!box || !list) {
+        return;
+    }
+    if (!state.onvifProfiles.length) {
+        box.classList.add('hidden');
+        return;
+    }
+    box.classList.remove('hidden');
+    list.innerHTML = '';
+    state.onvifProfiles.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = 'onvif-profile';
+        row.innerHTML = `
+            <span><strong>${escapeHtml(p.name)}</strong></span>
+            <code class="stream-url">${escapeHtml(p.url)}</code>
+            <label><input type="radio" name="onvif-main" value="${i}" ${i === 0 ? 'checked' : ''}> Main (fullscreen)</label>
+            <label><input type="radio" name="onvif-sub" value="${i}" ${i === 1 ? 'checked' : ''}> Preview (grid)</label>`;
+        list.appendChild(row);
+    });
+    if (state.onvifProfiles.length === 1) {
+        const sub = list.querySelector('input[name="onvif-sub"]');
+        if (sub) {
+            sub.checked = true;
+        }
+    }
+}
+
+async function probeOnvif(deviceUrl) {
+    const user = $('#onvif-user').value.trim() || 'admin';
+    const pass = $('#onvif-pass').value;
+    const src = buildOnvifSrc(deviceUrl, user, pass);
+    state.probeSrc = src;
+    const status = $('#onvif-probe-status');
+    if (status) {
+        status.textContent = 'Loading stream profiles…';
+    }
+    const url = new URL('api/onvif', location.href);
+    url.searchParams.set('src', src);
+    const r = await apiFetch(url);
+    if (!r.ok) {
+        throw new Error(await r.text() || r.statusText);
+    }
+    const data = await r.json();
+    state.onvifProfiles = (data.sources || []).filter((s) => !s.url.includes('snapshot'));
+    renderOnvifProfiles();
+    if (status) {
+        status.textContent = `${state.onvifProfiles.length} profile(s) — pick main and preview, then Add camera pair`;
+    }
+    const base = $('#manual-cam-name');
+    if (base && !base.value) {
+        try {
+            const h = new URL(deviceUrl.replace(/^onvif:\/\//, 'http://')).hostname.replace(/\./g, '_');
+            base.value = sanitizeName(h);
+        } catch {
+            /* ignore */
+        }
+    }
+}
+
+async function addDualFromOnvif() {
+    const base = sanitizeName($('#manual-cam-name').value.trim());
+    if (!base) {
+        throw new Error('Enter a camera base name (e.g. cam_front_door)');
+    }
+    if (!state.onvifProfiles.length) {
+        throw new Error('Probe ONVIF device first');
+    }
+    const mainIdx = parseInt(document.querySelector('input[name="onvif-main"]:checked')?.value ?? '0', 10);
+    let subIdx = parseInt(document.querySelector('input[name="onvif-sub"]:checked')?.value ?? '1', 10);
+    if (Number.isNaN(mainIdx) || mainIdx < 0 || mainIdx >= state.onvifProfiles.length) {
+        throw new Error('Select a main stream');
+    }
+    if (Number.isNaN(subIdx) || subIdx < 0 || subIdx >= state.onvifProfiles.length) {
+        subIdx = mainIdx;
+    }
+    const mainUrl = state.onvifProfiles[mainIdx].url;
+    await putStream(base, mainUrl);
+    if (subIdx !== mainIdx) {
+        await putStream(`${base}_sub`, state.onvifProfiles[subIdx].url);
+    }
+}
+
+async function addManualDual() {
+    const base = sanitizeName($('#manual-cam-name').value.trim());
+    const main = $('#manual-main-url').value.trim();
+    const sub = $('#manual-sub-url').value.trim();
+    if (!base || !main) {
+        throw new Error('Base name and main stream URL are required');
+    }
+    await putStream(base, main);
+    if (sub && sub !== main) {
+        await putStream(`${base}_sub`, sub);
+    }
+}
+
+async function loadSettingsTab() {
+    if (!state.settingsLoaded) {
+        state.settingsLoaded = true;
+        await refreshServiceStatus();
+    }
+    setStatus('Loading…');
+    try {
+        await fetchConfig();
+        await loadStreams();
+        fillSettingsForm();
+        updateBandwidthFromStreams(state.streams);
+        renderCameraStats();
+        setStatus('');
+        startBandwidthPoll();
+    } catch (e) {
+        setStatus(e.message, true);
+    }
+}
+
+function wireSettings() {
+    window.addEventListener('go2rtc-config-tab', (e) => {
+        if (e.detail?.tab === 'settings') {
+            loadSettingsTab();
+        } else {
+            stopBandwidthPoll();
+        }
+    });
+
+    $('#btn-save-settings')?.addEventListener('click', async () => {
+        setStatus('Saving…');
+        try {
+            await patchConfig(readSettingsPatch());
+            setStatus('Saved. Restart go2rtc if listen port or modules changed.');
+        } catch (e) {
+            setStatus(e.message, true);
+        }
+    });
+
+    const serviceCheck = $('#service-install');
+    serviceCheck?.addEventListener('change', async () => {
+        if (state.serviceBusy) {
+            return;
+        }
+        state.serviceBusy = true;
+        serviceCheck.disabled = true;
+        const install = serviceCheck.checked;
+        try {
+            const r = await apiFetch(`api/service?action=${install ? 'install' : 'uninstall'}`, {method: 'POST'});
+            if (!r.ok) {
+                throw new Error(await r.text() || r.statusText);
+            }
+            await refreshServiceStatus();
+        } catch (e) {
+            alert(e.message || String(e));
+            serviceCheck.checked = !install;
+        } finally {
+            state.serviceBusy = false;
+            serviceCheck.disabled = false;
+        }
+    });
+
+    $('#btn-refresh-cameras')?.addEventListener('click', async () => {
+        setStatus('Refreshing…');
+        try {
+            await loadStreams();
+            updateBandwidthFromStreams(state.streams);
+            renderCameraStats();
+            setStatus('Camera list refreshed');
+        } catch (e) {
+            setStatus(e.message, true);
+        }
+    });
+
+    $('#btn-detect-preview-channels')?.addEventListener('click', async () => {
+        setStatus('Detecting preview channels…');
+        try {
+            await detectPreviewChannels();
+        } catch (e) {
+            setStatus(e.message, true);
+        }
+    });
+
+    $('#btn-wake-streams')?.addEventListener('click', async () => {
+        setStatus('Waking streams…');
+        try {
+            await wakeOfflineStreams();
+        } catch (e) {
+            setStatus(e.message, true);
+        }
+    });
+
+    $('#btn-scan-onvif')?.addEventListener('click', async () => {
+        try {
+            await scanOnvif();
+        } catch (e) {
+            $('#onvif-scan-status').textContent = e.message;
+        }
+    });
+
+    $('#onvif-device-tbody')?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-probe-url]');
+        if (!btn) {
+            return;
+        }
+        try {
+            await probeOnvif(btn.dataset.probeUrl);
+        } catch (err) {
+            $('#onvif-probe-status').textContent = err.message;
+        }
+    });
+
+    $('#btn-add-onvif-pair')?.addEventListener('click', async () => {
+        setStatus('Adding cameras…');
+        try {
+            await addDualFromOnvif();
+            await loadStreams();
+            updateBandwidthFromStreams(state.streams);
+            renderCameraStats();
+            setStatus('Camera pair added to go2rtc.yaml');
+        } catch (e) {
+            setStatus(e.message, true);
+        }
+    });
+
+    $('#btn-add-manual-pair')?.addEventListener('click', async () => {
+        setStatus('Adding cameras…');
+        try {
+            await addManualDual();
+            await loadStreams();
+            updateBandwidthFromStreams(state.streams);
+            renderCameraStats();
+            setStatus('Camera pair added');
+        } catch (e) {
+            setStatus(e.message, true);
+        }
+    });
+
+    $('#camera-stats-list')?.addEventListener('click', async (e) => {
+        const addBtn = e.target.closest('[data-add-preview]');
+        if (addBtn) {
+            try {
+                await addPreviewForCamera(addBtn.dataset.addPreview);
+            } catch (err) {
+                setStatus(err.message, true);
+            }
+            return;
+        }
+        const btn = e.target.closest('[data-del-stream]');
+        if (!btn) {
+            return;
+        }
+        if (!confirm(`Remove stream "${btn.dataset.delStream}" from config?`)) {
+            return;
+        }
+        try {
+            await deleteStream(btn.dataset.delStream);
+            await loadStreams();
+            updateBandwidthFromStreams(state.streams);
+            renderCameraStats();
+            setStatus('Removed');
+        } catch (err) {
+            setStatus(err.message, true);
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireSettings);
+} else {
+    wireSettings();
+}
+window.go2rtcSettingsReady = true;

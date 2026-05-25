@@ -207,6 +207,18 @@ dialog h2 {
     word-break: break-all;
 }
 
+.camera-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.camera-toolbar button {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+}
+
 .preview-row select {
     width: 100%;
     padding: 6px 8px;

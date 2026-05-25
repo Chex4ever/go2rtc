@@ -1,3 +1,5 @@
+import {buildPreviewMap, suggestPreviewStream} from './stream-pairs.js';
+
 const ADMIN_KEY = 'go2rtc-viewer-admin';
 
 const $ = (sel) => document.querySelector(sel);
@@ -159,6 +161,7 @@ function cameraCheckboxes(container, selected, maxCount, previewMap) {
         updatePreviewRows([], previewMap || {});
         return;
     }
+    let preview = {...(previewMap || {})};
     for (const name of state.streams) {
         const label = document.createElement('label');
         label.className = 'check';
@@ -167,12 +170,42 @@ function cameraCheckboxes(container, selected, maxCount, previewMap) {
         const input = label.querySelector('input');
         input.addEventListener('change', () => {
             enforceCameraLimit(container, maxCount);
-            updatePreviewRows(selectedCameras(container), collectPreviewMap());
+            const cams = selectedCameras(container);
+            preview = buildPreviewMap(cams, state.streams, collectPreviewMap());
+            updatePreviewRows(cams, preview);
         });
         container.appendChild(label);
     }
     updateCameraHint(container, maxCount);
-    updatePreviewRows(selected, previewMap || {});
+    updatePreviewRows(selected, preview);
+}
+
+function applyAutoPreview(container) {
+    const cams = selectedCameras(container);
+    const preview = buildPreviewMap(cams, state.streams, collectPreviewMap());
+    updatePreviewRows(cams, preview);
+    const n = Object.keys(preview).length;
+    setStatus(n ? `Auto-mapped ${n} preview stream(s)` : 'No matching sub-stream names found (use *_sub, *_preview, etc.)');
+}
+
+function selectAllCameras(container, maxCount) {
+    const inputs = [...container.querySelectorAll('input[type="checkbox"]')];
+    inputs.forEach((i) => {
+        i.checked = false;
+    });
+    for (let i = 0; i < Math.min(maxCount, inputs.length); i++) {
+        inputs[i].checked = true;
+    }
+    updateCameraHint(container, maxCount);
+    applyAutoPreview(container);
+}
+
+function clearAllCameras(container, maxCount) {
+    for (const i of container.querySelectorAll('input:checked')) {
+        i.checked = false;
+    }
+    updateCameraHint(container, maxCount);
+    updatePreviewRows([], {});
 }
 
 function collectPreviewMap() {
@@ -218,6 +251,15 @@ function updatePreviewRows(cameras, previewMap) {
             sel.appendChild(opt);
         }
         sel.value = previewMap[cam] || '';
+        const guess = suggestPreviewStream(cam, state.streams);
+        if (guess && guess === sel.value) {
+            sel.title = 'Auto-detected preview stream';
+        }
+        sel.addEventListener('change', () => {
+            if (sel.value) {
+                sel.title = 'Manual preview stream';
+            }
+        });
         row.appendChild(label);
         row.appendChild(sel);
         rows.appendChild(row);
@@ -394,6 +436,18 @@ async function init() {
     $('#btn-add-layout').addEventListener('click', () => openLayoutDialog(null));
     $('#form-user').addEventListener('submit', saveUser);
     $('#form-layout').addEventListener('submit', saveLayout);
+
+    $('#btn-select-all-cameras').addEventListener('click', () => {
+        const max = parseInt($('#form-layout').grid.value, 10);
+        selectAllCameras($('#layout-camera-checks'), max);
+    });
+    $('#btn-clear-cameras').addEventListener('click', () => {
+        const max = parseInt($('#form-layout').grid.value, 10);
+        clearAllCameras($('#layout-camera-checks'), max);
+    });
+    $('#btn-auto-preview').addEventListener('click', () => {
+        applyAutoPreview($('#layout-camera-checks'));
+    });
 
     for (const btn of document.querySelectorAll('[data-close]')) {
         btn.addEventListener('click', () => btn.closest('dialog')?.close());

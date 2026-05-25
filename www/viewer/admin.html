@@ -104,6 +104,12 @@
                 </label>
                 <fieldset class="checkbox-list">
                     <legend>Cameras <span id="layout-camera-hint" class="hint"></span></legend>
+                    <div class="camera-toolbar">
+                        <button type="button" id="btn-select-all-cameras">Select all</button>
+                        <button type="button" id="btn-clear-cameras">Clear</button>
+                        <button type="button" id="btn-auto-preview" title="Match main streams to *_sub / *_preview names">Auto preview</button>
+                    </div>
+                    <p class="hint">Sub-streams must exist in go2rtc.yaml (e.g. <code>cam1_sub</code>). Auto preview finds them by name (<code>*_sub</code>, <code>*_102</code> for Hikvision DVR). Add streams via <a href="../config.html">Config → Settings</a> (Detect preview channels supports Hikvision <code>Channels/101→102</code>).</p>
                     <div id="layout-camera-checks" class="camera-checks"></div>
                 </fieldset>
                 <fieldset id="layout-preview-section" class="checkbox-list hidden">

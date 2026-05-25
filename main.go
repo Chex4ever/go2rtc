@@ -38,6 +38,7 @@ import (
 	"github.com/AlexxIT/go2rtc/internal/roborock"
 	"github.com/AlexxIT/go2rtc/internal/rtmp"
 	"github.com/AlexxIT/go2rtc/internal/rtsp"
+	"github.com/AlexxIT/go2rtc/internal/service"
 	"github.com/AlexxIT/go2rtc/internal/srtp"
 	"github.com/AlexxIT/go2rtc/internal/streams"
 	"github.com/AlexxIT/go2rtc/internal/tapo"
@@ -65,6 +66,7 @@ func main() {
 		{"", app.Init},    // init config and logs
 		{"api", api.Init},     // init API before all others
 		{"viewer", viewer.Init}, // viewer auth API (after api, before clients)
+		{"service", service.Init},
 		{"ws", ws.Init},       // init WS API endpoint
 		{"", streams.Init},
 		// Main sources and servers

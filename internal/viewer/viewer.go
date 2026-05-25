@@ -76,9 +76,13 @@ func Init() {
 	api.HandleFunc("api/viewer/login", apiLogin)
 	api.HandleFunc("api/viewer/logout", apiLogout)
 	api.HandleFunc("api/viewer/me", apiMe)
+	// Go 1.22+ mux: trailing slash required for subpaths (e.g. /layouts/{id}).
 	api.HandleFunc("api/viewer/layouts", apiLayouts)
+	api.HandleFunc("api/viewer/layouts/", apiLayouts)
 	api.HandleFunc("api/viewer/admin/users", apiAdminUsers)
+	api.HandleFunc("api/viewer/admin/users/", apiAdminUsers)
 	api.HandleFunc("api/viewer/admin/layouts", apiAdminLayouts)
+	api.HandleFunc("api/viewer/admin/layouts/", apiAdminLayouts)
 	api.HandleFunc("api/viewer/admin/config", apiAdminConfig)
 }
 

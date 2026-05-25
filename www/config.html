@@ -14,23 +14,180 @@
             border-top: 1px solid #ccc;
             min-height: 300px;
         }
+
+        .config-tabs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .config-tabs button {
+            padding: 8px 14px;
+            cursor: pointer;
+        }
+
+        .config-tabs button.active {
+            font-weight: bold;
+            border-color: #888;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .settings-section {
+            max-width: 640px;
+            padding: 8px 0 16px;
+        }
+
+        .settings-section h2 {
+            margin: 0 0 8px;
+            font-size: 1.1rem;
+        }
+
+        .settings-note {
+            color: #555;
+            font-size: 0.9rem;
+            margin: 8px 0;
+        }
+
+        .settings-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px 0;
+            cursor: pointer;
+        }
     </style>
+    <link rel="stylesheet" href="settings.css">
 </head>
 <body>
 
 <script src="main.js"></script>
 
 <main>
-    <div>
-        <button id="save">Save & Restart</button>
-        <button id="suggest" title="ctrl + space">Suggest</button>
-        <a href="viewer/admin.html" style="margin-left:12px">Viewer admin</a>
+    <div class="config-tabs">
+        <button type="button" id="tab-btn-yaml" class="active">Config (YAML)</button>
+        <button type="button" id="tab-btn-settings">Settings</button>
+        <a href="viewer/admin.html" style="margin-left:auto">Viewer admin</a>
+    </div>
+    <div id="panel-yaml">
+        <div>
+            <button id="save">Save & Restart</button>
+            <button id="suggest" title="ctrl + space">Suggest</button>
+        </div>
+    </div>
+    <div id="panel-settings" class="hidden settings-panel">
+        <p class="settings-note">Friendly settings are saved into <code>go2rtc.yaml</code> (merged). Use <strong>Config (YAML)</strong> for advanced edits. After changing the listen port, restart go2rtc.</p>
+
+        <h2>Windows service</h2>
+        <p id="service-status" class="settings-note">Checking…</p>
+        <label id="service-install-label" class="settings-check hidden">
+            <input type="checkbox" id="service-install">
+            Run go2rtc as a Windows service (auto-start on boot)
+        </label>
+        <p class="settings-note">Requires Administrator. Stop this console instance if the service uses the same port.</p>
+
+        <h2>Web API</h2>
+        <div class="settings-grid">
+            <label class="settings-field">Listen address
+                <input id="set-api-listen" type="text" placeholder=":1984">
+            </label>
+            <label class="settings-field">API username (optional)
+                <input id="set-api-user" type="text" autocomplete="off">
+            </label>
+            <label class="settings-field">API password
+                <input id="set-api-pass" type="password" autocomplete="new-password">
+            </label>
+        </div>
+
+        <h2>Camera wall (viewer)</h2>
+        <div class="settings-grid">
+            <label class="settings-field">Admin password
+                <input id="set-viewer-admin" type="password" autocomplete="new-password">
+            </label>
+            <label class="settings-field">Session TTL
+                <input id="set-viewer-session" type="text" placeholder="24h">
+            </label>
+            <label class="settings-field">Trust IP TTL
+                <input id="set-viewer-trust" type="text" placeholder="720h">
+            </label>
+        </div>
+        <label class="settings-check">
+            <input type="checkbox" id="set-viewer-secure">
+            Secure cookies (enable only behind HTTPS)
+        </label>
+        <p class="settings-note">Users and layouts: <a href="viewer/admin.html">Viewer admin</a> · <a href="viewer/">Camera wall</a></p>
+
+        <div class="settings-actions">
+            <button type="button" id="btn-save-settings" class="primary">Save settings</button>
+            <span id="settings-save-status" class="settings-status"></span>
+        </div>
+
+        <h2>Cameras (dual stream)</h2>
+        <p class="settings-note">Live bitrate updates every 2s when a stream is active. <strong>Detect preview channels</strong> matches ONVIF profiles, <strong>Hikvision DVR</strong> RTSP (<code>Channels/101</code> → <code>102</code>, analog via NVR), and other sub-stream patterns. Map preview in <a href="viewer/admin.html">Viewer admin</a> → Layout.</p>
+        <div class="settings-actions">
+            <button type="button" id="btn-refresh-cameras">Refresh list</button>
+            <button type="button" id="btn-detect-preview-channels" class="primary">Detect preview channels</button>
+            <button type="button" id="btn-wake-streams" title="Request one frame per offline camera to measure bitrate">Wake offline streams</button>
+            <span id="camera-actions-status" class="settings-status"></span>
+        </div>
+        <div id="camera-stats-list" class="camera-stats-list"></div>
+
+        <h2>Add camera — manual URLs</h2>
+        <div class="settings-grid">
+            <label class="settings-field">Base name
+                <input id="manual-cam-name" type="text" placeholder="cam_door">
+            </label>
+            <label class="settings-field">Main stream URL
+                <input id="manual-main-url" type="text" placeholder="rtsp://user:pass@192.168.1.10/Streaming/Channels/101">
+            </label>
+            <label class="settings-field">Preview stream URL (optional)
+                <input id="manual-sub-url" type="text" placeholder="rtsp://user:pass@192.168.1.10/Streaming/Channels/102">
+            </label>
+        </div>
+        <div class="settings-actions">
+            <button type="button" id="btn-add-manual-pair">Add camera pair</button>
+        </div>
+
+        <h2>Add camera — ONVIF discover</h2>
+        <div class="onvif-box">
+            <div class="settings-actions">
+                <button type="button" id="btn-scan-onvif">Scan ONVIF (LAN)</button>
+                <span id="onvif-scan-status" class="settings-note"></span>
+            </div>
+            <div class="camera-table-wrap">
+                <table>
+                    <thead><tr><th>Device</th><th>Info</th><th></th></tr></thead>
+                    <tbody id="onvif-device-tbody">
+                        <tr><td colspan="3">Click Scan ONVIF</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="settings-grid" style="margin-top:12px">
+                <label class="settings-field">Username
+                    <input id="onvif-user" type="text" value="admin">
+                </label>
+                <label class="settings-field">Password
+                    <input id="onvif-pass" type="password">
+                </label>
+            </div>
+            <p id="onvif-probe-status" class="settings-note"></p>
+            <div id="onvif-profiles-box" class="onvif-profiles hidden">
+                <p class="settings-note">Select which profile is <span class="badge">main</span> and which is <span class="badge sub">preview</span>:</p>
+                <div id="onvif-profiles-list"></div>
+                <div class="settings-actions">
+                    <button type="button" id="btn-add-onvif-pair" class="primary">Add camera pair to config</button>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 <div id="config"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs/loader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs/loader.js"></script>
 <script>
     /* global require, monaco */
     const monacoRoot = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min';
@@ -1181,6 +1338,28 @@
         window.addEventListener('resize', layout);
         layout();
 
+        const configEl = document.getElementById('config');
+        const tabYaml = document.getElementById('tab-btn-yaml');
+        const tabSettings = document.getElementById('tab-btn-settings');
+        const panelYaml = document.getElementById('panel-yaml');
+        const panelSettings = document.getElementById('panel-settings');
+
+        function showConfigTab(tab) {
+            const yamlActive = tab === 'yaml';
+            tabYaml.classList.toggle('active', yamlActive);
+            tabSettings.classList.toggle('active', !yamlActive);
+            panelYaml.classList.toggle('hidden', !yamlActive);
+            panelSettings.classList.toggle('hidden', yamlActive);
+            configEl.classList.toggle('hidden', !yamlActive);
+            if (yamlActive) {
+                layout();
+            }
+            window.dispatchEvent(new CustomEvent('go2rtc-config-tab', {detail: {tab}}));
+        }
+
+        tabYaml.addEventListener('click', () => showConfigTab('yaml'));
+        tabSettings.addEventListener('click', () => showConfigTab('settings'));
+
         let dump;
 
         document.getElementById('save').addEventListener('click', async () => {
@@ -1226,6 +1405,8 @@
         })();
     });
 </script>
+<script src="stream-url-variants.js"></script>
+<script src="settings-app.js" defer></script>
 
 </body>
 </html>

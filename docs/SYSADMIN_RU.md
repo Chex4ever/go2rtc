@@ -80,6 +80,27 @@ streams:
 
 Если `preview` не задан, везде используется один и тот же поток.
 
+### Hikvision DVR / ISAPI (аналог через регистратор)
+
+На регистраторах Hikvision (NVR/DVR) основной и субпоток задаются **номером RTSP-канала** в пути (это не то же самое, что схема `isapi://` в go2rtc — она только для **двустороннего аудио**, см. [internal/isapi/README.md](../internal/isapi/README.md)):
+
+| Поток | Типичный RTSP (камера 1 на DVR) | Типичный RTSP (камера 2) |
+|-------|----------------------------------|---------------------------|
+| **Основной (main)** | `rtsp://user:pass@DVR:554/Streaming/Channels/101` | `…/Channels/201` |
+| **Субпоток (preview)** | `…/Channels/102` | `…/Channels/202` |
+
+Правило: в трёхзначном номере канала **последняя цифра `1` → `2`** (101→102, 201→202). Субпоток обычно ниже по разрешению и битрейту — его и указывайте в `cam_sub` / preview раскладки.
+
+В **Config → Settings** кнопка **Detect preview channels** подставляет `имя_sub` с URL `…102` автоматически, если основной поток уже `…101`.
+
+```yaml
+streams:
+  dvr_cam1: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/101
+  dvr_cam1_sub: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/102
+  dvr_cam2: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/201
+  dvr_cam2_sub: rtsp://admin:pass@192.168.1.50:554/Streaming/Channels/202
+```
+
 ---
 
 ## Раскладки и сетки

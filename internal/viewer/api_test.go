@@ -67,6 +67,23 @@ func TestAPI_trustedIPAutoUser(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestAPI_layoutGet(t *testing.T) {
+	setupAPI(t)
+
+	token, _ := sessions.Create("alice")
+	req := httptest.NewRequest(http.MethodGet, "/api/viewer/layouts/wall", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: token})
+
+	w := httptest.NewRecorder()
+	apiLayouts(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp layoutResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Equal(t, "wall", resp.ID)
+	require.Equal(t, 6, resp.Grid)
+}
+
 func TestAPI_layoutTiles(t *testing.T) {
 	setupAPI(t)
 
