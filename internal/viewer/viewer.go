@@ -24,6 +24,12 @@ func Init() {
 			SessionTTL   string `yaml:"session_ttl"`
 			TrustIPTTL   string `yaml:"trust_ip_ttl"`
 			CookieSecure bool   `yaml:"cookie_secure"`
+			Desktop      struct {
+				Version   string `yaml:"version"`
+				Installer string `yaml:"installer"`
+				Sha256    string `yaml:"sha256"`
+				Notes     string `yaml:"notes"`
+			} `yaml:"desktop"`
 		} `yaml:"viewer"`
 	}
 
@@ -84,6 +90,8 @@ func Init() {
 	api.HandleFunc("api/viewer/admin/layouts", apiAdminLayouts)
 	api.HandleFunc("api/viewer/admin/layouts/", apiAdminLayouts)
 	api.HandleFunc("api/viewer/admin/config", apiAdminConfig)
+
+	initDesktopUpdate(cfg.Mod.Desktop)
 }
 
 var (

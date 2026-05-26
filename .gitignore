@@ -21,4 +21,11 @@ website/.vitepress/dist
 
 node_modules
 package-lock.json
+desktop/electron-viewer/dist
+desktop/electron-viewer/release
+desktop/electron-viewer/release_*
+desktop/electron-viewer/build-out
+desktop/electron-viewer/build-*
+desktop/electron-viewer/build-release
+desktop/releases
 CLAUDE.md

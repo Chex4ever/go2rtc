@@ -174,7 +174,13 @@ viewer:
   session_ttl: 24h
   trust_ip_ttl: 720h          # IP remember duration
   cookie_secure: false        # set true only behind HTTPS
+  desktop:                    # optional: Camera Wall app updates from this server
+    version: "1.1.0"
+    installer: "desktop/go2rtc Camera Wall Setup 1.1.0.exe"
+    notes: "Optional release notes"
 ```
+
+See [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) — **Updating the installed app**.
 
 ### 3. Add camera streams
 
@@ -257,6 +263,9 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 
 | Problem | Check |
 |---------|--------|
+| Blank / black viewer window | Should show an **on-screen error** (server unreachable, JS error). If still blank: hard-refresh, rebuild `go2rtc.exe`, check browser console |
+| “Cannot reach go2rtc” | Start go2rtc; open `http://SERVER:1984/`; fix server URL in Electron (**Ctrl+Shift+S**) |
+| Desktop app won’t update | `viewer.desktop` in yaml; installer file on disk; server `version` higher than app; test `/api/viewer/desktop/update` |
 | Viewer login fails | User in `viewer.yaml`, password, layout IDs spelled correctly |
 | Empty layout list | User’s `layouts:` must match layout keys in `viewer.yaml` |
 | Camera tile black | Stream works in go2rtc stream list; name matches layout allow-list |

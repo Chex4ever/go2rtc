@@ -1,0 +1,69 @@
+{
+  "name": "go2rtc-viewer",
+  "version": "1.2.0",
+  "description": "Desktop camera wall client for go2rtc (iRidi fork)",
+  "main": "main.js",
+  "author": "iRidi",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "start:kiosk": "electron . -- --kiosk --server=http://127.0.0.1:1984",
+    "start:server": "electron . -- --server=http://127.0.0.1:1984",
+    "test": "node --test test/*.test.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "acorn": "^8.16.0",
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.iridi.go2rtc-viewer",
+    "productName": "go2rtc Camera Wall",
+    "directories": {
+      "output": "build-out"
+    },
+    "extraResources": [
+      {
+        "from": "branding",
+        "to": "branding",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "files": [
+      "main.js",
+      "config.js",
+      "config-core.js",
+      "preload.js",
+      "settings.html",
+      "settings-preload.js",
+      "load-error-page.js",
+      "updater.js",
+      "updater-core.js"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerLanguages": [
+        "en"
+      ],
+      "warningsAsErrors": false,
+      "include": "build/installer.nsh"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}

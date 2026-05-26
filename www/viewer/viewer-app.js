@@ -131,6 +131,44 @@ function saveTileSettings(slot, viewport) {
     sessionStorage.setItem(settingsKey(slot), JSON.stringify(viewport.toJSON()));
 }
 
+function serverHint() {
+    const origin = location.origin || '';
+    const base = basePath();
+    return `Server: ${origin}${base} — is go2rtc running at this address?`;
+}
+
+function isFetchFailure(err) {
+    if (err instanceof TypeError) {
+        return true;
+    }
+    const msg = String(err?.message || err || '');
+    return /failed to fetch|networkerror|load failed|network request failed/i.test(msg);
+}
+
+function showFatalError(title, message, hint) {
+    if (typeof window.__viewerShowError === 'function') {
+        window.__viewerShowError(title, message, hint);
+        return;
+    }
+    const boot = $('#screen-bootstrap');
+    if (!boot) {
+        return;
+    }
+    $('#bootstrap-status').textContent = title || 'Cannot start camera wall';
+    $('#bootstrap-error').textContent = message || '';
+    const hintEl = $('#bootstrap-hint');
+    if (hint) {
+        hintEl.textContent = hint;
+        hintEl.classList.remove('hidden');
+    } else {
+        hintEl.textContent = '';
+        hintEl.classList.add('hidden');
+    }
+    for (const el of document.querySelectorAll('.screen')) {
+        el.classList.toggle('hidden', el.id !== 'screen-bootstrap');
+    }
+}
+
 function showScreen(id) {
     for (const el of document.querySelectorAll('.screen')) {
         el.classList.toggle('hidden', el.id !== id);
@@ -214,7 +252,14 @@ async function trySession() {
         state.user = me.user;
         state.layouts = me.layouts || [];
         return true;
-    } catch {
+    } catch (e) {
+        if (isFetchFailure(e)) {
+            showFatalError(
+                'Cannot reach go2rtc',
+                e.message || 'Network error',
+                serverHint(),
+            );
+        }
         return false;
     }
 }
@@ -233,7 +278,11 @@ async function onLogin(ev) {
         state.layouts = res.layouts || [];
         showLayoutsScreen();
     } catch (e) {
-        err.textContent = e.message || 'Login failed';
+        if (isFetchFailure(e)) {
+            err.textContent = 'Cannot reach go2rtc. ' + serverHint();
+        } else {
+            err.textContent = e.message || 'Login failed';
+        }
     }
 }
 
@@ -348,8 +397,8 @@ function renderWall() {
     if (!detail) {
         return;
     }
-    const grid = Number(detail.grid);
-    const preset = GRID_PRESETS[grid];
+    const gridSize = Number(detail.grid);
+    const preset = GRID_PRESETS[gridSize];
     if (!preset) {
         const gridEl = $('#wall-grid');
         if (gridEl) {
@@ -372,9 +421,9 @@ function renderWall() {
         sel.appendChild(opt);
     }
 
-    const grid = $('#wall-grid');
-    configureWallGrid(grid, preset, focusSlot);
-    grid.innerHTML = '';
+    const wallGrid = $('#wall-grid');
+    configureWallGrid(wallGrid, preset, focusSlot);
+    wallGrid.innerHTML = '';
 
     const dragEnabled = allowTileDrag() && focusSlot === null;
 
@@ -414,7 +463,7 @@ function renderWall() {
         if (stream) {
             cell.appendChild(createTile(stream, i, focusSlot === i));
         }
-        grid.appendChild(cell);
+        wallGrid.appendChild(cell);
     }
 
     if (focusSlot !== null) {
@@ -662,7 +711,11 @@ async function logout(forget) {
 }
 
 async function init() {
-    $('#login-form').addEventListener('submit', onLogin);
+    const loginForm = $('#login-form');
+    if (!loginForm) {
+        throw new Error('Viewer page is incomplete (missing login form). Reload or reinstall go2rtc.');
+    }
+    loginForm.addEventListener('submit', onLogin);
     $('#btn-logout').addEventListener('click', () => logout(false));
     $('#btn-logout-forget').addEventListener('click', () => logout(true));
     $('#btn-logout-wall').addEventListener('click', () => logout(false));
@@ -694,9 +747,15 @@ async function init() {
 
     if (await trySession()) {
         showLayoutsScreen();
-    } else {
+    } else if (!$('#screen-bootstrap') || $('#screen-bootstrap').classList.contains('hidden')) {
         showScreen('screen-login');
     }
 }
 
-init();
+init().catch((e) => {
+    showFatalError(
+        'Camera wall failed to start',
+        e?.message || String(e),
+        'Reload this page (Ctrl+R). If using the desktop app, check the server URL with Ctrl+Shift+S.',
+    );
+});

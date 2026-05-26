@@ -172,7 +172,13 @@ viewer:
   session_ttl: 24h
   trust_ip_ttl: 720h          # срок «запомнить IP»
   cookie_secure: false        # true только за HTTPS
+  desktop:                    # опционально: обновления приложения Camera Wall с этого сервера
+    version: "1.1.0"
+    installer: "desktop/go2rtc Camera Wall Setup 1.1.0.exe"
+    notes: "Текст в диалоге обновления"
 ```
+
+Обновление установленного клиента: [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) (раздел **Updating the installed app**).
 
 ### 3. Добавить потоки камер
 
@@ -255,6 +261,9 @@ URL: **`http://SERVER:1984/viewer/`**
 
 | Симптом | Что проверить |
 |---------|----------------|
+| Чёрный экран viewer / приложения | Должна быть **ошибка на экране**; иначе — перезагрузка, пересборка `go2rtc.exe` |
+| «Cannot reach go2rtc» | Запущен ли go2rtc; URL в Electron (**Ctrl+Shift+S**) |
+| Нет обновления desktop | `viewer.desktop` в yaml, файл installer на диске, версия выше установленной; `/api/viewer/desktop/update` |
 | Не входит в viewer | Пользователь в `viewer.yaml`, пароль, ID раскладок |
 | Пустой список раскладок | В `layouts:` пользователя те же ключи, что в `viewer.yaml` |
 | Чёрная плитка | Поток есть в go2rtc; имя в allow-list раскладки |
