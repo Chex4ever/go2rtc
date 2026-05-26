@@ -1,0 +1,10 @@
+{
+  "version": "1.2.1",
+  "running_version": "1.2.0",
+  "platform": "windows",
+  "arch": "amd64",
+  "download_url": "/api/viewer/go2rtc/download?platform=windows&arch=amd64",
+  "notes": "Copy to www/viewer/go2rtc/update.json only if not using the API",
+  "sha256": "",
+  "source": "local"
+}

@@ -174,13 +174,17 @@ viewer:
   session_ttl: 24h
   trust_ip_ttl: 720h          # IP remember duration
   cookie_secure: false        # set true only behind HTTPS
+  go2rtc:                     # optional: go2rtc.exe updates (GitHub Releases or local file)
+    github: "YOUR_ORG/go2rtc"  # uses latest GitHub release asset (windows_amd64)
+    cache_ttl: 10m
   desktop:                    # optional: Camera Wall app updates from this server
-    version: "1.1.0"
-    installer: "desktop/go2rtc Camera Wall Setup 1.1.0.exe"
+    version: "1.2.1"
+    installer: "desktop/go2rtc Camera Wall Setup 1.2.1.exe"
     notes: "Optional release notes"
 ```
 
-See [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) — **Updating the installed app**.
+See [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) — **Updating the installed app**.  
+See [RELEASE_CI.md](RELEASE_CI.md) — **GitHub releases & CI/CD**.
 
 ### 3. Add camera streams
 

@@ -195,15 +195,22 @@ export class TileViewport {
 }
 
 /** Reconnect stream with or without audio; stays muted until user unmutes. */
+function reconnectStream(viewerStream, src) {
+    if (viewerStream.forceDisconnect) {
+        viewerStream.forceDisconnect();
+    } else {
+        viewerStream.disconnectedCallback();
+    }
+    viewerStream.src = viewerStream.wsURL || src;
+}
+
 export function setStreamAudio(viewerStream, src, enable) {
     const video = viewerStream.querySelector('video');
     viewerStream.media = enable ? 'video,audio' : 'video';
     if (video) {
         video.muted = !enable;
     }
-    const ws = viewerStream.wsURL || src;
-    viewerStream.disconnectedCallback();
-    viewerStream.src = ws || src;
+    reconnectStream(viewerStream, src);
 }
 
 export function toggleStreamAudio(viewerStream, src) {
@@ -217,6 +224,5 @@ export function toggleStreamAudio(viewerStream, src) {
 }
 
 export function refreshStream(viewerStream, src) {
-    viewerStream.disconnectedCallback();
-    viewerStream.src = src;
+    reconnectStream(viewerStream, src);
 }

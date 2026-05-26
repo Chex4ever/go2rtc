@@ -1,7 +1,10 @@
 /** Build a self-contained HTML page when the viewer URL cannot be loaded. */
-function buildLoadErrorPage({serverUrl, viewerUrl, errorCode, errorDescription, validatedURL, branding}) {
+function buildLoadErrorPage({serverUrl, viewerUrl, errorCode, errorDescription, validatedURL, branding, logoDataUrl}) {
     const title = branding?.productName || 'Camera Wall';
-    const accent = branding?.accentColor || '#4a9eff';
+    const accent = branding?.accentColor || '#1a7a62';
+    const logoHtml = logoDataUrl
+        ? `<img src="${logoDataUrl}" alt="" style="display:block;max-width:200px;height:auto;margin:0 auto 16px">`
+        : '';
     const lines = [
         errorDescription || 'Failed to load the camera wall',
         errorCode != null ? `Error code: ${errorCode}` : '',
@@ -48,6 +51,7 @@ function buildLoadErrorPage({serverUrl, viewerUrl, errorCode, errorDescription, 
 </head>
 <body>
   <div class="panel">
+    ${logoHtml}
     <h1>Cannot open camera wall</h1>
     ${body}
     <div class="actions">

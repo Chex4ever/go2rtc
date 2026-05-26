@@ -173,8 +173,8 @@ viewer:
   trust_ip_ttl: 720h          # срок «запомнить IP»
   cookie_secure: false        # true только за HTTPS
   desktop:                    # опционально: обновления приложения Camera Wall с этого сервера
-    version: "1.1.0"
-    installer: "desktop/go2rtc Camera Wall Setup 1.1.0.exe"
+    version: "1.2.1"
+    installer: "desktop/go2rtc Camera Wall Setup 1.2.1.exe"
     notes: "Текст в диалоге обновления"
 ```
 

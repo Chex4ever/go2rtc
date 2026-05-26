@@ -67,7 +67,8 @@ Function WriteViewerInstallConfig
     FileWrite $0 '  "serverUrl": "http://127.0.0.1:1984",$\r$\n'
     FileWrite $0 '  "allowInsecureHttps": false,$\r$\n'
     FileWrite $0 '  "kiosk": true,$\r$\n'
-    FileWrite $0 '  "autoStart": true$\r$\n'
+    FileWrite $0 '  "autoStart": true,$\r$\n'
+    FileWrite $0 '  "autoOpenLayout": true$\r$\n'
     FileWrite $0 "}$\r$\n"
     FileClose $0
     Return
@@ -79,7 +80,8 @@ Function WriteViewerInstallConfig
     FileWrite $0 '  "serverUrl": "http://127.0.0.1:1984",$\r$\n'
     FileWrite $0 '  "allowInsecureHttps": false,$\r$\n'
     FileWrite $0 '  "kiosk": false,$\r$\n'
-    FileWrite $0 '  "autoStart": true$\r$\n'
+    FileWrite $0 '  "autoStart": true,$\r$\n'
+    FileWrite $0 '  "autoOpenLayout": true$\r$\n'
     FileWrite $0 "}$\r$\n"
     FileClose $0
     Return
@@ -91,7 +93,8 @@ Function WriteViewerInstallConfig
   FileWrite $0 '  "serverUrl": "http://127.0.0.1:1984",$\r$\n'
   FileWrite $0 '  "allowInsecureHttps": false,$\r$\n'
   FileWrite $0 '  "kiosk": false,$\r$\n'
-  FileWrite $0 '  "autoStart": false$\r$\n'
+  FileWrite $0 '  "autoStart": false,$\r$\n'
+  FileWrite $0 '  "autoOpenLayout": true$\r$\n'
   FileWrite $0 "}$\r$\n"
   FileClose $0
 FunctionEnd

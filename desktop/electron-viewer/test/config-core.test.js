@@ -20,8 +20,18 @@ describe('normalizeServerUrl', () => {
 });
 
 describe('viewerUrl and adminUrls', () => {
-    it('builds viewer path', () => {
-        assert.equal(core.viewerUrl('http://10.0.0.5:1984'), 'http://10.0.0.5:1984/viewer/');
+    it('builds viewer path with auto_open', () => {
+        assert.equal(
+            core.viewerUrl('http://10.0.0.5:1984'),
+            'http://10.0.0.5:1984/viewer/?auto_open=1',
+        );
+    });
+
+    it('adds default_layout query', () => {
+        assert.equal(
+            core.viewerUrl('http://10.0.0.5:1984', {defaultLayoutId: 'wall_25'}),
+            'http://10.0.0.5:1984/viewer/?auto_open=1&default_layout=wall_25',
+        );
     });
 
     it('builds admin links', () => {
@@ -46,7 +56,7 @@ describe('normalizeConfig', () => {
         assert.equal(cfg.kiosk, true);
         assert.equal(cfg.branding.orgName, 'Acme');
         assert.equal(cfg.branding.accentColor, '#ff0000');
-        assert.equal(cfg.branding.productName, 'Camera Wall');
+        assert.equal(cfg.branding.productName, 'Тесла — Camera Wall');
     });
 
     it('rejects invalid accent color', () => {

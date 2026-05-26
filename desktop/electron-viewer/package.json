@@ -1,17 +1,25 @@
 {
   "name": "go2rtc-viewer",
-  "version": "1.0.0",
-  "description": "Desktop camera wall client for go2rtc (iRidi fork)",
+  "version": "1.2.1",
+  "description": "Desktop camera wall client for go2rtc (Тесла)",
   "main": "main.js",
-  "author": "iRidi",
+  "author": "Тесла",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
+    "start:kiosk": "electron . -- --kiosk --server=http://127.0.0.1:1984",
     "start:server": "electron . -- --server=http://127.0.0.1:1984",
+    "test": "node --test test/*.test.js",
+    "icons": "node ../../scripts/generate-branding-assets.mjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
+  "dependencies": {
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
+  },
   "devDependencies": {
+    "acorn": "^8.16.0",
     "electron": "^35.0.0",
     "electron-builder": "^25.1.8"
   },
@@ -19,18 +27,53 @@
     "appId": "com.iridi.go2rtc-viewer",
     "productName": "go2rtc Camera Wall",
     "directories": {
-      "output": "dist"
+      "output": "build-out"
     },
+    "extraResources": [
+      {
+        "from": "branding",
+        "to": "branding",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**/*",
+      "**/node_modules/@img/**/*"
+    ],
     "files": [
       "main.js",
+      "config.js",
+      "config-core.js",
+      "branding-assets.js",
       "preload.js",
       "settings.html",
-      "settings-preload.js"
+      "settings-preload.js",
+      "load-error-page.js",
+      "updater.js",
+      "updater-core.js"
     ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerLanguages": [
+        "en"
+      ],
+      "warningsAsErrors": false,
+      "include": "build/installer.nsh"
+    },
     "win": {
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     }
   }

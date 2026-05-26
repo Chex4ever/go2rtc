@@ -1,9 +1,9 @@
 {
-  "productName": "Camera Wall",
-  "windowTitle": "Camera Wall",
-  "settingsTitle": "Application settings",
-  "accentColor": "#1565c0",
-  "orgName": "",
+  "productName": "Тесла — Camera Wall",
+  "windowTitle": "Тесла — Camera Wall",
+  "settingsTitle": "Тесла — settings",
+  "accentColor": "#1a7a62",
+  "orgName": "Тесла",
   "footerText": "",
-  "logoFile": ""
+  "logoFile": "logo.png"
 }

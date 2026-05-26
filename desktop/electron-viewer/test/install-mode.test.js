@@ -13,6 +13,7 @@ describe('configFromInstallMode', () => {
         const c = core.configFromInstallMode('autostart');
         assert.equal(c.kiosk, false);
         assert.equal(c.autoStart, true);
+        assert.equal(c.autoOpenLayout, true);
     });
 
     it('kiosk', () => {

@@ -4,7 +4,7 @@
     --border: #2a3038;
     --text: #e8eaed;
     --muted: #9aa0a6;
-    --accent: #4a9eff;
+    --accent: #1a7a62;
     --danger: #e57373;
 }
 
@@ -32,6 +32,13 @@ button.hidden {
     min-height: 100%;
     display: flex;
     flex-direction: column;
+}
+
+.brand-logo {
+    display: block;
+    max-width: min(240px, 90vw);
+    height: auto;
+    margin: 0 auto 16px;
 }
 
 .panel {

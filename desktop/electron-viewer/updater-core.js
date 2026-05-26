@@ -71,6 +71,47 @@ function updateCheckUrls(serverUrl) {
     ];
 }
 
+function go2rtcUpdateUrls(serverUrl) {
+    const base = normalizeServerUrl(serverUrl);
+    return [
+        `${base}/api/viewer/go2rtc/update?platform=win32&arch=amd64`,
+        `${base}/viewer/go2rtc/update.json`,
+    ];
+}
+
+/**
+ * @param {object} data
+ * @param {string} serverBase
+ * @param {string} platform
+ */
+function normalizeGo2rtcUpdateInfo(data, serverBase, platform) {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
+    const version = String(data.version || '').trim();
+    if (!version) {
+        return null;
+    }
+    let downloadUrl = String(data.download_url || data.downloadUrl || '').trim();
+    if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
+        /* GitHub direct URL */
+    } else {
+        downloadUrl = resolveUrl(serverBase, downloadUrl);
+    }
+    if (!downloadUrl) {
+        return null;
+    }
+    return {
+        version,
+        downloadUrl,
+        notes: String(data.notes || '').trim(),
+        sha256: String(data.sha256 || '').trim(),
+        runningVersion: String(data.running_version || data.runningVersion || '').trim(),
+        source: String(data.source || '').trim(),
+        releaseUrl: String(data.release_url || data.releaseUrl || '').trim(),
+    };
+}
+
 function isNewerVersion(remote, current) {
     return compareSemver(remote, current) > 0;
 }
@@ -78,7 +119,9 @@ function isNewerVersion(remote, current) {
 module.exports = {
     compareSemver,
     normalizeUpdateInfo,
+    normalizeGo2rtcUpdateInfo,
     updateCheckUrls,
+    go2rtcUpdateUrls,
     isNewerVersion,
     resolveUrl,
 };

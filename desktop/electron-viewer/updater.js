@@ -185,9 +185,210 @@ async function runUpdateFlow(parent, opts) {
     }
 }
 
+/**
+ * @param {{serverUrl: string}} opts
+ */
+async function fetchGo2rtcUpdateInfo(opts) {
+    const serverBase = require('./config-core').normalizeServerUrl(opts.serverUrl);
+    const platform = process.platform;
+
+    for (const url of core.go2rtcUpdateUrls(opts.serverUrl)) {
+        try {
+            const res = await fetch(url, {redirect: 'follow'});
+            if (!res.ok) {
+                continue;
+            }
+            const data = await res.json();
+            const info = core.normalizeGo2rtcUpdateInfo(data, serverBase, platform);
+            if (info) {
+                return {info, source: url};
+            }
+        } catch {
+            /* try next */
+        }
+    }
+    return {info: null, source: null};
+}
+
+async function checkGo2rtcUpdates(opts) {
+    const {info, source} = await fetchGo2rtcUpdateInfo(opts);
+    if (!info) {
+        return {
+            status: 'unavailable',
+            message: 'No go2rtc update source on this server (configure viewer.go2rtc.github in go2rtc.yaml).',
+        };
+    }
+    const running = info.runningVersion || 'unknown';
+    if (!core.isNewerVersion(info.version, running)) {
+        return {
+            status: 'current',
+            runningVersion: running,
+            remoteVersion: info.version,
+            info,
+            source,
+        };
+    }
+    return {
+        status: 'available',
+        runningVersion: running,
+        remoteVersion: info.version,
+        info,
+        source,
+    };
+}
+
+/**
+ * @param {import('electron').BrowserWindow | null} parent
+ * @param {{serverUrl: string, silent?: boolean}} opts
+ */
+async function runGo2rtcUpdateFlow(parent, opts) {
+    const result = await checkGo2rtcUpdates(opts);
+
+    if (result.status === 'unavailable') {
+        if (!opts.silent) {
+            await dialog.showMessageBox(parent || undefined, {
+                type: 'info',
+                title: 'go2rtc update',
+                message: result.message,
+            });
+        }
+        return result;
+    }
+
+    if (result.status === 'current') {
+        if (!opts.silent) {
+            await dialog.showMessageBox(parent || undefined, {
+                type: 'info',
+                title: 'go2rtc update',
+                message: `Server is up to date (running ${result.runningVersion}, latest ${result.remoteVersion}).`,
+            });
+        }
+        return result;
+    }
+
+    const detail = [
+        result.info.notes || '',
+        '',
+        `Running on server: ${result.runningVersion}`,
+        `Latest release: ${result.remoteVersion}`,
+        result.info.source === 'github' ? 'Download from GitHub (via go2rtc API).' : 'Download from this go2rtc server.',
+        '',
+        'Stop the go2rtc service, replace go2rtc.exe, restart the service. Config files are kept.',
+    ]
+        .filter(Boolean)
+        .join('\n');
+
+    const choice = await dialog.showMessageBox(parent || undefined, {
+        type: 'info',
+        title: 'go2rtc update available',
+        message: `Version ${result.remoteVersion} is available`,
+        detail,
+        buttons: ['Download', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+    });
+
+    if (choice.response !== 0) {
+        return result;
+    }
+
+    try {
+        const dest = await downloadInstaller({
+            ...result.info,
+            downloadUrl: result.info.downloadUrl,
+        });
+        await dialog.showMessageBox(parent || undefined, {
+            type: 'info',
+            title: 'go2rtc downloaded',
+            message: 'Replace the running go2rtc.exe with this file, then restart the service.',
+            detail: dest,
+        });
+        const {shell} = require('electron');
+        await shell.openPath(dest);
+        if (result.info.releaseUrl) {
+            await shell.openExternal(result.info.releaseUrl);
+        }
+        return {...result, installerPath: dest};
+    } catch (e) {
+        await dialog.showMessageBox(parent || undefined, {
+            type: 'error',
+            title: 'Download failed',
+            message: e?.message || String(e),
+        });
+        return {...result, error: e};
+    }
+}
+
+/**
+ * Check desktop app then go2rtc server updates (non-silent shows dialogs in sequence).
+ */
+async function runAllUpdateFlows(parent, opts) {
+    const desktop = await runUpdateFlow(parent, {...opts, silent: true});
+    const go2rtc = await runGo2rtcUpdateFlow(parent, {...opts, silent: true});
+
+    if (opts.silent) {
+        return {desktop, go2rtc};
+    }
+
+    const lines = [];
+    if (desktop.status === 'available') {
+        lines.push(`Camera Wall app: ${desktop.remoteVersion} available (installed ${desktop.currentVersion}).`);
+    } else if (desktop.status === 'current') {
+        lines.push(`Camera Wall app: up to date (${desktop.currentVersion}).`);
+    } else {
+        lines.push(`Camera Wall app: ${desktop.message || desktop.status}.`);
+    }
+
+    if (go2rtc.status === 'available') {
+        lines.push(`go2rtc server: ${go2rtc.remoteVersion} available (running ${go2rtc.runningVersion}).`);
+    } else if (go2rtc.status === 'current') {
+        lines.push(`go2rtc server: up to date (${go2rtc.runningVersion}).`);
+    } else {
+        lines.push(`go2rtc server: ${go2rtc.message || go2rtc.status}.`);
+    }
+
+    const actions = [];
+    if (desktop.status === 'available') {
+        actions.push({key: 'desktop', label: 'Update Camera Wall app'});
+    }
+    if (go2rtc.status === 'available') {
+        actions.push({key: 'go2rtc', label: 'Update go2rtc'});
+    }
+
+    const buttons = actions.map((a) => a.label);
+    if (buttons.length) {
+        buttons.push('Close');
+    } else {
+        buttons.push('OK');
+    }
+
+    const choice = await dialog.showMessageBox(parent || undefined, {
+        type: 'info',
+        title: 'Check for updates',
+        message: actions.length ? 'Updates available' : 'Update check',
+        detail: lines.join('\n'),
+        buttons,
+        defaultId: 0,
+        cancelId: Math.max(0, buttons.length - 1),
+    });
+
+    const picked = actions[choice.response];
+    if (picked?.key === 'desktop') {
+        await runUpdateFlow(parent, opts);
+    } else if (picked?.key === 'go2rtc') {
+        await runGo2rtcUpdateFlow(parent, opts);
+    }
+
+    return {desktop, go2rtc};
+}
+
 module.exports = {
     checkForUpdates,
+    checkGo2rtcUpdates,
     downloadInstaller,
     runUpdateFlow,
+    runGo2rtcUpdateFlow,
+    runAllUpdateFlows,
     fetchUpdateInfo,
+    fetchGo2rtcUpdateInfo,
 };

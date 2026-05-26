@@ -28,4 +28,7 @@ desktop/electron-viewer/build-out
 desktop/electron-viewer/build-*
 desktop/electron-viewer/build-release
 desktop/releases
+desktop/electron-viewer/build-1.2.1
+desktop/electron-viewer/build-*/
+*.exe.blockmap
 CLAUDE.md

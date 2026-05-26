@@ -3,13 +3,13 @@ const path = require('path');
 const DEFAULT_SERVER = 'http://127.0.0.1:1984';
 
 const DEFAULT_BRANDING = {
-    productName: 'Camera Wall',
-    windowTitle: 'Camera Wall',
-    settingsTitle: 'Application settings',
-    accentColor: '#1565c0',
-    orgName: '',
+    productName: 'Тесла — Camera Wall',
+    windowTitle: 'Тесла — Camera Wall',
+    settingsTitle: 'Тесла — settings',
+    accentColor: '#1a7a62',
+    orgName: 'Тесла',
     footerText: '',
-    logoFile: '',
+    logoFile: 'logo.png',
 };
 
 function mergeBranding(base, overlay) {
@@ -40,6 +40,8 @@ function normalizeConfig(raw, brandingFromFiles) {
         kiosk: !!raw?.kiosk,
         autoStart: !!raw?.autoStart,
         checkUpdatesOnStartup: raw?.checkUpdatesOnStartup !== false,
+        autoOpenLayout: raw?.autoOpenLayout !== false,
+        defaultLayoutId: String(raw?.defaultLayoutId || '').trim(),
         branding: mergeBranding(brandingFromFiles, raw?.branding),
     };
     if (!/^#[0-9A-Fa-f]{6}$/.test(cfg.branding.accentColor)) {
@@ -85,8 +87,18 @@ function normalizeServerUrl(url) {
     return u;
 }
 
-function viewerUrl(serverUrl) {
-    return `${normalizeServerUrl(serverUrl)}/viewer/`;
+function viewerUrl(serverUrl, opts = {}) {
+    const base = normalizeServerUrl(serverUrl);
+    const url = new URL(`${base}/viewer/`);
+    const autoOpen = opts.autoOpenLayout !== false;
+    if (autoOpen) {
+        url.searchParams.set('auto_open', '1');
+    }
+    const layoutId = String(opts.defaultLayoutId || '').trim();
+    if (layoutId) {
+        url.searchParams.set('default_layout', layoutId);
+    }
+    return url.href;
 }
 
 function adminUrls(serverUrl) {
@@ -106,6 +118,7 @@ function configFromInstallMode(mode, serverUrl = DEFAULT_SERVER) {
             serverUrl,
             kiosk: m === 'kiosk',
             autoStart: m === 'autostart' || m === 'kiosk',
+            autoOpenLayout: m !== 'manual',
         },
         {...DEFAULT_BRANDING},
     );
@@ -119,6 +132,8 @@ function configToInstallerJson(cfg) {
             kiosk: cfg.kiosk,
             autoStart: cfg.autoStart,
             checkUpdatesOnStartup: cfg.checkUpdatesOnStartup !== false,
+            autoOpenLayout: cfg.autoOpenLayout !== false,
+            defaultLayoutId: cfg.defaultLayoutId || '',
         },
         null,
         2,

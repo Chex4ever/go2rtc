@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.2.1)'
+        required: true
+        default: 'v1.2.1'
+
+permissions:
+  contents: write
+
+jobs:
+  build-go2rtc:
+    name: Build go2rtc binaries
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+          - goos: windows
+            goarch: '386'
+            ext: .exe
+          - goos: linux
+            goarch: amd64
+            ext: ''
+          - goos: linux
+            goarch: arm64
+            ext: ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          OUT="go2rtc_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}"
+          go build -ldflags "-s -w -X github.com/AlexxIT/go2rtc/internal/app.Version=${{ steps.ver.outputs.version }}" -trimpath -o "$OUT" .
+
+      - name: SHA256
+        run: |
+          OUT="go2rtc_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}"
+          sha256sum "$OUT" | tee "${OUT}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go2rtc-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            go2rtc_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
+            go2rtc_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}.sha256
+
+  build-desktop:
+    name: Build Camera Wall installer (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install and dist
+        working-directory: desktop/electron-viewer
+        run: |
+          npm ci
+          npm run dist -- --config.directories.output=release-ci
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-installer
+          path: desktop/electron-viewer/release-ci/*.exe
+
+  publish:
+    name: Publish GitHub Release
+    needs: [build-go2rtc, build-desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Build release manifest
+        shell: bash
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          WIN_EXE=$(find dist -name "go2rtc_${VER}_windows_amd64.exe" | head -1)
+          WIN_SHA=$(cat "${WIN_EXE}.sha256" | awk '{print $1}')
+          DESKTOP=$(find dist -name "*.exe" ! -name "go2rtc_*" | head -1)
+          DESKTOP_NAME=$(basename "$DESKTOP")
+          cat > release-manifest.json <<EOF
+          {
+            "version": "${VER}",
+            "released_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "go2rtc": {
+              "windows": {
+                "amd64": {
+                  "file": "go2rtc_${VER}_windows_amd64.exe",
+                  "sha256": "${WIN_SHA}"
+                }
+              }
+            },
+            "desktop": {
+              "windows": {
+                "file": "${DESKTOP_NAME}"
+              }
+            }
+          }
+          EOF
+          cat release-manifest.json
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/**/*
+            release-manifest.json
+          fail_on_unmatched_files: false

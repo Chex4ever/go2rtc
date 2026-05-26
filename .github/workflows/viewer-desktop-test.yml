@@ -44,3 +44,6 @@ jobs:
 
       - name: Viewer module tests
         run: go test ./internal/viewer/... -count=1
+
+      - name: go2rtc build (embeds www/viewer)
+        run: go build -o /dev/null .
