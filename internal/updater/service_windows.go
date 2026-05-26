@@ -71,15 +71,6 @@ func UpdaterServiceStatus() (ServiceStatus, error) {
 	return st, nil
 }
 
-// ServiceStatus for API.
-type ServiceStatus struct {
-	Supported bool   `json:"supported"`
-	Installed bool   `json:"installed"`
-	Running   bool   `json:"running"`
-	Name      string `json:"name"`
-	Message   string `json:"message,omitempty"`
-}
-
 // UpdaterExePath finds go2rtc-updater.exe next to go2rtc.exe or in same dir as given path.
 func UpdaterExePath(nearExe string) (string, error) {
 	dir := filepath.Dir(nearExe)

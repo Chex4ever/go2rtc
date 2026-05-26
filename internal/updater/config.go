@@ -12,6 +12,15 @@ import (
 const defaultServiceName = "go2rtc"
 const updaterServiceName = "go2rtc-updater"
 
+// ServiceStatus reports Windows go2rtc-updater service installation state (API).
+type ServiceStatus struct {
+	Supported bool   `json:"supported"`
+	Installed bool   `json:"installed"`
+	Running   bool   `json:"running"`
+	Name      string `json:"name"`
+	Message   string `json:"message,omitempty"`
+}
+
 // Config drives automatic go2rtc binary updates (Windows service).
 type Config struct {
 	Enabled   bool   `yaml:"enabled"`

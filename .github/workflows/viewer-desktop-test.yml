@@ -29,6 +29,10 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install Electron viewer test deps
+        working-directory: desktop/electron-viewer
+        run: npm install --no-audit --no-fund
+
       - name: Electron viewer unit tests
         working-directory: desktop/electron-viewer
         run: npm test
