@@ -92,6 +92,8 @@
 - [x] **REF-FEAT-09** — go2rtc auto-update API + GitHub Releases (`viewer.go2rtc.github`)
 - [x] **REF-FEAT-10** — CI/CD `.github/workflows/release.yml` + [RELEASE_CI.md](RELEASE_CI.md)
 - [x] **REF-FEAT-11** — Electron checks Camera Wall + go2rtc updates together
+- [x] **REF-FEAT-12** — One-click Camera Wall update (silent NSIS + restart)
+- [x] **REF-FEAT-13** — `go2rtc-updater` Windows service (auto stop/replace/start go2rtc.exe)
 
 ## P4 — Later
 

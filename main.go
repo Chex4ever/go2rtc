@@ -43,6 +43,7 @@ import (
 	"github.com/AlexxIT/go2rtc/internal/streams"
 	"github.com/AlexxIT/go2rtc/internal/tapo"
 	"github.com/AlexxIT/go2rtc/internal/tuya"
+	"github.com/AlexxIT/go2rtc/internal/updater"
 	"github.com/AlexxIT/go2rtc/internal/v4l2"
 	"github.com/AlexxIT/go2rtc/internal/webrtc"
 	"github.com/AlexxIT/go2rtc/internal/webtorrent"
@@ -67,6 +68,7 @@ func main() {
 		{"api", api.Init},     // init API before all others
 		{"viewer", viewer.Init}, // viewer auth API (after api, before clients)
 		{"service", service.Init},
+		{"updater", updater.Init},
 		{"ws", ws.Init},       // init WS API endpoint
 		{"", streams.Init},
 		// Main sources and servers

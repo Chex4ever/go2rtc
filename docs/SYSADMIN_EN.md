@@ -178,13 +178,27 @@ viewer:
     github: "YOUR_ORG/go2rtc"  # uses latest GitHub release asset (windows_amd64)
     cache_ttl: 10m
   desktop:                    # optional: Camera Wall app updates from this server
-    version: "1.2.1"
-    installer: "desktop/go2rtc Camera Wall Setup 1.2.1.exe"
+    version: "1.2.2"
+    installer: "desktop/releases/go2rtc Camera Wall Setup 1.2.2.exe"
     notes: "Optional release notes"
 ```
 
 See [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) — **Updating the installed app**.  
 See [RELEASE_CI.md](RELEASE_CI.md) — **GitHub releases & CI/CD**.
+
+### 2b. Automatic go2rtc updates (optional)
+
+Install **`go2rtc-updater.exe`** as a second Windows service for fully automatic binary upgrades:
+
+```yaml
+updater:
+  enabled: true
+  auto_apply: true
+  interval: 6h
+  github: "YOUR_ORG/go2rtc"
+```
+
+See [UPDATER_SERVICE.md](UPDATER_SERVICE.md).
 
 ### 3. Add camera streams
 

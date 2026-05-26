@@ -4,6 +4,15 @@ const fs = require('fs');
 const cfg = require('./config');
 const {buildLoadErrorPage} = require('./load-error-page');
 const updater = require('./updater');
+updater.setRequestAppQuit(() => {
+    app.quittingForUpdate = true;
+    for (const w of BrowserWindow.getAllWindows()) {
+        if (!w.isDestroyed()) {
+            w.destroy();
+        }
+    }
+    app.quit();
+});
 const brandingAssets = require('./branding-assets');
 
 /** @type {BrowserWindow | null} */
@@ -643,6 +652,12 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
+    if (app.quittingForUpdate) {
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
+        return;
+    }
     // Keep running while the camera wall window is open or being recreated.
     if (mainWindow && !mainWindow.isDestroyed()) {
         return;

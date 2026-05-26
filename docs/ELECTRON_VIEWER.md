@@ -154,7 +154,7 @@ The desktop app checks the **configured go2rtc server** (`Settings → server UR
    - **Camera Wall app** — installer from server (`viewer.desktop`) or `/viewer/desktop/update.json`
    - **go2rtc server** — latest release from GitHub (`viewer.go2rtc.github`) or local binary (`viewer.go2rtc.binary`)
 
-Camera Wall: download installer → run it (settings in `%APPDATA%\go2rtc-viewer\` are kept).
+Camera Wall: **Update now** — downloads the installer from your server, runs a silent in-place upgrade (`/S`), and **restarts the app** (Windows installed build only; settings in `%APPDATA%\go2rtc-viewer\` are kept).
 
 go2rtc: download new `go2rtc.exe` → stop service → replace binary → start service (configs unchanged).
 

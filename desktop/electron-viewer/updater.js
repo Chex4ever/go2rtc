@@ -3,6 +3,14 @@ const path = require('path');
 const crypto = require('crypto');
 const {app, dialog} = require('electron');
 const core = require('./updater-core');
+const {launchSilentInstaller, resolveInstallDir} = require('./installer-launch');
+
+/** Set by main.js — allows app.quit() during one-click update. */
+let requestAppQuit = () => app.quit();
+
+function setRequestAppQuit(fn) {
+    requestAppQuit = typeof fn === 'function' ? fn : requestAppQuit;
+}
 
 /**
  * @param {{serverUrl: string, currentVersion?: string, platform?: string}} opts
@@ -107,6 +115,30 @@ async function downloadInstaller(info, onProgress) {
 }
 
 /**
+ * Download installer and run NSIS silent upgrade in-place, then quit app.
+ * @param {{version: string, downloadUrl: string, sha256?: string}} info
+ */
+async function applyDesktopUpdateOneClick(info) {
+    if (!app.isPackaged) {
+        throw new Error('One-click update works only in the installed application (not npm start).');
+    }
+    if (process.platform !== 'win32') {
+        throw new Error('Automatic install is supported on Windows only.');
+    }
+
+    const installerPath = await downloadInstaller(info);
+    const installDir = resolveInstallDir();
+    if (!installDir) {
+        throw new Error('Could not detect install folder');
+    }
+
+    await launchSilentInstaller(installerPath, installDir);
+    app.quittingForUpdate = true;
+    requestAppQuit();
+    return {installerPath, installDir};
+}
+
+/**
  * @param {import('electron').BrowserWindow | null} parent
  * @param {{serverUrl: string, silent?: boolean}} opts
  */
@@ -144,36 +176,29 @@ async function runUpdateFlow(parent, opts) {
         `Installed: ${result.currentVersion}`,
         `Available: ${result.remoteVersion}`,
         '',
-        'The installer will download from your go2rtc server, then you run it to upgrade.',
+        'One click: download, replace files, and restart the app (Windows installed build).',
     ]
         .filter(Boolean)
         .join('\n');
 
+    const canOneClick = app.isPackaged && process.platform === 'win32';
     const choice = await dialog.showMessageBox(parent || undefined, {
         type: 'info',
         title: 'Update available',
         message: `Version ${result.remoteVersion} is available`,
         detail,
-        buttons: ['Download and install', 'Later'],
+        buttons: canOneClick ? ['Update now', 'Later'] : ['OK'],
         defaultId: 0,
-        cancelId: 1,
+        cancelId: canOneClick ? 1 : 0,
     });
 
-    if (choice.response !== 0) {
+    if (!canOneClick || choice.response !== 0) {
         return result;
     }
 
     try {
-        const installerPath = await downloadInstaller(result.info);
-        await dialog.showMessageBox(parent || undefined, {
-            type: 'info',
-            title: 'Update downloaded',
-            message: 'Run the installer to finish upgrading.',
-            detail: installerPath,
-        });
-        const {shell} = require('electron');
-        await shell.openPath(installerPath);
-        return {...result, installerPath};
+        await applyDesktopUpdateOneClick(result.info);
+        return {...result, status: 'installing'};
     } catch (e) {
         await dialog.showMessageBox(parent || undefined, {
             type: 'error',
@@ -349,7 +374,7 @@ async function runAllUpdateFlows(parent, opts) {
 
     const actions = [];
     if (desktop.status === 'available') {
-        actions.push({key: 'desktop', label: 'Update Camera Wall app'});
+        actions.push({key: 'desktop', label: 'Update Camera Wall (one click)'});
     }
     if (go2rtc.status === 'available') {
         actions.push({key: 'go2rtc', label: 'Update go2rtc'});
@@ -386,9 +411,11 @@ module.exports = {
     checkForUpdates,
     checkGo2rtcUpdates,
     downloadInstaller,
+    applyDesktopUpdateOneClick,
     runUpdateFlow,
     runGo2rtcUpdateFlow,
     runAllUpdateFlows,
     fetchUpdateInfo,
     fetchGo2rtcUpdateInfo,
+    setRequestAppQuit,
 };

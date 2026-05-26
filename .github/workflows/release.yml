@@ -75,6 +75,24 @@ jobs:
             go2rtc_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
             go2rtc_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}.sha256
 
+  build-updater:
+    name: Build go2rtc-updater (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build go2rtc-updater.exe
+        run: go build -ldflags "-s -w" -trimpath -o go2rtc-updater.exe ./cmd/go2rtc-updater
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go2rtc-updater-win64
+          path: go2rtc-updater.exe
+
   build-desktop:
     name: Build Camera Wall installer (Windows)
     runs-on: windows-latest
@@ -98,7 +116,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: [build-go2rtc, build-desktop]
+    needs: [build-go2rtc, build-updater, build-desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

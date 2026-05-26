@@ -11,6 +11,7 @@ go2rtc_win*
 
 /go2rtc
 /go2rtc.exe
+/go2rtc-updater.exe
 
 0_test.go
 

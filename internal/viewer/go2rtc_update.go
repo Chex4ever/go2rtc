@@ -13,6 +13,7 @@ import (
 
 	"github.com/AlexxIT/go2rtc/internal/api"
 	"github.com/AlexxIT/go2rtc/internal/app"
+	"github.com/AlexxIT/go2rtc/internal/release"
 )
 
 type go2rtcUpdateInfo struct {
@@ -35,7 +36,7 @@ type go2rtcUpdateCfg struct {
 	Github    string
 	Asset     string
 	CacheTTL  time.Duration
-	ghClient  *ghReleaseClient
+	ghClient  *release.Client
 }
 
 var go2rtcUp go2rtcUpdateCfg
@@ -53,7 +54,7 @@ func initGo2rtcUpdate(cfg struct {
 	go2rtcUp.Binary = strings.TrimSpace(cfg.Binary)
 	go2rtcUp.Sha256 = strings.TrimSpace(cfg.Sha256)
 	go2rtcUp.Notes = strings.TrimSpace(cfg.Notes)
-	go2rtcUp.Github = normalizeGithubRepo(cfg.Github)
+	go2rtcUp.Github = release.NormalizeRepo(cfg.Github)
 	go2rtcUp.Asset = strings.TrimSpace(cfg.Asset)
 
 	ttl := 10 * time.Minute
@@ -65,7 +66,7 @@ func initGo2rtcUpdate(cfg struct {
 	go2rtcUp.CacheTTL = ttl
 
 	if go2rtcUp.Github != "" {
-		go2rtcUp.ghClient = newGhReleaseClient(go2rtcUp.Github, ttl)
+		go2rtcUp.ghClient = release.NewClient(go2rtcUp.Github, ttl)
 	}
 
 	if go2rtcUp.Github == "" && go2rtcUp.Version == "" {
@@ -130,7 +131,7 @@ func resolveGo2rtcUpdate(platform, arch string) (go2rtcUpdateInfo, error) {
 		if err != nil {
 			return out, err
 		}
-		asset, err := pickGithubAsset(rel.Assets, platform, arch)
+		asset, err := release.PickAsset(rel.Assets, platform, arch)
 		if err != nil && go2rtcUp.Asset != "" {
 			for i := range rel.Assets {
 				if strings.EqualFold(rel.Assets[i].Name, go2rtcUp.Asset) {
@@ -143,7 +144,7 @@ func resolveGo2rtcUpdate(platform, arch string) (go2rtcUpdateInfo, error) {
 		if err != nil {
 			return out, err
 		}
-		out.Version = releaseVersion(rel.TagName)
+		out.Version = release.VersionFromTag(rel.TagName)
 		out.DownloadURL = asset.BrowserDownloadURL
 		out.Notes = strings.TrimSpace(rel.Body)
 		if go2rtcUp.Notes != "" {

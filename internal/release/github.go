@@ -1,4 +1,4 @@
-package viewer
+package release
 
 import (
 	"encoding/json"
@@ -10,74 +10,73 @@ import (
 	"time"
 )
 
-type ghAsset struct {
+// Asset is a GitHub release attachment.
+type Asset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 	Size               int64  `json:"size"`
 }
 
-type ghRelease struct {
-	TagName     string    `json:"tag_name"`
-	Name        string    `json:"name"`
-	Body        string    `json:"body"`
-	HTMLURL     string    `json:"html_url"`
-	PublishedAt string    `json:"published_at"`
-	Assets      []ghAsset `json:"assets"`
+// GitHubRelease is the latest release from GitHub API.
+type GitHubRelease struct {
+	TagName string  `json:"tag_name"`
+	Body    string  `json:"body"`
+	HTMLURL string  `json:"html_url"`
+	Assets  []Asset `json:"assets"`
 }
 
-type ghReleaseClient struct {
-	repo string
-	ttl  time.Duration
+// Client caches GitHub /releases/latest.
+type Client struct {
+	Repo string
+	TTL  time.Duration
 	mu   sync.Mutex
 	at   time.Time
-	rel  *ghRelease
-	err  error
+	rel  *GitHubRelease
 }
 
-func newGhReleaseClient(repo string, ttl time.Duration) *ghReleaseClient {
+func NewClient(repo string, ttl time.Duration) *Client {
 	if ttl <= 0 {
 		ttl = 10 * time.Minute
 	}
-	return &ghReleaseClient{repo: normalizeGithubRepo(repo), ttl: ttl}
+	return &Client{Repo: NormalizeRepo(repo), TTL: ttl}
 }
 
-func normalizeGithubRepo(repo string) string {
+// NormalizeRepo accepts "org/repo" or full GitHub URL.
+func NormalizeRepo(repo string) string {
 	repo = strings.TrimSpace(repo)
 	repo = strings.TrimPrefix(repo, "https://github.com/")
 	repo = strings.TrimPrefix(repo, "http://github.com/")
-	repo = strings.Trim(repo, "/")
-	return repo
+	return strings.Trim(repo, "/")
 }
 
-func (c *ghReleaseClient) Latest() (*ghRelease, error) {
+func (c *Client) Latest() (*GitHubRelease, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.repo == "" {
+	if c.Repo == "" {
 		return nil, fmt.Errorf("github repo not configured")
 	}
-	if c.rel != nil && time.Since(c.at) < c.ttl {
+	if c.rel != nil && time.Since(c.at) < c.TTL {
 		return c.rel, nil
 	}
-
-	rel, err := fetchGithubLatestRelease(c.repo)
-	c.at = time.Now()
-	c.rel = rel
-	c.err = err
+	rel, err := FetchLatestRelease(c.Repo)
 	if err != nil {
 		return nil, err
 	}
+	c.at = time.Now()
+	c.rel = rel
 	return rel, nil
 }
 
-var fetchGithubLatestRelease = func(repo string) (*ghRelease, error) {
+// FetchLatestRelease calls GitHub API (override in tests).
+var FetchLatestRelease = func(repo string) (*GitHubRelease, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "go2rtc-viewer-update")
+	req.Header.Set("User-Agent", "go2rtc-updater")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	res, err := client.Do(req)
@@ -94,7 +93,7 @@ var fetchGithubLatestRelease = func(repo string) (*ghRelease, error) {
 		return nil, fmt.Errorf("github API %s: %s", res.Status, strings.TrimSpace(string(body)))
 	}
 
-	var rel ghRelease
+	var rel GitHubRelease
 	if err := json.Unmarshal(body, &rel); err != nil {
 		return nil, err
 	}
@@ -104,11 +103,13 @@ var fetchGithubLatestRelease = func(repo string) (*ghRelease, error) {
 	return &rel, nil
 }
 
-func releaseVersion(tag string) string {
+// VersionFromTag strips leading "v".
+func VersionFromTag(tag string) string {
 	return strings.TrimPrefix(strings.TrimSpace(tag), "v")
 }
 
-func pickGithubAsset(assets []ghAsset, osName, arch string) (*ghAsset, error) {
+// PickAsset finds a release asset for os/arch (windows/amd64, etc.).
+func PickAsset(assets []Asset, osName, arch string) (*Asset, error) {
 	if len(assets) == 0 {
 		return nil, fmt.Errorf("release has no assets")
 	}
@@ -131,10 +132,6 @@ func pickGithubAsset(assets []ghAsset, osName, arch string) (*ghAsset, error) {
 		patterns = []string{"linux_amd64"}
 	case osName == "linux" && arch == "arm64":
 		patterns = []string{"linux_arm64"}
-	case osName == "darwin" && arch == "amd64":
-		patterns = []string{"darwin_amd64", "mac_amd64"}
-	case osName == "darwin" && arch == "arm64":
-		patterns = []string{"darwin_arm64", "mac_arm64"}
 	default:
 		patterns = []string{osName + "_" + arch}
 	}
