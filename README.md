@@ -36,7 +36,7 @@ Ultimate camera streaming application with support for dozens formats and protoc
 - [streaming stats](#streaming-stats) for all active connections
 - can be [integrated to any project](#projects-using-go2rtc) or be used as [standalone app](#go2rtc-binary)
 
-> **iRidi fork — camera wall:** For deployment with custom viewer (users, layouts, dual streams), see **[Sysadmin guide (EN)](docs/SYSADMIN_EN.md)** · **[Руководство администратора (RU)](docs/SYSADMIN_RU.md)**. Example config: [docs/viewer.yaml.example](docs/viewer.yaml.example).
+> **Тесла / go2rtc fork — camera wall:** For deployment with custom viewer (users, layouts, dual streams), see **[Sysadmin guide (EN)](docs/SYSADMIN_EN.md)** · **[Руководство администратора (RU)](docs/SYSADMIN_RU.md)**. **Desktop app:** [Electron viewer](docs/ELECTRON_VIEWER.md) (`desktop/electron-viewer/`). Example config: [docs/viewer.yaml.example](docs/viewer.yaml.example). **Backlog / refactoring:** [docs/REFACTORING_TODO.md](docs/REFACTORING_TODO.md) (edit and pick `REF-*` tasks).
 
 #### Inspired by
 

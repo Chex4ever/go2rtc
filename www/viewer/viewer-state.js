@@ -1,0 +1,24 @@
+export const state = {
+    user: null,
+    layouts: [],
+    currentLayoutId: null,
+    layoutDetail: null,
+    slots: [],
+    saveTimer: null,
+    focusSlot: null,
+    tileViewports: new Map(),
+    chromeTimer: null,
+    wallLayoutMode: 'desktop',
+    activeTile: null,
+    recorders: new Map(),
+};
+
+export function stopAllRecordings() {
+    for (const [slot, rec] of state.recorders) {
+        if (rec.recording) {
+            const name = state.slots[slot] || 'recording';
+            rec.stop(name).catch(() => {});
+        }
+    }
+    state.recorders.clear();
+}

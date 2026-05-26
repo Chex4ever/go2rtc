@@ -2,6 +2,8 @@
 
 Living document for the iRidi go2rtc fork. Update checkboxes and “Decisions” as we go.
 
+**Active backlog:** edit [`REFACTORING_TODO.md`](REFACTORING_TODO.md) (self-review, prioritized `REF-*` items). This plan stays the historical phase map.
+
 ---
 
 ## How to work efficiently with the agent
@@ -259,7 +261,7 @@ Implementation: CSS grid with fixed slots; map `layout.cameras[]` to slots (1:1 
 - [x] Login + session cookie + **IP remember** (LAN `RemoteAddr` / `X-Forwarded-For`)
 - [x] CRUD API for layouts, users, allow-lists, tile state
 - [x] `/api/viewer/*` bypasses go2rtc basic auth (module auth only)
-- [ ] CORS: use existing `api.origin: "*"` if needed for cross-host viewer (Phase 2 UI)
+- [x] CORS: use existing `api.origin: "*"` if needed for cross-host viewer — same host in v1
 
 See [`docs/viewer.yaml.example`](viewer.yaml.example) and **Viewer API** section below.
 

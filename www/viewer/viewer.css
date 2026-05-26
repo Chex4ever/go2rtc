@@ -4,7 +4,7 @@
     --border: #2a3038;
     --text: #e8eaed;
     --muted: #9aa0a6;
-    --accent: #4a9eff;
+    --accent: #1a7a62;
     --danger: #e57373;
 }
 
@@ -32,6 +32,13 @@ button.hidden {
     min-height: 100%;
     display: flex;
     flex-direction: column;
+}
+
+.brand-logo {
+    display: block;
+    max-width: min(240px, 90vw);
+    height: auto;
+    margin: 0 auto 16px;
 }
 
 .panel {
@@ -110,6 +117,28 @@ button:hover {
     font-size: 0.85rem;
     min-height: 1.2em;
     margin-top: 10px;
+}
+
+#screen-bootstrap {
+    flex: 1;
+    display: flex;
+    padding: 24px;
+}
+
+pre.fatal-error {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    margin: 12px 0 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.bootstrap-hint {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 12px;
 }
 
 .admin-links {

@@ -174,7 +174,31 @@ viewer:
   session_ttl: 24h
   trust_ip_ttl: 720h          # IP remember duration
   cookie_secure: false        # set true only behind HTTPS
+  go2rtc:                     # optional: go2rtc.exe updates (GitHub Releases or local file)
+    github: "YOUR_ORG/go2rtc"  # uses latest GitHub release asset (windows_amd64)
+    cache_ttl: 10m
+  desktop:                    # optional: Camera Wall app updates from this server
+    version: "1.2.2"
+    installer: "desktop/releases/go2rtc Camera Wall Setup 1.2.2.exe"
+    notes: "Optional release notes"
 ```
+
+See [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) — **Updating the installed app**.  
+See [RELEASE_CI.md](RELEASE_CI.md) — **GitHub releases & CI/CD**.
+
+### 2b. Automatic go2rtc updates (optional)
+
+Install **`go2rtc-updater.exe`** as a second Windows service for fully automatic binary upgrades:
+
+```yaml
+updater:
+  enabled: true
+  auto_apply: true
+  interval: 6h
+  github: "YOUR_ORG/go2rtc"
+```
+
+See [UPDATER_SERVICE.md](UPDATER_SERVICE.md).
 
 ### 3. Add camera streams
 
@@ -198,7 +222,9 @@ Or edit `viewer.yaml` directly and restart go2rtc.
 
 ### 5. Hand off to operators
 
-URL: **`http://SERVER:1984/viewer/`**
+**Browser:** **`http://SERVER:1984/viewer/`**
+
+**Desktop (optional):** build or distribute the [Electron viewer](ELECTRON_VIEWER.md) — operators set server URL once (`http://SERVER:1984`), app opens `/viewer/` automatically.
 
 They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen (main stream).
 
@@ -257,6 +283,9 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 
 | Problem | Check |
 |---------|--------|
+| Blank / black viewer window | Should show an **on-screen error** (server unreachable, JS error). If still blank: hard-refresh, rebuild `go2rtc.exe`, check browser console |
+| “Cannot reach go2rtc” | Start go2rtc; open `http://SERVER:1984/`; fix server URL in Electron (**Ctrl+Shift+S**) |
+| Desktop app won’t update | `viewer.desktop` in yaml; installer file on disk; server `version` higher than app; test `/api/viewer/desktop/update` |
 | Viewer login fails | User in `viewer.yaml`, password, layout IDs spelled correctly |
 | Empty layout list | User’s `layouts:` must match layout keys in `viewer.yaml` |
 | Camera tile black | Stream works in go2rtc stream list; name matches layout allow-list |

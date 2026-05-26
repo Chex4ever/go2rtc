@@ -4,13 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Camera wall</title>
+    <link rel="icon" href="icons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="stylesheet" href="viewer.css">
     <link rel="stylesheet" href="viewer-mobile.css">
 </head>
 <body>
 <div id="app">
+    <section id="screen-bootstrap" class="screen">
+        <div class="panel">
+            <img class="brand-logo" src="icons/logo.png" width="220" height="123" alt="Тесла">
+            <h1>Camera wall</h1>
+            <p id="bootstrap-status">Loading…</p>
+            <pre id="bootstrap-error" class="error fatal-error"></pre>
+            <p class="bootstrap-hint hidden" id="bootstrap-hint"></p>
+        </div>
+    </section>
+
     <section id="screen-login" class="screen hidden">
         <div class="panel">
+            <img class="brand-logo" src="icons/logo.png" width="220" height="123" alt="Тесла">
             <h1>Camera wall</h1>
             <p>Sign in to view your layouts.</p>
             <form id="login-form">
@@ -57,6 +72,46 @@
     </section>
 </div>
 
+<script>
+(function () {
+    function showBootstrapError(title, message, hint) {
+        var boot = document.getElementById('screen-bootstrap');
+        if (!boot) return;
+        document.querySelectorAll('.screen').forEach(function (el) {
+            el.classList.toggle('hidden', el.id !== 'screen-bootstrap');
+        });
+        var status = document.getElementById('bootstrap-status');
+        var err = document.getElementById('bootstrap-error');
+        var hintEl = document.getElementById('bootstrap-hint');
+        if (status) status.textContent = title || 'Cannot start camera wall';
+        if (err) err.textContent = message || '';
+        if (hintEl) {
+            if (hint) {
+                hintEl.textContent = hint;
+                hintEl.classList.remove('hidden');
+            } else {
+                hintEl.textContent = '';
+                hintEl.classList.add('hidden');
+            }
+        }
+    }
+    window.__viewerShowError = showBootstrapError;
+    window.addEventListener('error', function (e) {
+        var src = e.filename || '';
+        if (src && !/\/viewer\//.test(src) && !/viewer-app/.test(src)) return;
+        showBootstrapError(
+            'Camera wall failed to start',
+            (e.message || 'Script error') + (src ? '\n' + src : ''),
+            'Fix the error, restart go2rtc, then reload this page (Ctrl+R).'
+        );
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+        var reason = e.reason;
+        var msg = reason && reason.message ? reason.message : String(reason || 'Unexpected error');
+        showBootstrapError('Camera wall failed to start', msg, 'Reload this page (Ctrl+R) after fixing the problem.');
+    });
+})();
+</script>
 <script type="module" src="viewer-app.js"></script>
 </body>
 </html>
