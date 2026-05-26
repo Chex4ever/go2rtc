@@ -3,312 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings</title>
+    <title>Server settings</title>
     <style>
-        :root {
-            --accent: #1565c0;
-        }
-        * { box-sizing: border-box; }
         body {
             font-family: system-ui, Segoe UI, sans-serif;
             margin: 0;
-            background: #f0f2f5;
-            color: #222;
+            padding: 20px 24px;
+            background: #f5f5f5;
         }
-        header {
-            padding: 16px 20px;
-            background: #fff;
-            border-bottom: 1px solid #ddd;
+        h1 {
+            font-size: 1.1rem;
+            margin: 0 0 12px;
         }
-        header h1 { margin: 0; font-size: 1.15rem; }
-        .tabs {
-            display: flex;
-            gap: 4px;
-            padding: 10px 16px 0;
-            background: #fff;
-            border-bottom: 1px solid #ddd;
-        }
-        .tabs button {
-            border: none;
-            background: none;
-            padding: 10px 14px;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            font-size: 0.9rem;
-        }
-        .tabs button.active {
-            border-bottom-color: var(--accent);
-            font-weight: 600;
-            color: var(--accent);
-        }
-        .panel {
-            display: none;
-            padding: 16px 20px 24px;
-        }
-        .panel.active { display: block; }
         label {
             display: block;
             margin-bottom: 12px;
-            font-size: 0.88rem;
+            font-size: 0.9rem;
         }
-        input[type="text"], input[type="color"] {
+        input[type="text"] {
             width: 100%;
+            box-sizing: border-box;
             margin-top: 4px;
             padding: 8px 10px;
-            font-size: 0.95rem;
-        }
-        input[type="color"] {
-            height: 40px;
-            padding: 2px;
+            font-size: 1rem;
         }
         .check {
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .check input { margin-top: 3px; }
-        .hint {
-            color: #555;
-            font-size: 0.82rem;
-            margin: 0 0 12px;
-            line-height: 1.4;
-        }
-        .logo-row {
-            display: flex;
-            gap: 12px;
             align-items: center;
-            margin-bottom: 12px;
-        }
-        .logo-row img {
-            max-height: 48px;
-            max-width: 120px;
-            object-fit: contain;
-            background: #fff;
-            border: 1px solid #ccc;
-            padding: 4px;
+            gap: 8px;
         }
         .actions {
-            position: sticky;
-            bottom: 0;
-            background: #f0f2f5;
-            border-top: 1px solid #ddd;
-            padding: 12px 20px;
+            margin-top: 16px;
             display: flex;
             gap: 8px;
             justify-content: flex-end;
-            flex-wrap: wrap;
         }
         button {
-            padding: 8px 14px;
-            font-size: 0.9rem;
+            padding: 8px 16px;
+            font-size: 0.95rem;
             cursor: pointer;
         }
         button.primary {
-            background: var(--accent);
+            background: #1565c0;
             color: #fff;
-            border: 1px solid color-mix(in srgb, var(--accent) 80%, #000);
+            border: 1px solid #0d47a1;
         }
-        code { font-size: 0.85em; }
+        .hint {
+            color: #555;
+            font-size: 0.85rem;
+            margin: 0 0 12px;
+        }
     </style>
 </head>
 <body>
-    <header>
-        <h1 id="page-title">Application settings</h1>
-    </header>
-    <nav class="tabs" role="tablist">
-        <button type="button" class="active" data-tab="general">General</button>
-        <button type="button" data-tab="branding">Branding</button>
-        <button type="button" data-tab="deploy">Deployment</button>
-    </nav>
-
+    <h1>go2rtc server</h1>
+    <p class="hint">Camera wall loads <code>/viewer/</code> on this host. go2rtc must be running separately (or as a service).</p>
     <form id="form">
-        <section class="panel active" id="panel-general">
-            <p class="hint">Camera wall loads <code>/viewer/</code> on the go2rtc server (run separately or as a Windows service).</p>
-            <label>
-                Server URL
-                <input id="server" type="text" placeholder="http://192.168.1.10:1984" required>
-            </label>
-            <label class="check">
-                <input id="insecure" type="checkbox">
-                <span>Allow self-signed HTTPS (LAN only). Requires restart if changed.</span>
-            </label>
-        </section>
-
-        <section class="panel" id="panel-branding">
-            <p class="hint">Per-organization look. IT can also deploy <code>branding.json</code> + logo under <code>%APPDATA%\go2rtc-viewer\branding\</code> (see <code>branding/README.md</code>).</p>
-            <label>
-                Product name (taskbar / OS)
-                <input id="productName" type="text" placeholder="Acme Camera Wall">
-            </label>
-            <label>
-                Window title
-                <input id="windowTitle" type="text" placeholder="Acme — Camera Wall">
-            </label>
-            <label>
-                Settings dialog title
-                <input id="settingsTitle" type="text" placeholder="Acme viewer settings">
-            </label>
-            <label>
-                Organization name (banner in viewer)
-                <input id="orgName" type="text" placeholder="Acme Corporation">
-            </label>
-            <label>
-                Footer text (viewer)
-                <input id="footerText" type="text" placeholder="Support: security@acme.example">
-            </label>
-            <label>
-                Accent color
-                <input id="accentColor" type="color">
-            </label>
-            <div class="logo-row">
-                <img id="logoPreview" alt="" hidden>
-                <div>
-                    <label>
-                        Logo file name
-                        <input id="logoFile" type="text" placeholder="logo.png">
-                    </label>
-                    <button type="button" id="btn-pick-logo">Choose logo…</button>
-                </div>
-            </div>
-            <button type="button" id="btn-export-branding">Export branding.json…</button>
-        </section>
-
-        <section class="panel" id="panel-deploy">
-            <p class="hint">For control-room PCs. Kiosk hides the menu bar and keeps the window fullscreen. Auto-start works best on the <strong>installed</strong> app (not <code>npm start</code>).</p>
-            <label class="check">
-                <input id="kiosk" type="checkbox">
-                <span><strong>Kiosk mode</strong> — fullscreen, always on top, hidden menu. Exit via View menu after Alt (or Ctrl+Shift+S for settings).</span>
-            </label>
-            <label class="check">
-                <input id="autoStart" type="checkbox">
-                <span><strong>Start at Windows login</strong></span>
-            </label>
-            <p id="autostart-note" class="hint hidden"></p>
-            <label class="check">
-                <input id="checkUpdates" type="checkbox" checked>
-                <span><strong>Check for updates on startup</strong> — uses the same go2rtc server URL as the camera wall.</span>
-            </label>
-            <p class="hint">Manual check: app menu → <strong>Check for updates…</strong></p>
-            <button type="button" id="btn-check-updates">Check for updates now</button>
-        </section>
-
+        <label>
+            Server URL
+            <input id="server" type="text" placeholder="http://192.168.1.10:1984" required>
+        </label>
+        <label class="check">
+            <input id="insecure" type="checkbox">
+            Allow self-signed HTTPS (LAN only)
+        </label>
         <div class="actions">
-            <button type="submit" class="primary">Save &amp; apply</button>
+            <button type="submit" class="primary">Save &amp; reload</button>
         </div>
     </form>
-
     <script>
-        const $ = (id) => document.getElementById(id);
-        const tabs = document.querySelectorAll('.tabs button');
-        const panels = document.querySelectorAll('.panel');
-
-        tabs.forEach((btn) => {
-            btn.addEventListener('click', () => {
-                tabs.forEach((b) => b.classList.toggle('active', b === btn));
-                panels.forEach((p) => p.classList.toggle('active', p.id === `panel-${btn.dataset.tab}`));
-            });
-        });
-
-        function readBranding() {
-            return {
-                productName: $('productName').value.trim(),
-                windowTitle: $('windowTitle').value.trim(),
-                settingsTitle: $('settingsTitle').value.trim() || 'Application settings',
-                orgName: $('orgName').value.trim(),
-                footerText: $('footerText').value.trim(),
-                accentColor: $('accentColor').value,
-                logoFile: $('logoFile').value.trim(),
-            };
-        }
-
-        function applyBrandingUi(b) {
-            $('productName').value = b.productName || '';
-            $('windowTitle').value = b.windowTitle || '';
-            $('settingsTitle').value = b.settingsTitle || 'Application settings';
-            $('orgName').value = b.orgName || '';
-            $('footerText').value = b.footerText || '';
-            $('accentColor').value = b.accentColor || '#1565c0';
-            $('logoFile').value = b.logoFile || '';
-            document.documentElement.style.setProperty('--accent', b.accentColor || '#1565c0');
-            $('page-title').textContent = b.settingsTitle || 'Application settings';
-        }
-
-        function updateLogoPreview(url) {
-            const img = $('logoPreview');
-            if (url) {
-                img.src = url;
-                img.hidden = false;
-            } else {
-                img.hidden = true;
-                img.removeAttribute('src');
-            }
-        }
+        const form = document.getElementById('form');
+        const server = document.getElementById('server');
+        const insecure = document.getElementById('insecure');
 
         viewerSettings.get().then((cfg) => {
-            $('server').value = cfg.serverUrl || 'http://127.0.0.1:1984';
-            $('insecure').checked = !!cfg.allowInsecureHttps;
-            $('kiosk').checked = !!cfg.kiosk;
-            $('autoStart').checked = !!cfg.autoStart;
-            $('checkUpdates').checked = cfg.checkUpdatesOnStartup !== false;
-            applyBrandingUi(cfg.branding || {});
-            updateLogoPreview(cfg.logoPreviewUrl);
-            if (!cfg.autoStartSupported) {
-                $('autostart-note').textContent = 'Auto-start is only supported on Windows and macOS.';
-                $('autostart-note').classList.remove('hidden');
-                $('autoStart').disabled = true;
-            } else if (!cfg.isPackaged) {
-                $('autostart-note').textContent = 'Dev mode: auto-start may register Electron instead of this app. Use the built installer for production.';
-                $('autostart-note').classList.remove('hidden');
-            }
+            server.value = cfg.serverUrl || 'http://127.0.0.1:1984';
+            insecure.checked = !!cfg.allowInsecureHttps;
         });
 
-        $('btn-pick-logo').addEventListener('click', async () => {
-            const picked = await viewerSettings.pickLogo();
-            if (picked?.logoFile) {
-                $('logoFile').value = picked.logoFile;
-                updateLogoPreview(picked.logoPreviewUrl);
-            }
-        });
-
-        $('btn-export-branding').addEventListener('click', async () => {
-            await viewerSettings.exportBranding(readBranding());
-        });
-
-        $('btn-check-updates').addEventListener('click', async () => {
-            await viewerSettings.checkUpdates($('server').value);
-        });
-
-        $('form').addEventListener('submit', async (e) => {
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.submitter || $('form').querySelector('button[type="submit"]');
-            const prevLabel = btn?.textContent;
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = 'Saving…';
-            }
-            try {
-                await viewerSettings.save({
-                    serverUrl: $('server').value,
-                    allowInsecureHttps: $('insecure').checked,
-                    kiosk: $('kiosk').checked,
-                    autoStart: $('autoStart').checked,
-                    checkUpdatesOnStartup: $('checkUpdates').checked,
-                    branding: readBranding(),
-                });
-                if (btn) {
-                    btn.textContent = 'Saved';
-                }
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    setTimeout(() => {
-                        if (btn.textContent === 'Saved') {
-                            btn.textContent = prevLabel || 'Save & apply';
-                        }
-                    }, 1200);
-                }
-            }
+            await viewerSettings.save({
+                serverUrl: server.value,
+                allowInsecureHttps: insecure.checked,
+            });
         });
     </script>
 </body>

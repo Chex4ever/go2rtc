@@ -23,35 +23,11 @@ npm run start:server
 npx electron . -- --server=http://192.168.1.10:1984
 ```
 
-Kiosk:
-
-```bash
-npm run start:kiosk
-```
-
-**Settings** — **Ctrl+Shift+S** or **Ctrl+,** (File → Settings). Tabs: General, Branding, Deployment.
-
-**Organization branding** — see [branding/README.md](branding/README.md). Per-site `branding.json` + logo without rebuilding.
-
-**App menu** (uses your product name): go2rtc home, config (YAML), viewer admin.
-
-Settings save the URL to:
+**File → Server settings** (Ctrl+,) saves the URL to:
 
 - Windows: `%APPDATA%\go2rtc-viewer\config.json`
 - macOS: `~/Library/Application Support/go2rtc-viewer/config.json`
 - Linux: `~/.config/go2rtc-viewer/config.json`
-
-## Automated tests
-
-No Electron GUI in CI — pure logic is unit-tested with Node’s built-in runner:
-
-```bash
-npm test
-```
-
-Covers: server URL normalization, branding merge, admin URLs, Hikvision sub-stream URLs (`www/stream-url-variants-lib.js`), viewer `stream-pairs.js`.
-
-GitHub Actions: `.github/workflows/viewer-desktop-test.yml` (JS + `go test ./internal/viewer/...`).
 
 ## Build Windows installer
 
@@ -60,11 +36,7 @@ npm install
 npm run dist
 ```
 
-Output: `desktop/electron-viewer/dist/` — NSIS **setup wizard** with a page:
-
-- **Manual** / **Autostart** / **Kiosk** (radio buttons)
-
-Writes initial `config.json` under `%APPDATA%\go2rtc-viewer\`. Re-run **Settings** (Ctrl+Shift+S) to set the go2rtc server URL after install.
+Output: `desktop/electron-viewer/dist/` (NSIS installer + portable exe).
 
 ## Architecture
 

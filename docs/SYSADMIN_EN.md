@@ -204,7 +204,9 @@ Or edit `viewer.yaml` directly and restart go2rtc.
 
 ### 5. Hand off to operators
 
-URL: **`http://SERVER:1984/viewer/`**
+**Browser:** **`http://SERVER:1984/viewer/`**
+
+**Desktop (optional):** build or distribute the [Electron viewer](ELECTRON_VIEWER.md) — operators set server URL once (`http://SERVER:1984`), app opens `/viewer/` automatically.
 
 They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen (main stream).
 
