@@ -64,6 +64,7 @@ const state = {
     onvifProfiles: [],
     probeSrc: '',
     serviceBusy: false,
+    updaterBusy: false,
     settingsLoaded: false,
     bandwidth: {},
     bandwidthPollId: null,
@@ -688,6 +689,89 @@ async function refreshServiceStatus() {
     }
 }
 
+function setUpdaterActionStatus(msg, isError = false) {
+    const el = $('#updater-actions-status');
+    if (!el) {
+        return;
+    }
+    el.textContent = msg || '';
+    el.className = 'settings-status' + (isError ? ' err' : msg ? ' ok' : '');
+}
+
+function formatUpdaterLastStatus(st) {
+    if (!st || typeof st !== 'object') {
+        return '';
+    }
+    const parts = [];
+    if (st.state) {
+        parts.push(String(st.state));
+    }
+    if (st.version_current && st.version_latest) {
+        parts.push(`${st.version_current} → ${st.version_latest}`);
+    }
+    if (st.message) {
+        parts.push(String(st.message));
+    }
+    return parts.join(' · ');
+}
+
+async function refreshUpdaterStatus() {
+    const host = $('#updater-service-status');
+    const last = $('#updater-last-status');
+    const btnInstall = $('#btn-install-updater');
+    const btnUninstall = $('#btn-uninstall-updater');
+    if (!host) {
+        return;
+    }
+    try {
+        const r = await apiFetch('api/updater?action=updater-status');
+        if (!r.ok) {
+            host.textContent = await r.text() || r.statusText;
+            return;
+        }
+        const st = await r.json();
+        if (!st.supported) {
+            host.textContent = st.message || 'Updater service is only supported on Windows.';
+            btnInstall?.setAttribute('disabled', 'disabled');
+            btnUninstall?.setAttribute('disabled', 'disabled');
+            return;
+        }
+        const parts = [];
+        if (st.installed) {
+            parts.push('Updater service installed');
+            parts.push(st.running ? 'running' : 'stopped');
+        } else {
+            parts.push('Updater service not installed');
+        }
+        if (st.message) {
+            parts.push(st.message);
+        }
+        host.textContent = parts.join(' · ');
+        if (btnInstall) {
+            btnInstall.disabled = state.updaterBusy || st.installed;
+        }
+        if (btnUninstall) {
+            btnUninstall.disabled = state.updaterBusy || !st.installed;
+        }
+    } catch (e) {
+        host.textContent = String(e);
+    }
+
+    if (last) {
+        try {
+            const r2 = await apiFetch('api/updater/status');
+            if (r2.ok) {
+                const st2 = await r2.json();
+                last.textContent = formatUpdaterLastStatus(st2);
+            } else {
+                last.textContent = '';
+            }
+        } catch {
+            last.textContent = '';
+        }
+    }
+}
+
 async function putStream(name, src) {
     const url = new URL('api/streams', location.href);
     url.searchParams.set('name', name);
@@ -848,6 +932,7 @@ async function loadSettingsTab() {
     if (!state.settingsLoaded) {
         state.settingsLoaded = true;
         await refreshServiceStatus();
+        await refreshUpdaterStatus();
     }
     setStatus('Loading…');
     try {
@@ -902,6 +987,53 @@ function wireSettings() {
         } finally {
             state.serviceBusy = false;
             serviceCheck.disabled = false;
+        }
+    });
+
+    $('#btn-install-updater')?.addEventListener('click', async () => {
+        if (state.updaterBusy) {
+            return;
+        }
+        state.updaterBusy = true;
+        setUpdaterActionStatus('Installing…');
+        try {
+            const r = await apiFetch('api/updater?action=install-updater', {method: 'POST'});
+            if (!r.ok) {
+                throw new Error(await r.text() || r.statusText);
+            }
+            setUpdaterActionStatus('Installed. Updater will apply updates on schedule.');
+            await refreshUpdaterStatus();
+        } catch (e) {
+            setUpdaterActionStatus(e.message || String(e), true);
+            alert(e.message || String(e));
+        } finally {
+            state.updaterBusy = false;
+            await refreshUpdaterStatus();
+        }
+    });
+
+    $('#btn-uninstall-updater')?.addEventListener('click', async () => {
+        if (state.updaterBusy) {
+            return;
+        }
+        if (!confirm('Uninstall go2rtc-updater service? Automatic updates will stop.')) {
+            return;
+        }
+        state.updaterBusy = true;
+        setUpdaterActionStatus('Uninstalling…');
+        try {
+            const r = await apiFetch('api/updater?action=uninstall-updater', {method: 'POST'});
+            if (!r.ok) {
+                throw new Error(await r.text() || r.statusText);
+            }
+            setUpdaterActionStatus('Uninstalled.');
+            await refreshUpdaterStatus();
+        } catch (e) {
+            setUpdaterActionStatus(e.message || String(e), true);
+            alert(e.message || String(e));
+        } finally {
+            state.updaterBusy = false;
+            await refreshUpdaterStatus();
         }
     });
 

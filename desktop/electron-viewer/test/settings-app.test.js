@@ -18,4 +18,11 @@ describe('settings-app.js', () => {
         const code = fs.readFileSync(SETTINGS_APP, 'utf8');
         assert.match(code, /function suggestPreviewStream/);
     });
+
+    it('wires updater service controls (install/uninstall)', () => {
+        const code = fs.readFileSync(SETTINGS_APP, 'utf8');
+        assert.match(code, /refreshUpdaterStatus/);
+        assert.match(code, /api\/updater\?action=install-updater/);
+        assert.match(code, /api\/updater\?action=uninstall-updater/);
+    });
 });

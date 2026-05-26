@@ -89,6 +89,16 @@
         </label>
         <p class="settings-note">Requires Administrator. Stop this console instance if the service uses the same port.</p>
 
+        <h2>Auto-update (go2rtc-updater service)</h2>
+        <p id="updater-service-status" class="settings-note">Checking…</p>
+        <div class="settings-actions">
+            <button type="button" id="btn-install-updater" class="primary">Install updater service</button>
+            <button type="button" id="btn-uninstall-updater">Uninstall updater service</button>
+            <span id="updater-actions-status" class="settings-status"></span>
+        </div>
+        <p id="updater-last-status" class="settings-note"></p>
+        <p class="settings-note">Fully automatic updates require installing <code>go2rtc-updater.exe</code> next to <code>go2rtc.exe</code> (or in the same folder as the Windows service binary), then installing the updater service.</p>
+
         <h2>Web API</h2>
         <div class="settings-grid">
             <label class="settings-field">Listen address
