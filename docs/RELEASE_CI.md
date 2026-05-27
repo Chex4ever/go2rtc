@@ -83,6 +83,57 @@ See [VIEWER_API.md](VIEWER_API.md).
    - Copy Camera Wall installer to a path referenced by `viewer.desktop.installer`.
    - Restart go2rtc.
 
+## Hotfixes (patch releases)
+
+A **hotfix is not a separate delivery channel** — it is a **patch semver release** (`v1.2.2` → `v1.2.3`) published the same way as a feature release. Installed sites pick it up via autoupdate when the new tag is the **latest non-draft, non-prerelease** on GitHub.
+
+| Component | How clients get the hotfix |
+|-----------|---------------------------|
+| **go2rtc.exe** (embedded `www/viewer`) | `go2rtc-updater` service or manual replace from release asset |
+| **Camera Wall (Electron)** | One-click NSIS from the same GitHub Release (bump desktop version if Electron changed) |
+
+### Version rules
+
+- Use **patch** bumps only for hotfixes: `1.2.2` → `1.2.3` (tag `v1.2.3`).
+- Do **not** reuse or move an existing tag.
+- Avoid suffixes like `v1.2.2-hotfix1` — semver compare uses numeric `major.minor.patch` only.
+- Do **not** publish hotfixes as **Draft** or **Pre-release** if you want autoupdate to see them (`/releases/latest` skips those).
+
+### What to bump
+
+| Change | Bump `package.json`? | Tag + CI? |
+|--------|----------------------|-----------|
+| `www/viewer/*`, Go server, updater | No | Yes |
+| `desktop/electron-viewer/*` | **Yes** (match tag) | Yes |
+| Both | Yes | Yes |
+
+Viewer UI is embedded in `go2rtc.exe` — a **server-only** hotfix is enough for wall UI fixes unless users must install a new Electron build.
+
+### Hotfix checklist
+
+1. Land fix on `master` (PR + merge; see **git-ship** skill).
+2. Decide patch version (next unused `v1.2.x` on [Releases](https://github.com/Chex4ever/go2rtc/releases)).
+3. If desktop code changed: set `desktop/electron-viewer/package.json` `version` to the same `X.Y.Z`.
+4. Tag and push:
+
+   ```powershell
+   git tag -a v1.2.3 -m "Hotfix: short description"
+   git push origin v1.2.3
+   ```
+
+5. Wait for **Release** workflow; confirm assets (`go2rtc_X.Y.Z_windows_amd64.exe`, `go2rtc-updater.exe`, installer if built).
+6. Release notes: start with **Hotfix:** and list what changed.
+
+Sites with `updater.github: Chex4ever/go2rtc` and `auto_apply: true` apply server binaries on schedule. Desktop: **Check for updates** or startup check.
+
+### GitHub `latest` caveat
+
+Autoupdate uses **`/releases/latest`** (most recently published release, not “latest on my minor line”). If you publish `v1.3.0` after `v1.2.3`, all clients are offered **1.3.0**. While a fleet stays on **1.2.x**, do not publish **1.3** until you intend to upgrade everyone — or accept that hotfixes must be the **highest** semver you publish.
+
+### Branching (optional)
+
+For stricter production control: maintain `release/1.2`, cherry-pick hotfixes there, tag from that branch. This fork usually tags from `master` after merge.
+
 ## Fork note
 
 Default upstream is [AlexxIT/go2rtc](https://github.com/AlexxIT/go2rtc). Point `viewer.go2rtc.github` at **your** fork so clients pull your tags, not upstream.
