@@ -40,7 +40,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.24'
 
       - name: Resolve version
         id: ver
@@ -83,7 +83,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.24'
 
       - name: Build go2rtc-updater.exe
         run: go build -ldflags "-s -w" -trimpath -o go2rtc-updater.exe ./cmd/go2rtc-updater
@@ -106,7 +106,7 @@ jobs:
       - name: Install and dist
         working-directory: desktop/electron-viewer
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run dist -- --config.directories.output=release-ci
 
       - uses: actions/upload-artifact@v4
