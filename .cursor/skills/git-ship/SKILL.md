@@ -159,18 +159,24 @@ git checkout master
 git pull origin master
 ```
 
-Report: PR URL, merge commit, tag/release note if user asked for a release (`git tag v*`, `git push origin v*` → Release workflow).
+Report: PR URL, merge commit.
 
-## Releases (optional add-on)
+### 8. Patch release (default after user-facing fixes)
 
-Only when user wants a public release:
+After merge, if the change fixes bugs or affects runtime (viewer, server, Electron, updater) — **unless the user said no release** — follow [docs/RELEASE_CI.md](../../docs/RELEASE_CI.md) hotfix checklist and project rule **patch-releases**:
+
+1. Pick next patch tag (`v1.2.3`) from GitHub Releases.
+2. Bump `desktop/electron-viewer/package.json` if `desktop/electron-viewer/**` changed.
+3. Commit version bump on `master` if needed; then:
 
 ```powershell
-git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git tag -a vX.Y.Z -m "Hotfix: short description"
 git push origin vX.Y.Z
 ```
 
-CI [`.github/workflows/release.yml`](../../.github/workflows/release.yml) publishes GitHub Release assets. Bump `desktop/electron-viewer/package.json` version first if shipping desktop.
+4. Watch Release workflow; report release URL to the user.
+
+Skip step 8 only for docs-only / non-runtime changes (see patch-releases rule).
 
 ## Quick triggers
 

@@ -16,6 +16,9 @@ describe('buildLoadErrorPage', () => {
         assert.match(html, /Connection refused/);
         assert.match(html, /http:\/\/127\.0\.0\.1:1984\/viewer\//);
         assert.match(html, /Error code: -102/);
+        assert.match(html, /id="load-error-retry"/);
+        assert.match(html, /id="load-error-open-server"/);
+        assert.doesNotMatch(html, /onclick=/i);
         assert.doesNotMatch(html, /<script/i);
     });
 

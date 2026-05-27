@@ -1,0 +1,39 @@
+---
+description: Publish a patch GitHub Release after user-facing fixes so autoupdate can deliver them
+alwaysApply: true
+---
+
+# Patch releases on fixes (Тесла / go2rtc fork)
+
+When you **fix a bug or ship a user-visible change** that should reach installed sites (go2rtc service, Camera Wall, viewer UI), treat it as a **hotfix**: merge the fix, then **publish a patch release** — not only a silent commit on `master`.
+
+## Required after merge (unless user opts out)
+
+1. **Bump patch version** — next `vX.Y.Z` (e.g. `v1.2.2` → `v1.2.3`). Check [GitHub Releases](https://github.com/Chex4ever/go2rtc/releases) for the latest tag.
+2. **`desktop/electron-viewer/package.json`** — set `version` to the same `X.Y.Z` if **any** file under `desktop/electron-viewer/` changed; otherwise server-only hotfix can skip desktop bump.
+3. **Tag and push** (on `master` after merge):
+
+   ```powershell
+   git tag -a vX.Y.Z -m "Hotfix: <one-line summary>"
+   git push origin vX.Y.Z
+   ```
+
+4. **Confirm CI** — Release workflow uploads `go2rtc_X.Y.Z_windows_amd64.exe`, `go2rtc-updater.exe`, and the Camera Wall installer when desktop was bumped.
+5. **Tell the user** the release URL and whether the fix is server-only or needs desktop update.
+
+## Do not
+
+- Reuse or force-move existing tags.
+- Publish fixes as Draft/Pre-release if autoupdate should pick them up.
+- Commit `.exe` or `build-*` artifacts to git.
+- Skip tagging because “it’s small” — small fixes are exactly what patch releases are for.
+
+## Details
+
+Full process: [docs/RELEASE_CI.md](docs/RELEASE_CI.md) (Hotfixes section). Git workflow: `.cursor/skills/git-ship/SKILL.md`.
+
+## Exempt (no tag required)
+
+- Docs-only / comments / refactors with **no** runtime behavior change.
+- WIP on a branch not yet merged.
+- User explicitly says **no release** or **don’t tag yet**.

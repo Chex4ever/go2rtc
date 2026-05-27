@@ -226,6 +226,31 @@ function brandingLogoDataUrl() {
     return null;
 }
 
+function wireLoadErrorPageActions(win) {
+    win.webContents.once('did-finish-load', () => {
+        const url = win.webContents.getURL();
+        if (!url.startsWith('data:text/html')) {
+            return;
+        }
+        win.webContents
+            .executeJavaScript(
+                `(function () {
+                  var api = window.go2rtcDesktop;
+                  if (!api) return;
+                  var retry = document.getElementById('load-error-retry');
+                  var openSrv = document.getElementById('load-error-open-server');
+                  if (retry) {
+                    retry.addEventListener('click', function () { api.retryViewerLoad(); });
+                  }
+                  if (openSrv) {
+                    openSrv.addEventListener('click', function () { api.openServerExternal(); });
+                  }
+                })();`,
+            )
+            .catch(() => {});
+    });
+}
+
 function showViewerLoadError(win, config, details) {
     const serverUrl = cfg.normalizeServerUrl(config.serverUrl);
     const html = buildLoadErrorPage({
@@ -235,6 +260,7 @@ function showViewerLoadError(win, config, details) {
         logoDataUrl: brandingLogoDataUrl(),
         ...details,
     });
+    wireLoadErrorPageActions(win);
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 }
 
@@ -509,6 +535,20 @@ function registerShortcuts() {
 function unregisterShortcuts() {
     globalShortcut.unregisterAll();
 }
+
+ipcMain.handle('viewer:retry-load', async () => {
+    const config = getConfig();
+    const win = mainWindow;
+    if (!win || win.isDestroyed()) {
+        return;
+    }
+    await win.loadURL(viewerUrlForConfig(config));
+});
+
+ipcMain.handle('viewer:open-server', async () => {
+    const config = getConfig();
+    await shell.openExternal(cfg.normalizeServerUrl(config.serverUrl));
+});
 
 ipcMain.handle('settings:get', () => {
     const config = getConfig();

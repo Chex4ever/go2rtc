@@ -55,8 +55,8 @@ function buildLoadErrorPage({serverUrl, viewerUrl, errorCode, errorDescription, 
     <h1>Cannot open camera wall</h1>
     ${body}
     <div class="actions">
-      <button type="button" class="primary" onclick="location.href=${JSON.stringify(viewerUrl)}">Retry</button>
-      <a class="btn" href=${JSON.stringify(serverUrl)}>Open go2rtc in browser</a>
+      <button type="button" class="primary" id="load-error-retry">Retry</button>
+      <button type="button" class="btn" id="load-error-open-server">Open go2rtc in browser</button>
     </div>
     <p class="hint">Press <strong>Ctrl+Shift+S</strong> to change the server URL (if the app menu is available).</p>
   </div>
