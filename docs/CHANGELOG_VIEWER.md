@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## 1.2.7 (2026-05-27)
+
+- **Fix:** Camera Wall restarts automatically after one-click update (`start /wait` installer + relaunch).
+- **Tile debug v2** — pipeline “where it breaks”, connect test via `/api/streams?src=`, per-producer state; respects go2rtc `mode:webrtc` yaml options.
+
 ## 1.2.6 (2026-05-27)
 
 - **About** dialog — go2rtc version, viewer UI version, desktop app (Electron), update config; web **About** button + Electron menu item.

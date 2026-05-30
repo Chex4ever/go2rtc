@@ -77,9 +77,22 @@ function parseProducers(entry) {
     return entry.producers.map((p, index) => {
         const url = producerUrl(p);
         const bytes = producerBytes(p);
+        let state = 'unknown';
+        if (isStreamOption(url)) {
+            state = 'go2rtc option (mode:webrtc etc.)';
+        } else if (bytes != null && bytes > 0) {
+            state = 'receiving';
+        } else if (bytes === 0) {
+            state = 'connected, 0 bytes';
+        } else if (url) {
+            state = 'idle — RTSP not connected or camera down';
+        } else {
+            state = 'no URL';
+        }
         return {
             index,
             url,
+            isOption: isStreamOption(url),
             format: p.format_name || '',
             protocol: p.protocol || '',
             remote: p.remote_addr || '',
@@ -88,8 +101,36 @@ function parseProducers(entry) {
             receivers: p.receivers?.length ?? 0,
             senders: p.senders?.length ?? 0,
             online: bytes != null && bytes > 0,
+            state,
         };
     });
+}
+
+function isStreamOption(url) {
+    if (!url) {
+        return false;
+    }
+    const u = String(url).trim();
+    // go2rtc stream list options (see go2rtc README / streams module) — not RTSP URLs
+    return /^mode:/i.test(u) || /^video:/i.test(u) || /^audio:/i.test(u);
+}
+
+function dialableProducers(producerDetails) {
+    return (producerDetails || []).filter((p) => p.url && !p.isOption);
+}
+
+function allProducerDetails(report) {
+    const out = [];
+    for (const key of ['main', 'preview', 'playback']) {
+        const s = report.streams?.[key];
+        if (!s?.producerDetails?.length) {
+            continue;
+        }
+        for (const p of s.producerDetails) {
+            out.push({...p, streamName: s.name, role: key});
+        }
+    }
+    return out;
 }
 
 function summarizeStreamEntry(name, entry) {
@@ -155,79 +196,155 @@ async function probeFrame(url) {
     }
 }
 
-function collectEventText(events) {
-    return (events || []).map((e) => `${e.type} ${e.detail || ''}`.toLowerCase()).join(' ');
+async function fetchAbout() {
+    try {
+        return await api('GET', '/api/viewer/about');
+    } catch {
+        return null;
+    }
+}
+
+function invalidConfigSources(report) {
+    return allProducerDetails(report).filter((p) => p.url && !p.isOption && !/^rtsp:|^http|^ffmpeg:|^onvif:|^webrtc:/i.test(p.url));
+}
+
+function buildPipeline(report) {
+    const playback = report.streams?.playback;
+    const player = report.player || {};
+    const playbackProducers = playback?.producerDetails || [];
+    const rtspProducers = dialableProducers(playbackProducers).filter((p) => /^rtsp:/i.test(p.url));
+    const rtspLive = rtspProducers.some((p) => p.bytes_recv != null && p.bytes_recv > 0);
+    const hasVideo = Boolean(player.videoSrcObject) || (player.video?.videoWidth > 0);
+    const connect = report.connectTest || {};
+    const yamlSources = playbackProducers
+        .map((p) => (p.isOption ? `${p.url} (option)` : p.url))
+        .filter(Boolean)
+        .join(' | ');
+
+    return [
+        {
+            step: '1. Stream name in go2rtc.yaml',
+            ok: !playback?.error,
+            detail: playback?.error || playback?.name || '—',
+        },
+        {
+            step: '2. YAML sources (playback stream)',
+            ok: rtspProducers.length > 0,
+            detail: yamlSources || 'no dialable source URL',
+        },
+        {
+            step: '3. go2rtc connect test GET /api/streams?src=…',
+            ok: connect.ok === true,
+            detail: connect.ok
+                ? 'AddConsumer OK — server can open this stream'
+                : connect.error || 'failed (see go2rtc log)',
+        },
+        {
+            step: '4. RTSP receiving bytes (bytes_recv > 0)',
+            ok: rtspLive,
+            detail: rtspProducers.length
+                ? rtspProducers.map((p) => `${p.url} → ${p.bytes_recv ?? 0} B`).join(' | ')
+                : 'no active RTSP session',
+        },
+        {
+            step: '5. Snapshot /api/frame.jpeg',
+            ok: Boolean(report.probe?.ok),
+            detail: report.probe?.ok
+                ? `HTTP ${report.probe.status}, ${report.probe.bytes ?? '?'} bytes`
+                : report.probe?.error || `HTTP ${report.probe?.status ?? 'failed'}`,
+        },
+        {
+            step: '6. Browser WebSocket',
+            ok: player.wsState === 'OPEN',
+            detail: `${player.wsState || '?'} → ${report.urls?.wsDecoded || '—'}`,
+        },
+        {
+            step: '7. Browser video track',
+            ok: hasVideo || player.pcConnected,
+            detail: hasVideo
+                ? `${player.video?.width || 0}×${player.video?.height || 0}`
+                : `pc=${player.pcConnectionState || 'not connected'}, srcObject=${player.videoSrcObject ? 'yes' : 'no'}`,
+        },
+    ];
+}
+
+function renderPipelineHtml(pipeline) {
+    if (!pipeline?.length) {
+        return '';
+    }
+    const rows = pipeline
+        .map((s) => {
+            const cls = s.ok ? 'tile-debug-ok' : 'tile-debug-warn';
+            const mark = s.ok ? '✓' : '✗';
+            return `<li class="${cls}"><strong>${escapeHtml(mark)} ${escapeHtml(s.step)}</strong><br><code>${escapeHtml(s.detail)}</code></li>`;
+        })
+        .join('');
+    return `<section class="tile-debug-section"><h3>Where it breaks (first ✗ is the problem)</h3><ul class="tile-debug-events tile-debug-pipeline">${rows}</ul></section>`;
 }
 
 function buildDiagnosis(report) {
     const hints = [];
     const playback = report.streams?.playback;
     const player = report.player || {};
-    const events = collectEventText(player.events);
-    const videoErr = player.video?.errorMessage || player.video?.error || '';
+    const pipeline = report.pipeline || buildPipeline(report);
+    const failedStep = pipeline.find((s) => !s.ok);
+    const connectErr = report.connectTest?.error || '';
+
+    if (report.server?.viewer_ui_version && report.server.viewer_ui_version < '1.2.6') {
+        hints.push(
+            `Old viewer UI (${report.server.viewer_ui_version}) — replace go2rtc.exe with v1.2.6+ and reload (Ctrl+R) for pipeline debug.`,
+        );
+    }
+
+    for (const p of invalidConfigSources(report)) {
+        hints.push(`Unknown source scheme on "${p.streamName}": ${p.url} — check go2rtc streams docs.`);
+    }
+
+    if (connectErr.includes('forcibly closed') || connectErr.includes('connection refused')) {
+        hints.push(
+            `RTSP rejected by camera/NVR (step 3): ${connectErr}. For Hikvision ISAPI channel 102 — verify substream enabled, user/password, max RTSP clients, same NVR as channel 101.`,
+        );
+    } else if (connectErr && report.connectTest?.ok === false) {
+        hints.push(`go2rtc connect failed (step 3): ${connectErr}`);
+    }
+
+    if (failedStep?.step.startsWith('4.') && !connectErr) {
+        hints.push(
+            'RTSP session idle (0 bytes) — stream name exists but camera not sending. Open go2rtc web UI → Streams → click stream name to test.',
+        );
+    }
+
+    if (failedStep?.step.startsWith('5.')) {
+        hints.push(`Snapshot failed — open ${report.urls?.probe} in browser tab (same error as go2rtc log).`);
+    }
+
+    if (failedStep?.step.startsWith('7.') && report.probe?.ok) {
+        hints.push('Camera OK on server; browser player stuck — try ↻ Refresh on tile or check ws-error events below.');
+    }
+
+    if (playback?.producerDetails?.some((p) => p.isOption)) {
+        hints.push(
+            'Note: mode:webrtc in yaml is a valid go2rtc stream option on main streams. Log line "unsupported scheme: mode:webrtc" on dial is normal; it is not your black-tile cause unless step 3 fails only for that reason.',
+        );
+    }
+
     const wsErrors = (player.events || [])
         .filter((e) => e.type === 'ws-error')
         .map((e) => e.detail)
         .join(' ');
-
-    if (playback?.error) {
-        hints.push(`Stream "${playback.name}" is missing from go2rtc — add it to streams: in go2rtc.yaml.`);
+    if (wsErrors) {
+        hints.push(`Browser WebSocket errors from go2rtc: ${wsErrors}`);
     }
 
-    for (const p of playback?.producerDetails || []) {
-        if (!p.url) {
-            hints.push('Producer has no URL — stream never started pulling from camera.');
-        } else if (/^mode:/i.test(p.url) || p.url.includes('mode:webrtc')) {
-            hints.push(
-                `Invalid producer URL "${p.url}" — looks like a player mode string, not rtsp/http/ffmpeg. Fix streams: entry in go2rtc.yaml.`,
-            );
-        } else if (/unsupported scheme/i.test(wsErrors) || /unsupported scheme/i.test(events)) {
-            hints.push(
-                `go2rtc rejected URL scheme (${p.url}). Use rtsp://, http(s)://, ffmpeg:, or other supported schemes — not "mode:webrtc".`,
-            );
-        }
-        if (p.bytes_recv === 0 || (p.bytes_recv == null && playback?.producers > 0)) {
-            hints.push(
-                `Camera source not delivering data (${p.url}). Check RTSP credentials, firewall, and camera uptime — matches go2rtc log "connection forcibly closed".`,
-            );
-        }
+    if (player.wsState === 'OPEN' && !player.videoSrcObject && !player.pcConnected && failedStep?.step.startsWith('7.')) {
+        hints.push('WebSocket open but no video — fix steps 3–5 first (RTSP upstream).');
     }
 
-    if (/empty src attribute/i.test(videoErr) || /empty src attribute/i.test(events)) {
-        if (playback?.online) {
-            hints.push(
-                'Video element has no media yet although go2rtc receives bytes — WebRTC/MSE negotiation may still be in progress; try ↻ Refresh. If persistent, check ws-error lines below.',
-            );
-        } else {
-            hints.push(
-                'Video "Empty src attribute" — no frames reached the browser because the upstream stream is offline or failed (fix RTSP/source first).',
-            );
-        }
+    if (!hints.length && failedStep) {
+        hints.push(`First failing step: ${failedStep.step} — ${failedStep.detail}`);
     }
 
-    if (player.wsState === 'OPEN' && !player.pcConnected && player.videoSrcObject === false) {
-        hints.push(
-            `WebSocket OK but WebRTC not connected (mode: ${player.mode}). Look for ws-error events — often upstream stream failure or codec mismatch.`,
-        );
-    }
-
-    if (player.wsState === 'CONNECTING' || player.wsState === 'CLOSED') {
-        hints.push('WebSocket not open — go2rtc unreachable, wrong stream name, or player still connecting (stagger queue).');
-    }
-
-    if (report.probe?.ok === false && !report.probe?.error?.includes('abort')) {
-        hints.push(
-            `Server snapshot failed (${report.probe.status || report.probe.error}) — go2rtc cannot produce a JPEG for this stream.`,
-        );
-    } else if (report.probe?.ok) {
-        hints.push('Server snapshot OK — go2rtc can produce frames; black tile is likely player/WebRTC path, not RTSP.');
-    }
-
-    if (!hints.length && !playback?.online) {
-        hints.push('Black tile? Check preview stream (*_sub) exists, RTSP URL in config, and stagger delay — try ↻ Refresh on tile.');
-    }
-
-    return hints;
+    return [...new Set(hints)];
 }
 
 function videoSnapshot(video) {
@@ -305,9 +422,18 @@ export async function buildTileDebugReport(ctx) {
     const previewSummary = preview ? summarizeStreamEntry(preview, streams[preview]) : null;
     let playbackSummary = summarizeStreamEntry(ctx.playbackName, streams[ctx.playbackName]);
 
-    const playbackDetail = await fetchStreamDetail(ctx.playbackName);
+    const [playbackDetail, mainDetail, serverAbout] = await Promise.all([
+        fetchStreamDetail(ctx.playbackName),
+        fetchStreamDetail(ctx.logicalName),
+        fetchAbout(),
+    ]);
+
     if (playbackDetail && !playbackDetail.error) {
         playbackSummary = summarizeStreamEntry(ctx.playbackName, playbackDetail);
+    }
+    let mainSummaryDetailed = mainSummary;
+    if (mainDetail && !mainDetail.error) {
+        mainSummaryDetailed = summarizeStreamEntry(ctx.logicalName, mainDetail);
     }
 
     const probeUrl = apiUrl(`/api/frame.jpeg?src=${encodeURIComponent(ctx.playbackName)}&width=320&height=180`);
@@ -315,6 +441,7 @@ export async function buildTileDebugReport(ctx) {
 
     const report = {
         generatedAt: new Date().toISOString(),
+        server: serverAbout,
         layout: {
             id: layout?.id ?? state.currentLayoutId,
             grid: layout?.grid,
@@ -334,15 +461,21 @@ export async function buildTileDebugReport(ctx) {
             probe: probeUrl,
         },
         streams: {
-            main: mainSummary,
+            main: mainSummaryDetailed,
             preview: previewSummary,
             playback: playbackSummary,
             playbackDetailError: playbackDetail?.error || null,
+            mainDetailError: mainDetail?.error || null,
             fetchError: streamsError,
         },
         probe,
+        connectTest: {
+            ok: playbackDetail && !playbackDetail.error,
+            error: playbackDetail?.error || null,
+        },
         player: playerSnapshot(ctx.vs),
     };
+    report.pipeline = buildPipeline(report);
     report.diagnosis = buildDiagnosis(report);
     return report;
 }
@@ -359,7 +492,26 @@ function renderSection(title, rows) {
 }
 
 function renderReportHtml(report) {
-    const parts = [
+    const parts = [];
+
+    if (report.server?.viewer_ui_version) {
+        parts.push(
+            renderSection('Server / viewer build', [
+                ['go2rtc', report.server.go2rtc_version],
+                ['Viewer UI', report.server.viewer_ui_version],
+                ['Tile debug v2', report.server.features?.tile_debug ? 'yes' : 'no'],
+            ]),
+        );
+    }
+
+    parts.push(renderPipelineHtml(report.pipeline));
+
+    if (report.diagnosis?.length) {
+        const list = report.diagnosis.map((h) => `<li>${escapeHtml(h).replace(/\n/g, '<br>')}</li>`).join('');
+        parts.push(`<section class="tile-debug-section"><h3>What to fix</h3><ul class="tile-debug-events">${list}</ul></section>`);
+    }
+
+    parts.push(
         renderSection('Layout & channels', [
             ['Layout', report.layout.id],
             ['Grid', report.layout.grid],
@@ -384,6 +536,11 @@ function renderReportHtml(report) {
             ['Video network', NETWORK_STATES[report.player.video?.networkState] ?? report.player.video?.networkState],
             ['Video error', report.player.video?.errorMessage || report.player.video?.error],
         ]),
+        renderSection('Server connect test', [
+            ['GET', report.urls.apiStream],
+            ['Result', report.connectTest?.ok ? 'OK' : 'failed'],
+            ['go2rtc error', report.connectTest?.error || '—'],
+        ]),
         renderSection('Server snapshot probe', [
             ['URL', report.urls.probe],
             ['Result', report.probe?.ok ? 'OK' : 'failed'],
@@ -391,7 +548,7 @@ function renderReportHtml(report) {
             ['Bytes', report.probe?.bytes],
             ['Error', report.probe?.error],
         ]),
-    ];
+    );
 
     for (const key of ['main', 'preview', 'playback']) {
         const s = report.streams[key];
@@ -412,6 +569,8 @@ function renderReportHtml(report) {
             parts.push(
                 renderSection(`Producer #${p.index} (${s.name})`, [
                     ['URL', p.url || '—'],
+                    ['State', p.state || '—'],
+                    ['Option?', p.isOption ? 'yes (mode:webrtc etc.)' : 'no'],
                     ['Format', p.format || '—'],
                     ['Protocol', p.protocol || '—'],
                     ['Remote', p.remote || '—'],
@@ -430,9 +589,8 @@ function renderReportHtml(report) {
         parts.push(`<p class="tile-debug-warn">Stream detail: ${escapeHtml(report.streams.playbackDetailError)}</p>`);
     }
 
-    if (report.diagnosis?.length) {
-        const list = report.diagnosis.map((h) => `<li>${escapeHtml(h)}</li>`).join('');
-        parts.push(`<section class="tile-debug-section"><h3>Diagnosis</h3><ul class="tile-debug-events">${list}</ul></section>`);
+    if (report.streams.mainDetailError) {
+        parts.push(`<p class="tile-debug-warn">Main stream detail: ${escapeHtml(report.streams.mainDetailError)}</p>`);
     }
 
     const events = report.player.events || [];

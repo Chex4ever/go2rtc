@@ -56,9 +56,15 @@ FunctionEnd
   ${ifNot} ${isUpdated}
     Call WriteViewerInstallConfig
   ${endIf}
+  ; Silent one-click update skips the finish page — relaunch here too.
+  ${If} ${Silent}
+    ${If} ${isUpdated}
+      Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
+    ${EndIf}
+  ${EndIf}
 !macroend
 
-; After silent one-click update (/S), relaunch the app (electron-builder may skip UI finish page).
+; Finish page (interactive installs)
 !macro customFinish
   ${If} ${Silent}
     ${If} ${isUpdated}
