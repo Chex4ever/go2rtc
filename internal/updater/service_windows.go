@@ -5,9 +5,10 @@ package updater
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/AlexxIT/go2rtc/internal/winsvc"
 )
 
 // InstallService registers Windows service go2rtc-updater.
@@ -31,7 +32,7 @@ func InstallService(updaterExe, configPath string) error {
 		bin += ` -config "` + cfg + `"`
 	}
 
-	return runScUpdater("create", updaterServiceName,
+	return winsvc.RunSc(true, "create", updaterServiceName,
 		"binPath=", bin,
 		"start=", "auto",
 		"DisplayName=", "go2rtc auto-updater",
@@ -40,19 +41,19 @@ func InstallService(updaterExe, configPath string) error {
 
 // UninstallService removes go2rtc-updater service.
 func UninstallService() error {
-	_ = runScUpdater("stop", updaterServiceName)
-	return runScUpdater("delete", updaterServiceName)
+	_ = winsvc.RunSc(true, "stop", updaterServiceName)
+	return winsvc.RunSc(true, "delete", updaterServiceName)
 }
 
 // StartService starts go2rtc-updater service.
 func StartService() error {
-	return runScUpdater("start", updaterServiceName)
+	return winsvc.RunSc(true, "start", updaterServiceName)
 }
 
 // UpdaterServiceStatus reports installation state.
 func UpdaterServiceStatus() (ServiceStatus, error) {
 	st := ServiceStatus{Name: updaterServiceName, Supported: true}
-	out, err := scQueryUpdater()
+	out, err := winsvc.QueryService(updaterServiceName)
 	if err != nil {
 		return st, err
 	}
@@ -87,29 +88,4 @@ func UpdaterExePath(nearExe string) (string, error) {
 		return "", fmt.Errorf("go2rtc-updater.exe not found next to %s", nearExe)
 	}
 	return p, nil
-}
-
-func scQueryUpdater() (string, error) {
-	cmd := exec.Command("sc", "query", updaterServiceName)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		if strings.Contains(string(out), "1060") {
-			return "", nil
-		}
-		return "", fmt.Errorf("sc query: %s", strings.TrimSpace(string(out)))
-	}
-	return string(out), nil
-}
-
-func runScUpdater(args ...string) error {
-	cmd := exec.Command("sc", args...)
-	out, err := cmd.CombinedOutput()
-	text := strings.TrimSpace(string(out))
-	if err != nil {
-		if strings.Contains(text, "1073") || strings.Contains(text, "1062") {
-			return nil
-		}
-		return fmt.Errorf("sc %s: %s", strings.Join(args, " "), text)
-	}
-	return nil
 }

@@ -87,7 +87,7 @@
             <input type="checkbox" id="service-install">
             Run go2rtc as a Windows service (auto-start on boot)
         </label>
-        <p class="settings-note">Requires Administrator. Stop this console instance if the service uses the same port.</p>
+        <p class="settings-note">Requires Administrator — Windows shows a UAC prompt when you install. Stop this console instance if the service uses the same port.</p>
 
         <h2>Auto-update (go2rtc-updater service)</h2>
         <p id="updater-service-status" class="settings-note">Checking…</p>
@@ -97,7 +97,7 @@
             <span id="updater-actions-status" class="settings-status"></span>
         </div>
         <p id="updater-last-status" class="settings-note"></p>
-        <p class="settings-note">Fully automatic updates require installing <code>go2rtc-updater.exe</code> next to <code>go2rtc.exe</code> (or in the same folder as the Windows service binary), then installing the updater service.</p>
+        <p class="settings-note">Fully automatic updates require <code>go2rtc-updater.exe</code> next to <code>go2rtc.exe</code>, then installing the updater service (UAC prompt, or elevated: <code>go2rtc-updater install-service -config go2rtc.yaml</code>).</p>
 
         <h2>Web API</h2>
         <div class="settings-grid">

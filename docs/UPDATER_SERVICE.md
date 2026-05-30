@@ -44,11 +44,15 @@ HTTP API: `GET /api/updater/status`
 
 Place **`go2rtc-updater.exe`** next to **`go2rtc.exe`**, then either:
 
-### A — From go2rtc API (after go2rtc is running)
+### A — From go2rtc Settings or API (after go2rtc is running)
+
+Settings → **Install updater service**, or:
 
 ```http
 POST /api/updater?action=install-updater
 ```
+
+Windows will show a **UAC elevation prompt** (Administrator required). If go2rtc runs as a non-interactive service and UAC cannot appear, use option B instead.
 
 ### B — Command line (elevated)
 

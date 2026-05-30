@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## 1.2.8 (2026-05-27)
+
+- **Fix:** Windows service install (go2rtc + go2rtc-updater) retries with UAC elevation when `sc create` fails with access denied (error 5).
+- Settings notes clarify Administrator / UAC requirement for service install.
+
 ## 1.2.7 (2026-05-27)
 
 - **Fix:** Camera Wall restarts automatically after one-click update (`start /wait` installer + relaunch).

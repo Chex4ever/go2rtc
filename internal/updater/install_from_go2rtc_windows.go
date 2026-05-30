@@ -18,5 +18,8 @@ func InstallUpdaterFromGo2rtc() error {
 	if err != nil {
 		return err
 	}
-	return InstallService(updaterExe, app.ConfigPath)
+	if err := InstallService(updaterExe, app.ConfigPath); err != nil {
+		return err
+	}
+	return StartService()
 }
