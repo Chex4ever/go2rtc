@@ -285,6 +285,7 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 | Problem | Check |
 |---------|--------|
 | Blank / black viewer window | Should show an **on-screen error** (server unreachable, JS error). If still blank: hard-refresh, rebuild `go2rtc.exe`, check browser console |
+| “Cannot open camera wall” / ERR_CONNECTION_REFUSED | **Not the login screen** — nothing listening at the configured server URL. Start go2rtc on this PC **or** set server URL to your network host (**Ctrl+Shift+S** → **Server settings…**) |
 | “Loading…” / “did not start” on new PC | **Viewer admin ≠ wall login** — operator must **Sign in** on `/viewer/` once. If stuck 20s, check server URL (Electron **Ctrl+Shift+S**) and that go2rtc is running |
 | “Cannot reach go2rtc” | Start go2rtc; open `http://SERVER:1984/`; fix server URL in Electron (**Ctrl+Shift+S**) |
 | Desktop app won’t update | `viewer.desktop.github` or local `version`+installer; test `/api/viewer/desktop/update` (`source`) |
@@ -303,6 +304,9 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 | Document | Audience |
 |----------|----------|
 | [viewer.yaml.example](viewer.yaml.example) | Copy-paste config |
+| [SECURITY_VIEWER.md](SECURITY_VIEWER.md) | Security model (LAN) |
+| [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) | Desktop Camera Wall |
+| [VIEWER_API.md](VIEWER_API.md) | HTTP API reference |
 | [CUSTOM_UI_PLAN.md](CUSTOM_UI_PLAN.md) | Internal feature / dev plan |
 | [README.md](../README.md) | Upstream go2rtc (streams, ffmpeg, protocols) |
 

@@ -118,6 +118,7 @@ streams:
 
 - `cameras:` — **разрешённый список**; на раскладку нельзя вывести камеру вне списка.
 - Камер не больше, чем плиток в сетке (например, не более 25 для grid 25).
+- В редакторе раскладки **основной** и **preview (sub)** поток — отдельные галочки; **Select all** отмечает только основные камеры — субпотоки назначайте явно.
 - **Порядок плиток** сохраняется для каждого пользователя в `viewer.yaml` (`user_layout_state`); на ПК можно перетаскивать плитки.
 
 ---
@@ -282,6 +283,8 @@ streams:
 | Симптом | Что проверить |
 |---------|----------------|
 | Чёрный экран viewer / приложения | Должна быть **ошибка на экране**; иначе — перезагрузка, пересборка `go2rtc.exe` |
+| «Cannot open camera wall» / ERR_CONNECTION_REFUSED | **Не экран входа** — go2rtc не отвечает по URL из настроек. Запустите go2rtc или укажите IP сервера в **Ctrl+Shift+S** (не `127.0.0.1`, если сервер на другом ПК) |
+| «Loading…» / «did not start» на новом ПК | **Админка ≠ вход на стену** — оператор один раз **Sign in** на `/viewer/`. Если висит 20 с — URL сервера и запущен ли go2rtc |
 | «Cannot reach go2rtc» | Запущен ли go2rtc; URL в Electron (**Ctrl+Shift+S**) |
 | Нет обновления desktop | `viewer.desktop.github` или `version`+installer; `/api/viewer/desktop/update` → `source: github` или local |
 | Не входит в viewer | Пользователь в `viewer.yaml`, пароль, ID раскладок |
@@ -302,3 +305,5 @@ streams:
 | [CUSTOM_UI_PLAN.md](CUSTOM_UI_PLAN.md) | План функций / разработка |
 | [README.md](../README.md) | Upstream go2rtc |
 | [SYSADMIN_EN.md](SYSADMIN_EN.md) | English version |
+| [SECURITY_VIEWER.md](SECURITY_VIEWER.md) | Модель безопасности (LAN) |
+| [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) | Desktop Camera Wall |

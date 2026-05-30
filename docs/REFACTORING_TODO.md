@@ -1,6 +1,6 @@
 # Refactoring & improvement backlog (Тесла / go2rtc fork)
 
-**Updated:** 2026-05-31 (pass 3). **Invariant:** zero-click morning start must keep working — guarded by `morning-start.test.js`, `layout-auto.test.js`, `viewer-modules.test.js`.
+**Updated:** 2026-05-31 (pass 4 — docs sync). **Invariant:** zero-click morning start must keep working — guarded by `morning-start.test.js`, `layout-auto.test.js`, `viewer-modules.test.js`.
 
 ## How to use this file
 
@@ -78,12 +78,14 @@
 ## P3 — Tests & CI
 
 - [x] **REF-CI-02** — Commit `package-lock.json` in `desktop/electron-viewer/`
-- [ ] **REF-CI-03** — Windows `npm run dist` on release tag only
+- [x] **REF-CI-03** — Windows `npm run dist` on release tag only (`release.yml` on `v*`; not duplicated in `build.yml`)
+- [x] **REF-CI-05** — `validate-desktop-update-meta.mjs` + release `fetch-depth: 0` (Phase 1)
+- [x] **REF-CI-06** — `internal/release` tests + patch-build integration in viewer CI (Phase 2)
 - [x] **REF-TEST-02** — `settings-app.test.js` parse test
 - [ ] **REF-TEST-04** — E2E Playwright (optional)
 - [ ] **REF-TEST-05** — MIME types regression for `static.go`
-- [ ] **REF-DOC-03** — README fork section expand
-- [ ] **REF-DOC-05** — RU parity for SECURITY_VIEWER link
+- [x] **REF-DOC-03** — README fork section expand
+- [x] **REF-DOC-05** — RU parity for SECURITY_VIEWER link (SYSADMIN_RU + EN related docs)
 
 ---
 
@@ -97,6 +99,8 @@
 - [x] **REF-FEAT-14** — Per-tile debug modal (`viewer-tile-debug.js`, 🐞 on wall tiles)
 - [x] **REF-FEAT-15** — Camera Wall updates from GitHub (`viewer.desktop.github`)
 - [x] **REF-FEAT-16** — Progressive desktop updates (patch zip, viewer-only toast, full NSIS fallback)
+- [x] **REF-FEAT-17** — Connection-refused UX + login bootstrap fixes (v1.2.13–1.2.14)
+- [x] **REF-FEAT-18** — Release patch meta validation + reproducible Electron CI (Phase 1–2)
 
 ## P4 — Later
 
@@ -132,8 +136,13 @@
 | `www/viewer/viewer-state.js` | Shared state |
 | `www/viewer/morning-start.js` | Zero-click plan |
 | `www/viewer/layout-auto.js` | Last layout storage |
+| `www/viewer/viewer-session-boot.js` | Login vs fatal bootstrap errors |
+| `www/viewer/stream-pairs.js` | Main/preview stream pairing (admin) |
 | `www/viewer/admin*.js` | Admin UI modules |
+| `scripts/validate-desktop-update-meta.mjs` | Release CI meta guard |
+| `scripts/build-desktop-patch.mjs` | Shell patch zip builder |
 | `internal/viewer/` | Go API |
+| `internal/release/` | GitHub release asset picker |
 | `desktop/electron-viewer/` | Windows shell |
 
 ---

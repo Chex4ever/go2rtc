@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## Unreleased (master after v1.2.14)
+
+- **CI:** committed `package-lock.json`, `npm ci`, Go **1.24** in all workflows, `internal/release` tests, patch-build integration tests, Windows patch zip fix (`Compress-Archive -Path`).
+- **CI:** `build.yml` no longer runs on release tags (avoid duplicate jobs with `release.yml`).
+
 ## 1.2.14 (2026-05-31)
 
 - **Fix:** Connection refused on startup — clearer error (not a login problem), **Server settings** button, auto-open Settings on localhost, retry ~12s while go2rtc service starts.
@@ -14,7 +19,7 @@
 - **Electron:** clearer 20s load-timeout message when the server URL is wrong or go2rtc is down.
 - Regression tests: `viewer-session-boot.js`, layout stream partitioning.
 
-## 1.2.11 (2026-05-31)
+## 1.2.11 (2026-05-30)
 
 - **Progressive desktop updates** — three tiers: server UI reload (0 bytes + 5s toast), shell patch zip (changed files only), full NSIS fallback.
 - CI publishes `desktop-shell-manifest-{version}.json`, optional `go2rtc.Camera.Wall.Patch.{from}-{to}.zip`, and `desktop-update-meta-{version}.json`.

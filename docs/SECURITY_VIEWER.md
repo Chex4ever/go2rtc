@@ -28,7 +28,7 @@ This fork targets **private LAN** control rooms, not public internet exposure.
 - HTTPS reverse proxy in front of go2rtc
 - Firewall :1984 to camera VLAN only
 - Do not expose viewer admin or YAML editor to WAN
-- Future: password hashing (`REF-SEC-01` in `REFACTORING_TODO.md`)
+- Future: password hashing (see **REF-ACCEPT-02** / plaintext v1 in `REFACTORING_TODO.md`)
 
 ## Zero-click morning start
 

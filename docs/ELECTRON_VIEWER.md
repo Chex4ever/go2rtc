@@ -27,9 +27,9 @@ npm start
 
 | What you should see | Meaning |
 |---------------------|---------|
-| **Login screen** (dark panel, “Camera wall”, user/password) | OK — sign in with a user from `viewer.yaml` |
-| **“Cannot reach go2rtc”** (red text, server hint) | Server down, wrong URL, or firewall — fix URL with **Ctrl+Shift+S** or start go2rtc |
-| **“Cannot open camera wall”** (desktop only) | Electron could not load `/viewer/` at all (connection refused, etc.) — **Retry** or fix server URL |
+| **Login screen** (dark panel, “Camera wall”, user/password) | Server reachable — sign in with a **viewer user** from `viewer.yaml` (not the admin password) |
+| **“Cannot reach go2rtc”** (red text, server hint) | Page loaded but API failed — start go2rtc or fix URL (**Ctrl+Shift+S**) |
+| **“Cannot open camera wall”** (desktop only) | Electron could not load `/viewer/` at all (`ERR_CONNECTION_REFUSED`, wrong host). **Not login** — start go2rtc or set server URL (**Ctrl+Shift+S** → **Server settings…**). Since v1.2.14: clearer text, retry ~12s, auto-open Settings on localhost |
 | **“Camera wall failed to start”** | JavaScript or page error — message shows the cause; reload after fixing |
 
 You should **not** see a blank black window: errors are shown on screen.

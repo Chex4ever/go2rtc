@@ -52,16 +52,27 @@ Response includes `"source": "github"` and a `download_url` pointing at the late
 ```yaml
 viewer:
   desktop:
-    version: "1.2.11"
-    installer: "desktop/go2rtc Camera Wall Setup 1.2.11.exe"
-    patch: "desktop/go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip"
-    patch_from: "1.2.10"
+    version: "1.2.14"
+    installer: "desktop/go2rtc.Camera.Wall.Setup.1.2.14.exe"
+    patch: "desktop/go2rtc.Camera.Wall.Patch.1.2.13-1.2.14.zip"
+    patch_from: "1.2.13"
     patch_sha256: "..."
     shell_changed: true
     notes: "Optional text shown in the update dialog"
 ```
 
-Set `shell_changed: false` when only `www/viewer/**` changed (viewer-only release).
+Example **viewer-only** local entry (no desktop download when `from` matches):
+
+```yaml
+viewer:
+  desktop:
+    version: "1.2.14"
+    installer: "desktop/go2rtc.Camera.Wall.Setup.1.2.14.exe"
+    shell_changed: false
+    notes: "Reload viewer (Ctrl+R) — web UI only"
+```
+
+Set `shell_changed: false` when only `www/viewer/**` changed (viewer-only release). CI sets `update_kind: none` in `desktop-update-meta-*.json` when shell manifests are identical.
 
 Static alternative: `/viewer/desktop/update.json` on the web root.
 
@@ -86,8 +97,8 @@ Or local mirror:
 ```yaml
 viewer:
   go2rtc:
-    version: "1.2.4"
-    binary: "releases/go2rtc_1.2.4_windows_amd64.exe"
+    version: "1.2.14"
+    binary: "releases/go2rtc_1.2.14_windows_amd64.exe"
     sha256: "…"
 ```
 
@@ -119,6 +130,8 @@ See [UPDATER_SERVICE.md](UPDATER_SERVICE.md).
 
 - `/viewer/` — camera wall (`?auto_open=1&default_layout=wall_25` for kiosk)
 - `/viewer/admin.html` — admin UI
+
+**Desktop vs web:** the Electron app loads `/viewer/` from the configured server URL. If go2rtc is unreachable, you see **Cannot open camera wall** (not the login form). After the server responds, unauthenticated users get **Sign in**. Creating a user in admin does not log the wall in — see [SYSADMIN_EN.md](SYSADMIN_EN.md) troubleshooting.
 
 Per-tile **debug** (🐞 on tile controls): layout channels, `/api/streams`, WebRTC/WebSocket state, event log, copy JSON report — for black-tile troubleshooting. Controls appear on **tile hover**.
 

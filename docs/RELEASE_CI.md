@@ -123,6 +123,12 @@ Release assets (Windows desktop job):
 
 First release with manifests (e.g. v1.2.11) has no patch zip; v1.2.12+ patches from the previous version automatically.
 
+#### Shallow clone pitfall (fixed in v1.2.14)
+
+The desktop release job must resolve the **previous tag** (`git describe vX.Y.Z^`) and download `desktop-shell-manifest-{prev}.json` from GitHub. With default `fetch-depth: 1`, `git describe` often fails → CI wrote bogus `desktop-update-meta-*.json` (`changed_files: 0`, no `from`/`to`) and skipped real patch diffs.
+
+**Fix:** `build-desktop` uses `fetch-depth: 0` and `fetch-tags: true`, then runs `scripts/validate-desktop-update-meta.mjs`. If validation fails, the release job fails instead of publishing bad metadata.
+
 Release CI checks out **full git history** (`fetch-depth: 0`) so the previous tag resolves correctly, then runs `scripts/validate-desktop-update-meta.mjs` to ensure `desktop-update-meta-*.json` matches the manifest diff (catches bogus `changed_files: 0`).
 
 **Reproducible Electron builds:** `desktop/electron-viewer/package-lock.json` is committed; CI and release use `npm ci`. **Go 1.24** is used in `go.mod`, `release.yml`, `viewer-desktop-test.yml`, and `build.yml`.
