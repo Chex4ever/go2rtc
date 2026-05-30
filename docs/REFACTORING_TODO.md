@@ -94,6 +94,8 @@
 - [x] **REF-FEAT-11** — Electron checks Camera Wall + go2rtc updates together
 - [x] **REF-FEAT-12** — One-click Camera Wall update (silent NSIS + restart)
 - [x] **REF-FEAT-13** — `go2rtc-updater` Windows service (auto stop/replace/start go2rtc.exe)
+- [x] **REF-FEAT-14** — Per-tile debug modal (`viewer-tile-debug.js`, 🐞 on wall tiles)
+- [x] **REF-FEAT-15** — Camera Wall updates from GitHub (`viewer.desktop.github`)
 
 ## P4 — Later
 
@@ -123,6 +125,7 @@
 |------|---------|
 | `www/viewer/viewer-app.js` | Entry, auth, init |
 | `www/viewer/viewer-wall.js` | Wall grid, tiles, focus, tile save |
+| `www/viewer/viewer-tile-debug.js` | Per-tile debug modal |
 | `www/viewer/viewer-api.js` | HTTP API client |
 | `www/viewer/viewer-ui.js` | Screens, chrome, errors |
 | `www/viewer/viewer-state.js` | Shared state |

@@ -111,6 +111,18 @@ function videoSnapshot(video) {
     };
 }
 
+function decodeWsStreamName(src) {
+    const raw = (src.match(/src=([^&]+)/) || [])[1] || '';
+    if (!raw) {
+        return '';
+    }
+    try {
+        return decodeURIComponent(raw);
+    } catch {
+        return raw;
+    }
+}
+
 function playerSnapshot(vs) {
     if (!vs) {
         return {error: 'viewer-stream element missing'};
@@ -120,7 +132,7 @@ function playerSnapshot(vs) {
         wsURL: vs.wsURL || vs.src || '',
         mode: vs.mode,
         wsState: WS_STATES[vs.wsState] ?? String(vs.wsState),
-        pcConnected: vs.pcState === 1,
+        pcConnected: vs.pcState === WebSocket.OPEN,
         ...snap,
         video: videoSnapshot(vs.video),
     };
@@ -166,7 +178,7 @@ export async function buildTileDebugReport(ctx) {
         },
         urls: {
             ws: ctx.src,
-            wsDecoded: decodeURIComponent((ctx.src.match(/src=([^&]+)/) || [])[1] || ''),
+            wsDecoded: decodeWsStreamName(ctx.src),
             apiStream: apiUrl(`/api/streams?src=${encodeURIComponent(ctx.playbackName)}`),
             probe: apiUrl(`/api/frame.jpeg?src=${encodeURIComponent(ctx.playbackName)}&width=320&height=180`),
         },

@@ -177,9 +177,8 @@ viewer:
   go2rtc:                     # optional: go2rtc.exe updates (GitHub Releases or local file)
     github: "YOUR_ORG/go2rtc"  # uses latest GitHub release asset (windows_amd64)
     cache_ttl: 10m
-  desktop:                    # optional: Camera Wall app updates from this server
-    version: "1.2.2"
-    installer: "desktop/releases/go2rtc Camera Wall Setup 1.2.2.exe"
+  desktop:                    # optional: Camera Wall app updates (GitHub or local installer)
+    github: "YOUR_ORG/go2rtc"  # recommended with CI; else version + installer path on disk
     notes: "Optional release notes"
 ```
 
@@ -263,6 +262,7 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 | Mute | Sound off by default; unmute per tile if stream has audio |
 | Zoom / pan | Per tile; pinch on mobile |
 | Snapshot | JPEG download; server fallback if player not ready |
+| Tile debug | 🐞 — channels, streams API, WebRTC state, copy JSON report |
 | Record | Browser WebM from live tile (Chrome/WebRTC works best) |
 | Restart | Saving settings in go2rtc web UI triggers process restart (Windows-safe) |
 
@@ -285,10 +285,10 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 |---------|--------|
 | Blank / black viewer window | Should show an **on-screen error** (server unreachable, JS error). If still blank: hard-refresh, rebuild `go2rtc.exe`, check browser console |
 | “Cannot reach go2rtc” | Start go2rtc; open `http://SERVER:1984/`; fix server URL in Electron (**Ctrl+Shift+S**) |
-| Desktop app won’t update | `viewer.desktop` in yaml; installer file on disk; server `version` higher than app; test `/api/viewer/desktop/update` |
+| Desktop app won’t update | `viewer.desktop.github` or local `version`+installer; test `/api/viewer/desktop/update` (`source`) |
+| Black tile | Stream in go2rtc; name in layout allow-list; use **🐞** on tile → preview/substream, RTSP |
 | Viewer login fails | User in `viewer.yaml`, password, layout IDs spelled correctly |
 | Empty layout list | User’s `layouts:` must match layout keys in `viewer.yaml` |
-| Camera tile black | Stream works in go2rtc stream list; name matches layout allow-list |
 | Grid OK, fullscreen bad | Main stream URL in `go2rtc.yaml`; preview map only affects grid |
 | Admin UI 401 | `viewer.admin_password` in `go2rtc.yaml` |
 | go2rtc pages ask login, viewer OK | Expected — viewer bypasses API basic auth; config still protected |
