@@ -64,11 +64,9 @@ FunctionEnd
   ${EndIf}
 !macroend
 
-; Interactive installs — run app from finish page (electron-builder default + silent update above)
+; Interactive installs — runAfterFinish in electron-builder handles the finish page.
 !macro customFinish
-  ${IfNot} ${Silent}
-    ; default runAfterFinish handles interactive path
-  ${EndIf}
+!macroend
 
 Function WriteViewerInstallConfig
   CreateDirectory "$APPDATA\go2rtc-viewer"
