@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/AlexxIT/go2rtc/internal/updater"
 	"github.com/rs/zerolog"
@@ -49,7 +47,9 @@ Config: same go2rtc.yaml with top-level updater: section.
 
 	switch cmd {
 	case "run-service":
-		runServiceLoop(cfg)
+		if err := updater.RunWindowsService(cfg); err != nil {
+			log.Fatal().Err(err).Msg("run-service")
+		}
 	case "run-once":
 		runOnce(cfg)
 	case "check":
@@ -94,13 +94,6 @@ func runOnce(cfg updater.Config) {
 		log.Fatal().Err(err).Msg("run")
 	}
 	log.Info().Msg("done")
-}
-
-func runServiceLoop(cfg updater.Config) {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
-	r := updater.NewRunner(cfg)
-	r.RunLoop(ctx)
 }
 
 func installSvc(configPath string) {

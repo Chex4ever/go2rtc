@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.9 (2026-05-30)
+
+- **Fix:** go2rtc Windows service error 1053 — proper SCM integration (`svc.Run`) when started by Service Control Manager.
+- **Fix:** go2rtc-updater Windows service uses the same SCM integration.
+- **Fix:** Camera Wall one-click update waits for the app to exit before NSIS replaces files, then relaunches.
+
 ## 1.2.8 (2026-05-27)
 
 - **Fix:** Windows service install (go2rtc + go2rtc-updater) retries with UAC elevation when `sc create` fails with access denied (error 5).

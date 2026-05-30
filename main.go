@@ -121,11 +121,18 @@ func main() {
 		{"srtp", srtp.Init},
 	}
 
-	for _, m := range modules {
-		if app.Modules == nil || m.name == "" || slices.Contains(app.Modules, m.name) {
-			m.init()
+	start := func() {
+		for _, m := range modules {
+			if app.Modules == nil || m.name == "" || slices.Contains(app.Modules, m.name) {
+				m.init()
+			}
 		}
 	}
 
+	if service.TryRun(start) {
+		return
+	}
+
+	start()
 	shell.RunUntilSignal()
 }

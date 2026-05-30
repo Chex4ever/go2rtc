@@ -4,6 +4,7 @@ const {
     silentInstallArgs,
     relaunchAfterSilentInstallScript,
     quoteCmdArg,
+    psSingleQuote,
 } = require('../installer-launch');
 
 describe('installer-launch', () => {
@@ -17,18 +18,22 @@ describe('installer-launch', () => {
         assert.deepEqual(silentInstallArgs(null), ['/S']);
     });
 
-    it('builds relaunch batch script', () => {
+    it('builds relaunch script that waits for app exit before install', () => {
         const script = relaunchAfterSilentInstallScript(
             'C:\\Temp\\setup.exe',
             'C:\\Program Files\\App\\Camera Wall.exe',
             'C:\\Program Files\\App',
+            4242,
         );
-        assert.match(script, /start \/wait "" .*setup\.exe/);
+        assert.match(script, /Wait-Process -Id 4242/);
+        assert.match(script, /setup\.exe/);
         assert.match(script, /\/S/);
-        assert.match(script, /start "" "C:\\Program Files\\App\\Camera Wall.exe"/);
+        assert.match(script, /Camera Wall\.exe/);
+        assert.match(script, /Start-Sleep -Seconds 2/);
     });
 
     it('quotes paths with spaces', () => {
         assert.equal(quoteCmdArg('C:\\Program Files\\a.exe'), '"C:\\Program Files\\a.exe"');
+        assert.equal(psSingleQuote("C:\\a'b.exe"), "'C:\\a''b.exe'");
     });
 });

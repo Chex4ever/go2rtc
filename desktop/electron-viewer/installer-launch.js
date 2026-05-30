@@ -36,18 +36,30 @@ function quoteCmdArg(value) {
     return s;
 }
 
+function psSingleQuote(value) {
+    return `'${String(value || '').replace(/'/g, "''")}'`;
+}
+
 /**
- * Batch one-liner: wait for NSIS silent install, then relaunch the app.
- * Runs detached so the Electron process can exit and unlock files.
+ * PowerShell: wait for app exit, silent NSIS install, relaunch.
  * @param {string} installerPath
  * @param {string} appExePath
  * @param {string | null} [installDir]
+ * @param {number} [parentPid]
  */
-function relaunchAfterSilentInstallScript(installerPath, appExePath, installDir = resolveInstallDir()) {
-    const instArgs = silentInstallArgs(installDir);
-    const installerCmd = [quoteCmdArg(installerPath), ...instArgs.map((a) => quoteCmdArg(a))].join(' ');
-    const appCmd = quoteCmdArg(appExePath);
-    return `start /wait "" ${installerCmd} & start "" ${appCmd}`;
+function relaunchAfterSilentInstallScript(installerPath, appExePath, installDir = resolveInstallDir(), parentPid = process.pid) {
+    const instArgs = silentInstallArgs(installDir).map(psSingleQuote).join(',');
+    return [
+        'powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command',
+        psSingleQuote(
+            `& { $ErrorActionPreference = 'Stop'; ` +
+                `Wait-Process -Id ${parentPid} -ErrorAction SilentlyContinue; ` +
+                `Start-Sleep -Seconds 2; ` +
+                `$p = Start-Process -FilePath ${psSingleQuote(installerPath)} -ArgumentList @(${instArgs}) -Wait -PassThru -WindowStyle Hidden; ` +
+                `if ($p -and $p.ExitCode -ne 0) { exit $p.ExitCode }; ` +
+                `Start-Process -FilePath ${psSingleQuote(appExePath)} }`,
+        ),
+    ].join(' ');
 }
 
 /**
@@ -78,14 +90,15 @@ function launchSilentInstaller(installerPath, installDir = resolveInstallDir()) 
  * @param {string} installerPath
  * @param {string} appExePath
  * @param {string | null} [installDir]
+ * @param {number} [parentPid]
  * @returns {Promise<number>}
  */
-function launchSilentInstallerAndRelaunch(installerPath, appExePath, installDir = resolveInstallDir()) {
+function launchSilentInstallerAndRelaunch(installerPath, appExePath, installDir = resolveInstallDir(), parentPid = process.pid) {
     if (process.platform !== 'win32') {
         return launchSilentInstaller(installerPath, installDir);
     }
     return new Promise((resolve, reject) => {
-        const script = relaunchAfterSilentInstallScript(installerPath, appExePath, installDir);
+        const script = relaunchAfterSilentInstallScript(installerPath, appExePath, installDir, parentPid);
         const child = spawn('cmd.exe', ['/c', script], {
             detached: true,
             stdio: 'ignore',
@@ -105,6 +118,7 @@ module.exports = {
     resolveInstallDir,
     silentInstallArgs,
     quoteCmdArg,
+    psSingleQuote,
     relaunchAfterSilentInstallScript,
     launchSilentInstaller,
     launchSilentInstallerAndRelaunch,

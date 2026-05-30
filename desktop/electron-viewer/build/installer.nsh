@@ -56,21 +56,11 @@ FunctionEnd
   ${ifNot} ${isUpdated}
     Call WriteViewerInstallConfig
   ${endIf}
-  ; Silent one-click update skips the finish page — relaunch here too.
-  ${If} ${Silent}
-    ${If} ${isUpdated}
-      Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
-    ${EndIf}
-  ${EndIf}
+  ; Silent one-click update: relaunch is handled by installer-launch.js (wait for app exit).
 !macroend
 
-; Finish page (interactive installs)
+; Finish page (interactive installs only — silent one-click relaunch is in installer-launch.js)
 !macro customFinish
-  ${If} ${Silent}
-    ${If} ${isUpdated}
-      Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
-    ${EndIf}
-  ${EndIf}
 !macroend
 
 Function WriteViewerInstallConfig
