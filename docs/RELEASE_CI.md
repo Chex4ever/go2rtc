@@ -36,16 +36,31 @@ In `go2rtc.yaml`:
 ```yaml
 viewer:
   go2rtc:
-    github: "YOUR_ORG/go2rtc"   # e.g. Chex4ever/go2rtc
+    github: "Chex4ever/go2rtc"
     cache_ttl: 10m
-    notes: "Тесла build — replace go2rtc.exe and restart the service"
   desktop:
-    version: "1.2.1"
-    installer: "releases/go2rtc Camera Wall Setup 1.2.1.exe"
+    github: "Chex4ever/go2rtc"   # Camera Wall installer from GitHub Releases (no manual copy)
+updater:
+  enabled: true
+  auto_apply: true
+  github: "Chex4ever/go2rtc"
+  interval: 6h
 ```
 
-- **`viewer.go2rtc.github`** — uses GitHub Releases API (`/releases/latest`), no manual version bump on the server.
-- **`viewer.desktop`** — optional local path to the Camera Wall installer (same as before).
+- **`viewer.go2rtc.github`** — server binary from latest GitHub Release.
+- **`viewer.desktop.github`** — desktop app gets installer **direct download URL** from GitHub (Camera Wall Setup `.exe`).
+- **`updater.github`** — `go2rtc-updater` service replaces `go2rtc.exe` automatically.
+
+Legacy local mirror (optional):
+
+```yaml
+viewer:
+  desktop:
+    version: "1.2.3"
+    installer: "releases/go2rtc Camera Wall Setup 1.2.3.exe"
+```
+
+- **`viewer.desktop` (local)** — serve installer from disk next to `go2rtc.yaml` (air-gapped sites).
 
 ### go2rtc server (local mirror — air-gapped)
 
@@ -137,3 +152,21 @@ For stricter production control: maintain `release/1.2`, cherry-pick hotfixes th
 ## Fork note
 
 Default upstream is [AlexxIT/go2rtc](https://github.com/AlexxIT/go2rtc). Point `viewer.go2rtc.github` at **your** fork so clients pull your tags, not upstream.
+
+## End-to-end autoupdate (CI → end user)
+
+```text
+git tag v1.2.4  →  GitHub Actions Release  →  GitHub Release assets
+                                              ↓
+                    go2rtc-updater (Windows service) replaces go2rtc.exe
+                    Camera Wall app: Check for updates → GitHub installer URL via go2rtc API
+                    Browser viewer: embedded in go2rtc.exe (updates with server binary)
+```
+
+**Operator setup once per site:**
+
+1. Install go2rtc + enable `viewer.desktop.github` and `updater` (see yaml above).
+2. Install `go2rtc-updater` Windows service (Config → Settings → Install updater service).
+3. Install Camera Wall desktop; point it at your go2rtc URL.
+
+**Developer loop (hotfix):** merge fix → `git tag vX.Y.Z` → wait for Release workflow → clients pick up within updater interval / desktop update check. See [Hotfixes (patch releases)](#hotfixes-patch-releases).

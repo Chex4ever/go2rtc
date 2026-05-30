@@ -29,6 +29,9 @@ func Init() {
 				Installer string `yaml:"installer"`
 				Sha256    string `yaml:"sha256"`
 				Notes     string `yaml:"notes"`
+				Github    string `yaml:"github"`
+				Asset     string `yaml:"asset"`
+				CacheTTL  string `yaml:"cache_ttl"`
 			} `yaml:"desktop"`
 			Go2rtc struct {
 				Version  string `yaml:"version"`

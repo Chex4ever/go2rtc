@@ -2,6 +2,7 @@ import {GRID_PRESETS, tilesFromSlots} from './grids.js';
 import {TileViewport, toggleStreamAudio, refreshStream} from './tile-viewport.js';
 import {wallLayoutMode, isTouchDevice, tabletGrid, allowTileDrag} from './device.js';
 import {takeSnapshot, TileRecorder} from './capture.js';
+import {openTileDebugModal} from './viewer-tile-debug.js';
 import {api, apiUrl} from './viewer-api.js';
 import {$, CHROME_HIDE_MS} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
@@ -230,7 +231,7 @@ export function renderWall() {
     }
 }
 
-function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, tile) {
+function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, tile, playbackName) {
     const bar = document.createElement('div');
     bar.className = 'tile-controls';
     bar.innerHTML = `
@@ -242,6 +243,7 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
         <button type="button" data-act="snapshot" title="Save snapshot">📷</button>
         <button type="button" data-act="record" title="Record">⏺</button>
         <button type="button" data-act="refresh" title="Refresh stream">↻</button>
+        <button type="button" data-act="debug" title="Debug this camera">🐞</button>
         ${inFocus ? '' : '<button type="button" data-act="focus" title="Full screen">⛶</button>'}
     `;
 
@@ -331,6 +333,18 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
             case 'refresh':
                 refreshStream(vs, src);
                 break;
+            case 'debug':
+                openTileDebugModal({
+                    logicalName: streamName,
+                    playbackName,
+                    src,
+                    vs,
+                    slotIndex,
+                    inFocus,
+                }).catch((err) => {
+                    btn.title = err?.message || 'Debug failed';
+                });
+                break;
             case 'focus':
                 enterFocus(slotIndex);
                 break;
@@ -410,7 +424,7 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);
-    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus, tile));
+    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus, tile, playback));
 
     body.addEventListener('dblclick', (e) => {
         if (e.target.closest('.tile-controls, .tile-bar')) {

@@ -6,16 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/AlexxIT/go2rtc/internal/app"
+	"github.com/AlexxIT/go2rtc/internal/release"
 	"github.com/stretchr/testify/require"
 )
 
 func resetDesktopUpdate() {
-	desktopVersion = ""
-	desktopInstaller = ""
-	desktopSha256 = ""
-	desktopNotes = ""
+	desktopUp = desktopUpdateCfg{}
 	app.ConfigPath = ""
 }
 
@@ -25,10 +24,10 @@ func TestDesktopUpdateAPI(t *testing.T) {
 	require.NoError(t, os.WriteFile(installer, []byte("fake-installer"), 0o600))
 
 	app.ConfigPath = filepath.Join(dir, "go2rtc.yaml")
-	desktopVersion = "2.0.0"
-	desktopInstaller = "setup.exe"
-	desktopSha256 = "abc"
-	desktopNotes = "Test release"
+	desktopUp.Version = "2.0.0"
+	desktopUp.Installer = "setup.exe"
+	desktopUp.Sha256 = "abc"
+	desktopUp.Notes = "Test release"
 	t.Cleanup(resetDesktopUpdate)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update", nil)
@@ -57,8 +56,8 @@ func TestDesktopUpdateNotConfigured(t *testing.T) {
 func TestDesktopUpdateMissingInstallerFile(t *testing.T) {
 	dir := t.TempDir()
 	app.ConfigPath = filepath.Join(dir, "go2rtc.yaml")
-	desktopVersion = "2.0.0"
-	desktopInstaller = "missing.exe"
+	desktopUp.Version = "2.0.0"
+	desktopUp.Installer = "missing.exe"
 	t.Cleanup(resetDesktopUpdate)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update", nil)
@@ -71,8 +70,8 @@ func TestDesktopUpdateUnsupportedPlatform(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "setup.exe"), []byte("x"), 0o600))
 	app.ConfigPath = filepath.Join(dir, "go2rtc.yaml")
-	desktopVersion = "2.0.0"
-	desktopInstaller = "setup.exe"
+	desktopUp.Version = "2.0.0"
+	desktopUp.Installer = "setup.exe"
 	t.Cleanup(resetDesktopUpdate)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update?platform=linux", nil)
@@ -98,7 +97,7 @@ func TestResolveInstallerPath(t *testing.T) {
 func TestDesktopInstallerReady(t *testing.T) {
 	dir := t.TempDir()
 	app.ConfigPath = filepath.Join(dir, "go2rtc.yaml")
-	desktopInstaller = "setup.exe"
+	desktopUp.Installer = "setup.exe"
 	t.Cleanup(resetDesktopUpdate)
 
 	_, ok := desktopInstallerReady()
@@ -108,4 +107,33 @@ func TestDesktopInstallerReady(t *testing.T) {
 	p, ok := desktopInstallerReady()
 	require.True(t, ok)
 	require.Equal(t, filepath.Join(dir, "setup.exe"), p)
+}
+
+func TestDesktopUpdateFromGithub(t *testing.T) {
+	t.Cleanup(resetDesktopUpdate)
+	oldFetch := release.FetchLatestRelease
+	release.FetchLatestRelease = func(repo string) (*release.GitHubRelease, error) {
+		require.Equal(t, "Chex4ever/go2rtc", repo)
+		return &release.GitHubRelease{
+			TagName: "v3.0.1",
+			Body:    "Hotfix body",
+			HTMLURL: "https://github.com/Chex4ever/go2rtc/releases/tag/v3.0.1",
+			Assets: []release.Asset{
+				{Name: "go2rtc_3.0.1_windows_amd64.exe"},
+				{Name: "go2rtc.Camera.Wall.Setup.3.0.1.exe", BrowserDownloadURL: "https://example.com/setup.exe"},
+			},
+		}, nil
+	}
+	t.Cleanup(func() { release.FetchLatestRelease = oldFetch })
+
+	desktopUp.Github = "Chex4ever/go2rtc"
+	desktopUp.ghClient = release.NewClient(desktopUp.Github, time.Minute)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update", nil)
+	rec := httptest.NewRecorder()
+	apiDesktopUpdate(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"version":"3.0.1"`)
+	require.Contains(t, rec.Body.String(), `"source":"github"`)
+	require.Contains(t, rec.Body.String(), `https://example.com/setup.exe`)
 }

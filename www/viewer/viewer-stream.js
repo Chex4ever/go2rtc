@@ -13,6 +13,21 @@ class ViewerStream extends VideoRTC {
         this.visibilityThreshold = 0;
         this.visibilityCheck = true;
         this._suppressVideoError = false;
+        this._debugEvents = [];
+    }
+
+    _logDebug(type, detail = '') {
+        this._debugEvents.push({t: Date.now(), type, detail: String(detail || '')});
+        if (this._debugEvents.length > 40) {
+            this._debugEvents.shift();
+        }
+    }
+
+    getDebugSnapshot() {
+        return {
+            connectAgeMs: this.connectTS ? Date.now() - this.connectTS : 0,
+            events: [...this._debugEvents],
+        };
     }
 
     oninit() {
@@ -25,12 +40,34 @@ class ViewerStream extends VideoRTC {
         this.video.addEventListener(
             'error',
             (ev) => {
+                const err = this.video.error;
+                this._logDebug('video-error', err?.message || err?.code || 'unknown');
                 if (this._suppressVideoError) {
                     ev.stopImmediatePropagation();
                 }
             },
             true,
         );
+    }
+
+    onconnect() {
+        this._logDebug('connect', this.wsURL || this.src || '');
+        return super.onconnect();
+    }
+
+    onopen() {
+        this._logDebug('ws-open');
+        super.onopen();
+    }
+
+    onclose() {
+        this._logDebug('ws-close');
+        super.onclose();
+    }
+
+    ondisconnect() {
+        this._logDebug('disconnect');
+        super.ondisconnect();
     }
 
     /** Close WebSocket/WebRTC immediately (renderWall must not leave 5s delayed teardown). */
