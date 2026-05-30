@@ -133,7 +133,7 @@ jobs:
       - name: Install, dist, and unpack
         working-directory: desktop/electron-viewer
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run dist -- --config.directories.output=release-ci
           npm run pack -- --config.directories.output=release-ci-unpacked
 

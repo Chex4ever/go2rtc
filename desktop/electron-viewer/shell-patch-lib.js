@@ -164,12 +164,14 @@ function buildPatchZip({rootDir, from, to, changed, outZip}) {
 
     fs.rmSync(outZip, {force: true});
     if (process.platform === 'win32') {
+        const stagingEsc = staging.replace(/'/g, "''");
+        const outZipEsc = outZip.replace(/'/g, "''");
         execFileSync(
             'powershell.exe',
             [
                 '-NoProfile',
                 '-Command',
-                `Compress-Archive -LiteralPath '${staging.replace(/'/g, "''")}\\*' -DestinationPath '${outZip.replace(/'/g, "''")}' -Force`,
+                `Compress-Archive -Path '${stagingEsc}\\*' -DestinationPath '${outZipEsc}' -Force`,
             ],
             {stdio: 'inherit'},
         );

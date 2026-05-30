@@ -14,7 +14,7 @@ File: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 ### Jobs
 
 1. **build-go2rtc** — Windows (amd64, 386) + Linux (amd64, arm64) with embedded version `-X internal/app.Version=…`
-2. **build-desktop** — Windows NSIS installer (`npm run dist`)
+2. **build-desktop** — Windows NSIS installer (`npm ci` + `npm run dist`)
 3. **publish** — Upload assets + `release-manifest.json` to GitHub Release
 
 ### Asset names (important)
@@ -124,6 +124,10 @@ Release assets (Windows desktop job):
 First release with manifests (e.g. v1.2.11) has no patch zip; v1.2.12+ patches from the previous version automatically.
 
 Release CI checks out **full git history** (`fetch-depth: 0`) so the previous tag resolves correctly, then runs `scripts/validate-desktop-update-meta.mjs` to ensure `desktop-update-meta-*.json` matches the manifest diff (catches bogus `changed_files: 0`).
+
+**Reproducible Electron builds:** `desktop/electron-viewer/package-lock.json` is committed; CI and release use `npm ci`. **Go 1.24** is used in `go.mod`, `release.yml`, `viewer-desktop-test.yml`, and `build.yml`.
+
+**CI split:** `release.yml` handles `v*` tags; `build.yml` runs on `master` pushes only (no duplicate tag builds). Viewer tests cover `./internal/release/...` and patch script integration via `patch-build-integration.test.js`.
 
 API: `GET /api/viewer/desktop/update?from=1.2.10` returns `update_kind`, `patch_url`, `shell_changed`.
 

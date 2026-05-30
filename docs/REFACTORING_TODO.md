@@ -1,6 +1,6 @@
 # Refactoring & improvement backlog (Тесла / go2rtc fork)
 
-**Updated:** 2026-05-26 (pass 2). **Invariant:** zero-click morning start must keep working — guarded by `morning-start.test.js`, `layout-auto.test.js`, `viewer-modules.test.js`.
+**Updated:** 2026-05-31 (pass 3). **Invariant:** zero-click morning start must keep working — guarded by `morning-start.test.js`, `layout-auto.test.js`, `viewer-modules.test.js`.
 
 ## How to use this file
 
@@ -77,7 +77,7 @@
 
 ## P3 — Tests & CI
 
-- [ ] **REF-CI-02** — Commit `package-lock.json` in `desktop/electron-viewer/`
+- [x] **REF-CI-02** — Commit `package-lock.json` in `desktop/electron-viewer/`
 - [ ] **REF-CI-03** — Windows `npm run dist` on release tag only
 - [x] **REF-TEST-02** — `settings-app.test.js` parse test
 - [ ] **REF-TEST-04** — E2E Playwright (optional)
