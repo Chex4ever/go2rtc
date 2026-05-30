@@ -172,13 +172,30 @@ viewer:
   session_ttl: 24h
   trust_ip_ttl: 720h          # срок «запомнить IP»
   cookie_secure: false        # true только за HTTPS
-  desktop:                    # опционально: обновления приложения Camera Wall с этого сервера
-    version: "1.2.1"
-    installer: "desktop/go2rtc Camera Wall Setup 1.2.1.exe"
+  go2rtc:                     # опционально: обновления go2rtc.exe (GitHub или локальный файл)
+    github: "YOUR_ORG/go2rtc"
+    cache_ttl: 10m
+  desktop:                    # опционально: обновления Camera Wall (GitHub или локальный installer)
+    github: "YOUR_ORG/go2rtc" # рекомендуется с CI; иначе version + installer на диске
     notes: "Текст в диалоге обновления"
 ```
 
-Обновление установленного клиента: [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) (раздел **Updating the installed app**).
+Обновление установленного клиента: [ELECTRON_VIEWER.md](ELECTRON_VIEWER.md) (раздел **Updating**).  
+Релизы и CI: [RELEASE_CI.md](RELEASE_CI.md).
+
+### 2b. Автообновление go2rtc (опционально)
+
+Установите **`go2rtc-updater.exe`** второй службой Windows для полностью автоматической замены бинарника:
+
+```yaml
+updater:
+  enabled: true
+  auto_apply: true
+  interval: 6h
+  github: "YOUR_ORG/go2rtc"
+```
+
+См. [UPDATER_SERVICE.md](UPDATER_SERVICE.md). В UI: **`/config.html` → Settings → Install updater service**.
 
 ### 3. Добавить потоки камер
 
@@ -243,6 +260,7 @@ streams:
 | Звук | По умолчанию выключен; включение по плитке |
 | Масштаб / сдвиг | На плитке; pinch на телефоне |
 | Снимок | JPEG; запасной вариант — API go2rtc |
+| Отладка плитки | 🐞 — каналы, streams API, WebRTC, копия отчёта |
 | Запись | WebM из браузера (лучше Chrome + WebRTC) |
 | Перезапуск | Сохранение в веб-config перезапускает процесс (Windows учтён) |
 
@@ -265,10 +283,10 @@ streams:
 |---------|----------------|
 | Чёрный экран viewer / приложения | Должна быть **ошибка на экране**; иначе — перезагрузка, пересборка `go2rtc.exe` |
 | «Cannot reach go2rtc» | Запущен ли go2rtc; URL в Electron (**Ctrl+Shift+S**) |
-| Нет обновления desktop | `viewer.desktop` в yaml, файл installer на диске, версия выше установленной; `/api/viewer/desktop/update` |
+| Нет обновления desktop | `viewer.desktop.github` или `version`+installer; `/api/viewer/desktop/update` → `source: github` или local |
 | Не входит в viewer | Пользователь в `viewer.yaml`, пароль, ID раскладок |
 | Пустой список раскладок | В `layouts:` пользователя те же ключи, что в `viewer.yaml` |
-| Чёрная плитка | Поток есть в go2rtc; имя в allow-list раскладки |
+| Чёрная плитка | Поток в go2rtc; имя в allow-list; **🐞** на плитке → preview/substream, RTSP |
 | Сетка OK, fullscreen плохо | URL **основного** потока в `go2rtc.yaml`; preview только для сетки |
 | Админка 401 | `viewer.admin_password` в `go2rtc.yaml` |
 | go2rtc просит login, viewer нет | Нормально: viewer обходит basic auth API |
