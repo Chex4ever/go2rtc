@@ -1,9 +1,10 @@
 # Camera wall & desktop changelog
 
-## Unreleased (master after v1.2.14)
+## 1.2.15 (2026-05-31)
 
-- **CI:** committed `package-lock.json`, `npm ci`, Go **1.24** in all workflows, `internal/release` tests, patch-build integration tests, Windows patch zip fix (`Compress-Archive -Path`).
-- **CI:** `build.yml` no longer runs on release tags (avoid duplicate jobs with `release.yml`).
+- **Fix:** Windows shell patch zip — `Compress-Archive -Path` (was `-LiteralPath`, glob never matched; patch updates failed to build on Windows CI).
+- **CI:** `package-lock.json` + `npm ci`, Go 1.24 aligned, release meta validation, patch-build integration tests; `build.yml` no longer duplicates tag releases.
+- **Docs:** SYSADMIN RU/EN parity, VIEWER_API 1.2.14 examples, connection-refused vs login troubleshooting.
 
 ## 1.2.14 (2026-05-31)
 
