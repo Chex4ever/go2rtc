@@ -2,7 +2,7 @@ const {describe, it} = require('node:test');
 const assert = require('node:assert/strict');
 const {
     silentInstallArgs,
-    relaunchAfterSilentInstallScript,
+    buildUpdatePs1,
     quoteCmdArg,
     psSingleQuote,
 } = require('../installer-launch');
@@ -18,18 +18,19 @@ describe('installer-launch', () => {
         assert.deepEqual(silentInstallArgs(null), ['/S']);
     });
 
-    it('builds relaunch script that waits for app exit before install', () => {
-        const script = relaunchAfterSilentInstallScript(
-            'C:\\Temp\\setup.exe',
-            'C:\\Program Files\\App\\Camera Wall.exe',
-            'C:\\Program Files\\App',
-            4242,
-        );
-        assert.match(script, /Wait-Process -Id 4242/);
+    it('builds update ps1 that waits for app exit before install', () => {
+        const script = buildUpdatePs1({
+            installerPath: 'C:\\Temp\\setup.exe',
+            installDir: 'C:\\Program Files\\App',
+            parentPid: 4242,
+            logPath: 'C:\\Temp\\go2rtc-viewer-update.log',
+        });
+        assert.match(script, /pidToWait = 4242/);
         assert.match(script, /setup\.exe/);
-        assert.match(script, /\/S/);
-        assert.match(script, /Camera Wall\.exe/);
+        assert.match(script, /'\/S'/);
+        assert.match(script, /'\/D=C:\\Program Files\\App'/);
         assert.match(script, /Start-Sleep -Seconds 2/);
+        assert.doesNotMatch(script, /Start-Process.*Camera Wall/);
     });
 
     it('quotes paths with spaces', () => {

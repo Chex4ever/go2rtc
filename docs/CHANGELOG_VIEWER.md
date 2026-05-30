@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.10 (2026-05-30)
+
+- **Fix:** Camera Wall one-click update — temp PowerShell helper waits for app exit, NSIS relaunch after silent install, update log in `%TEMP%`.
+- **Fix:** Settings show/copy stream URLs from `go2rtc.yaml` (not API `***` redaction); block saving redacted URLs.
+- **Tile debug v3** — yaml URLs for VLC, real AddConsumer probe, snapshot fails on 0 bytes, Copy VLC URL, clearer diagnosis.
+
 ## 1.2.9 (2026-05-30)
 
 - **Fix:** go2rtc Windows service error 1053 — proper SCM integration (`svc.Run`) when started by Service Control Manager.

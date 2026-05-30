@@ -126,16 +126,20 @@ async function applyDesktopUpdateOneClick(info) {
         throw new Error('Automatic install is supported on Windows only.');
     }
 
-    const installerPath = await downloadInstaller(info);
+    const downloaded = await downloadInstaller(info);
     const installDir = resolveInstallDir();
     if (!installDir) {
         throw new Error('Could not detect install folder');
     }
 
-    await launchSilentInstallerAndRelaunch(installerPath, process.execPath, installDir);
+    const {helperPid, logPath} = await launchSilentInstallerAndRelaunch(
+        downloaded,
+        process.execPath,
+        installDir,
+    );
     app.quittingForUpdate = true;
     requestAppQuit();
-    return {installerPath, installDir};
+    return {installerPath: downloaded, installDir, logPath, helperPid};
 }
 
 /**

@@ -187,6 +187,50 @@ function streamUrls(entry) {
     return [];
 }
 
+/** URLs from go2rtc.yaml (full credentials — api/streams redacts them). */
+function streamConfigUrls(name) {
+    const entry = state.config?.streams?.[name];
+    if (entry == null) {
+        return [];
+    }
+    if (typeof entry === 'string') {
+        return [entry];
+    }
+    if (Array.isArray(entry)) {
+        return entry.filter((u) => typeof u === 'string' && !/^mode:/i.test(u.trim()));
+    }
+    return [];
+}
+
+function isRedactedUrl(url) {
+    return typeof url === 'string' && /:\*\*\*(:?\*\*\*)?@/.test(url);
+}
+
+/** Prefer yaml sources for display, copy, and VLC; fall back to api/streams. */
+function streamDisplayUrls(name) {
+    const fromConfig = streamConfigUrls(name);
+    if (fromConfig.length) {
+        return fromConfig;
+    }
+    return streamUrls(state.streams[name]);
+}
+
+async function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+}
+
 function groupCameraRows() {
     const names = Object.keys(state.streams).sort();
     const shown = new Set();
@@ -203,8 +247,8 @@ function groupCameraRows() {
             shown.add(subName);
             rows.push({
                 name,
-                main: streamUrls(state.streams[name])[0] || '',
-                sub: streamUrls(state.streams[subName])[0] || '',
+                main: streamDisplayUrls(name)[0] || '',
+                sub: streamDisplayUrls(subName)[0] || '',
                 subName,
             });
             continue;
@@ -219,7 +263,7 @@ function groupCameraRows() {
         const guess = suggestPreviewStream(name, names);
         rows.push({
             name,
-            main: streamUrls(state.streams[name])[0] || '',
+            main: streamDisplayUrls(name)[0] || '',
             sub: '',
             subName,
             guessedPreview: guess && guess !== name ? guess : '',
@@ -323,6 +367,7 @@ function renderCameraStats() {
                     <span class="label">preview</span>
                     <span class="rate ${subRate.cls}">${escapeHtml(subRate.text)}</span>
                     <code class="stream-url">${escapeHtml(row.sub)}</code>
+                    <button type="button" class="linkish" data-copy-stream="${escapeHtml(row.subName)}">Copy</button>
                 </div>`;
         } else {
             const hint = row.guessedPreview
@@ -340,6 +385,7 @@ function renderCameraStats() {
                 <span class="label">main</span>
                 <span class="rate ${mainRate.cls}">${escapeHtml(mainRate.text)}</span>
                 <code class="stream-url">${escapeHtml(row.main)}</code>
+                <button type="button" class="linkish" data-copy-stream="${escapeHtml(row.name)}">Copy</button>
             </div>
             ${previewLine}
             <div class="cam-stat-actions">
@@ -508,11 +554,15 @@ async function detectPreviewChannels() {
             continue;
         }
         const subName = row.subName;
+        const mainUrl = streamConfigUrls(row.name)[0] || row.main;
+        if (isRedactedUrl(mainUrl)) {
+            continue;
+        }
 
         const guess = suggestPreviewStream(row.name, names);
         if (guess && guess !== row.name && !names.includes(subName)) {
-            const url = streamUrls(state.streams[guess])[0];
-            if (url) {
+            const url = streamConfigUrls(guess)[0] || streamUrls(state.streams[guess])[0];
+            if (url && !isRedactedUrl(url)) {
                 await putStream(subName, url);
                 names.push(subName);
                 added++;
@@ -520,10 +570,10 @@ async function detectPreviewChannels() {
             }
         }
 
-        const profiles = await discoverOnvifProfiles(row.main);
+        const profiles = await discoverOnvifProfiles(mainUrl);
         if (!profiles.length) {
             onvifMiss++;
-            const variants = subStreamUrlVariants(row.main);
+            const variants = subStreamUrlVariants(mainUrl);
             if (variants.length && !names.includes(subName)) {
                 await putStream(subName, variants[0]);
                 names.push(subName);
@@ -540,6 +590,7 @@ async function detectPreviewChannels() {
     }
 
     await loadStreams();
+    await fetchConfig();
     renderCameraStats();
     let msg = added
         ? `Added ${added} preview channel(s) (*_sub) to config`
@@ -558,9 +609,12 @@ async function addPreviewForCamera(baseName) {
     if (names.includes(subName)) {
         return;
     }
-    const main = streamUrls(state.streams[baseName])[0] || '';
+    const main = streamDisplayUrls(baseName)[0] || '';
     if (!main) {
         throw new Error('Main stream URL missing');
+    }
+    if (isRedactedUrl(main)) {
+        throw new Error('Main stream URL is redacted in config — edit Config (YAML) and restore login:password');
     }
     $('#manual-cam-name').value = baseName;
     $('#manual-main-url').value = main;
@@ -773,6 +827,9 @@ async function refreshUpdaterStatus() {
 }
 
 async function putStream(name, src) {
+    if (isRedactedUrl(src)) {
+        throw new Error('Cannot save redacted URL (***) — use Config (YAML) or re-enter credentials');
+    }
     const url = new URL('api/streams', location.href);
     url.searchParams.set('name', name);
     url.searchParams.set('src', src);
@@ -830,6 +887,23 @@ function renderOnvifDevices() {
     }
 }
 
+function onvifProfileUrlWithCredentials(profileUrl) {
+    const user = $('#onvif-user')?.value.trim() || 'admin';
+    const pass = $('#onvif-pass')?.value ?? '';
+    try {
+        const u = new URL(profileUrl.replace(/^onvif:\/\//i, 'http://'));
+        if (user) {
+            u.username = user;
+        }
+        if (pass) {
+            u.password = pass;
+        }
+        return `onvif://${u.host}${u.pathname}${u.search}`;
+    } catch {
+        return profileUrl;
+    }
+}
+
 function renderOnvifProfiles() {
     const box = $('#onvif-profiles-box');
     const list = $('#onvif-profiles-list');
@@ -845,9 +919,11 @@ function renderOnvifProfiles() {
     state.onvifProfiles.forEach((p, i) => {
         const row = document.createElement('div');
         row.className = 'onvif-profile';
+        const displayUrl = onvifProfileUrlWithCredentials(p.url);
         row.innerHTML = `
             <span><strong>${escapeHtml(p.name)}</strong></span>
-            <code class="stream-url">${escapeHtml(p.url)}</code>
+            <code class="stream-url">${escapeHtml(displayUrl)}</code>
+            <button type="button" class="linkish" data-copy-onvif-profile="${i}">Copy</button>
             <label><input type="radio" name="onvif-main" value="${i}" ${i === 0 ? 'checked' : ''}> Main (fullscreen)</label>
             <label><input type="radio" name="onvif-sub" value="${i}" ${i === 1 ? 'checked' : ''}> Preview (grid)</label>`;
         list.appendChild(row);
@@ -908,10 +984,10 @@ async function addDualFromOnvif() {
     if (Number.isNaN(subIdx) || subIdx < 0 || subIdx >= state.onvifProfiles.length) {
         subIdx = mainIdx;
     }
-    const mainUrl = state.onvifProfiles[mainIdx].url;
+    const mainUrl = onvifProfileUrlWithCredentials(state.onvifProfiles[mainIdx].url);
     await putStream(base, mainUrl);
     if (subIdx !== mainIdx) {
-        await putStream(`${base}_sub`, state.onvifProfiles[subIdx].url);
+        await putStream(`${base}_sub`, onvifProfileUrlWithCredentials(state.onvifProfiles[subIdx].url));
     }
 }
 
@@ -1040,6 +1116,7 @@ function wireSettings() {
     $('#btn-refresh-cameras')?.addEventListener('click', async () => {
         setStatus('Refreshing…');
         try {
+            await fetchConfig();
             await loadStreams();
             updateBandwidthFromStreams(state.streams);
             renderCameraStats();
@@ -1087,10 +1164,30 @@ function wireSettings() {
         }
     });
 
+    $('#onvif-profiles-list')?.addEventListener('click', async (e) => {
+        const copyBtn = e.target.closest('[data-copy-onvif-profile]');
+        if (copyBtn) {
+            const idx = parseInt(copyBtn.dataset.copyOnvifProfile, 10);
+            const profile = state.onvifProfiles[idx];
+            if (!profile?.url) {
+                return;
+            }
+            const url = onvifProfileUrlWithCredentials(profile.url);
+            try {
+                await copyTextToClipboard(url);
+                setStatus('Copied ONVIF profile URL');
+            } catch (err) {
+                setStatus(err.message || String(err), true);
+            }
+            return;
+        }
+    });
+
     $('#btn-add-onvif-pair')?.addEventListener('click', async () => {
         setStatus('Adding cameras…');
         try {
             await addDualFromOnvif();
+            await fetchConfig();
             await loadStreams();
             updateBandwidthFromStreams(state.streams);
             renderCameraStats();
@@ -1104,6 +1201,7 @@ function wireSettings() {
         setStatus('Adding cameras…');
         try {
             await addManualDual();
+            await fetchConfig();
             await loadStreams();
             updateBandwidthFromStreams(state.streams);
             renderCameraStats();
@@ -1114,6 +1212,26 @@ function wireSettings() {
     });
 
     $('#camera-stats-list')?.addEventListener('click', async (e) => {
+        const copyBtn = e.target.closest('[data-copy-stream]');
+        if (copyBtn) {
+            const name = copyBtn.dataset.copyStream;
+            const url = streamDisplayUrls(name)[0];
+            if (!url) {
+                setStatus(`No URL for ${name}`, true);
+                return;
+            }
+            if (isRedactedUrl(url)) {
+                setStatus('URL is redacted (***) — restore credentials in Config (YAML)', true);
+                return;
+            }
+            try {
+                await copyTextToClipboard(url);
+                setStatus(`Copied ${name} URL`);
+            } catch (err) {
+                setStatus(err.message || String(err), true);
+            }
+            return;
+        }
         const addBtn = e.target.closest('[data-add-preview]');
         if (addBtn) {
             try {
@@ -1132,6 +1250,7 @@ function wireSettings() {
         }
         try {
             await deleteStream(btn.dataset.delStream);
+            await fetchConfig();
             await loadStreams();
             updateBandwidthFromStreams(state.streams);
             renderCameraStats();

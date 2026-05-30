@@ -21,7 +21,8 @@ describe('viewer-tile-debug.js', () => {
         assert.match(code, /export async function buildTileDebugReport/);
         assert.match(code, /buildDiagnosis/);
         assert.match(code, /buildPipeline/);
-        assert.match(code, /fetchAbout/);
+        assert.match(code, /parseYamlStreamSources/);
+        assert.match(code, /Copy VLC URL/);
     });
 });
 

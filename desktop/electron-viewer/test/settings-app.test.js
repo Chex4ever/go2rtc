@@ -25,4 +25,11 @@ describe('settings-app.js', () => {
         assert.match(code, /api\/updater\?action=install-updater/);
         assert.match(code, /api\/updater\?action=uninstall-updater/);
     });
+
+    it('uses yaml stream URLs for display and copy (not api redaction)', () => {
+        const code = fs.readFileSync(SETTINGS_APP, 'utf8');
+        assert.match(code, /function streamConfigUrls/);
+        assert.match(code, /function isRedactedUrl/);
+        assert.match(code, /data-copy-stream/);
+    });
 });

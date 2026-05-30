@@ -56,12 +56,19 @@ FunctionEnd
   ${ifNot} ${isUpdated}
     Call WriteViewerInstallConfig
   ${endIf}
-  ; Silent one-click update: relaunch is handled by installer-launch.js (wait for app exit).
+  ; Silent in-place update: helper waits for app exit; relaunch here after files replaced.
+  ${If} ${Silent}
+    ${If} ${isUpdated}
+      Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
+    ${EndIf}
+  ${EndIf}
 !macroend
 
-; Finish page (interactive installs only — silent one-click relaunch is in installer-launch.js)
+; Interactive installs — run app from finish page (electron-builder default + silent update above)
 !macro customFinish
-!macroend
+  ${IfNot} ${Silent}
+    ; default runAfterFinish handles interactive path
+  ${EndIf}
 
 Function WriteViewerInstallConfig
   CreateDirectory "$APPDATA\go2rtc-viewer"
