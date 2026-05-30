@@ -10,5 +10,7 @@ describe('viewer-stream.js', () => {
         const src = fs.readFileSync(VIEWER_STREAM, 'utf8');
         assert.match(src, /visibilityThreshold\s*=\s*0/);
         assert.match(src, /forceDisconnect/);
+        assert.match(src, /getDebugSnapshot/);
+        assert.match(src, /_logDebug/);
     });
 });

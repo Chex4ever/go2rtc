@@ -108,6 +108,40 @@ func VersionFromTag(tag string) string {
 	return strings.TrimPrefix(strings.TrimSpace(tag), "v")
 }
 
+// PickDesktopInstaller finds the Camera Wall NSIS installer on a GitHub release.
+func PickDesktopInstaller(assets []Asset) (*Asset, error) {
+	if len(assets) == 0 {
+		return nil, fmt.Errorf("release has no assets")
+	}
+
+	best := (*Asset)(nil)
+	bestScore := -1
+	for i := range assets {
+		lower := strings.ToLower(assets[i].Name)
+		if !strings.HasSuffix(lower, ".exe") {
+			continue
+		}
+		if strings.Contains(lower, "go2rtc-updater") || strings.HasPrefix(lower, "go2rtc_") {
+			continue
+		}
+		score := 1
+		if strings.Contains(lower, "setup") {
+			score += 2
+		}
+		if strings.Contains(lower, "camera") || strings.Contains(lower, "wall") {
+			score += 2
+		}
+		if score > bestScore {
+			bestScore = score
+			best = &assets[i]
+		}
+	}
+	if best == nil {
+		return nil, fmt.Errorf("no desktop installer asset found")
+	}
+	return best, nil
+}
+
 // PickAsset finds a release asset for os/arch (windows/amd64, etc.).
 func PickAsset(assets []Asset, osName, arch string) (*Asset, error) {
 	if len(assets) == 0 {
