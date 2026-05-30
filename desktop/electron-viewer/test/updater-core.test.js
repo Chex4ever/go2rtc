@@ -56,6 +56,41 @@ describe('normalizeUpdateInfo', () => {
         );
         assert.equal(info.version, '1.2.4');
     });
+
+    it('parses progressive update fields', () => {
+        const info = normalizeUpdateInfo(
+            {
+                version: '1.2.11',
+                download_url: '/api/viewer/desktop/download',
+                update_kind: 'patch',
+                patch_from: '1.2.10',
+                patch_url: '/api/viewer/desktop/patch/download?from=1.2.10',
+                patch_sha256: 'abc',
+                shell_changed: true,
+            },
+            'http://127.0.0.1:1984',
+            'win32',
+        );
+        assert.equal(info.updateKind, 'patch');
+        assert.equal(info.patchFrom, '1.2.10');
+        assert.match(info.patchUrl, /patch\/download/);
+        assert.equal(info.patchSha256, 'abc');
+    });
+
+    it('parses viewer-only update kind', () => {
+        const info = normalizeUpdateInfo(
+            {
+                version: '1.2.11',
+                download_url: '/api/viewer/desktop/download',
+                update_kind: 'none',
+                shell_changed: false,
+            },
+            'http://127.0.0.1:1984',
+            'win32',
+        );
+        assert.equal(info.updateKind, 'none');
+        assert.equal(info.shellChanged, false);
+    });
 });
 
 describe('isNewerVersion', () => {
@@ -70,6 +105,11 @@ describe('updateCheckUrls', () => {
         const urls = updateCheckUrls('192.168.1.5:1984');
         assert.match(urls[0], /^http:\/\/192\.168\.1\.5:1984\/api\/viewer\/desktop\/update/);
         assert.match(urls[1], /\/viewer\/desktop\/update\.json$/);
+    });
+
+    it('includes installed version as from query', () => {
+        const urls = updateCheckUrls('http://127.0.0.1:1984', '1.2.10');
+        assert.match(urls[0], /from=1\.2\.10/);
     });
 });
 

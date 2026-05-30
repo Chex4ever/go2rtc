@@ -127,16 +127,60 @@ jobs:
           fs.writeFileSync(p, JSON.stringify(j, null, 2)+'\n');
           "
 
-      - name: Install and dist
+      - name: Install, dist, and unpack
         working-directory: desktop/electron-viewer
         run: |
           npm install --no-audit --no-fund
           npm run dist -- --config.directories.output=release-ci
+          npm run pack -- --config.directories.output=release-ci-unpacked
+
+      - name: Build shell manifest and patch
+        shell: bash
+        run: |
+          VER="${{ steps.ver.outputs.version }}"
+          TAG="${{ steps.ver.outputs.tag }}"
+          OUT="desktop/electron-viewer/release-ci"
+          MANIFEST="${OUT}/desktop-shell-manifest-${VER}.json"
+          node scripts/desktop-shell-manifest.mjs \
+            --output-dir "desktop/electron-viewer/release-ci-unpacked" \
+            --version "${VER}" \
+            --out "${MANIFEST}"
+
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+          if [ -z "${PREV_TAG}" ]; then
+            node -e "
+            const fs=require('fs');
+            const meta={version:'${VER}',shell_changed:true,update_kind:'full',changed_files:0,changed_bytes:0,total_bytes:0,patch_file:'',patch_sha256:''};
+            fs.writeFileSync('${OUT}/desktop-update-meta-${VER}.json', JSON.stringify(meta,null,2)+'\n');
+            "
+            exit 0
+          fi
+          PREV_VER="${PREV_TAG#v}"
+          PREV_MANIFEST="${OUT}/prev-manifest.json"
+          URL="https://github.com/${{ github.repository }}/releases/download/${PREV_TAG}/desktop-shell-manifest-${PREV_VER}.json"
+          if curl -fsSL -o "${PREV_MANIFEST}" "${URL}"; then
+            node scripts/build-desktop-patch.mjs \
+              --output-dir "desktop/electron-viewer/release-ci-unpacked" \
+              --from-manifest "${PREV_MANIFEST}" \
+              --to-manifest "${MANIFEST}" \
+              --out-dir "${OUT}"
+          else
+            echo "Previous shell manifest not found — first progressive release from ${PREV_TAG}"
+            node -e "
+            const fs=require('fs');
+            const meta={version:'${VER}',from:'${PREV_VER}',to:'${VER}',shell_changed:true,update_kind:'full',changed_files:0,changed_bytes:0,total_bytes:0,patch_file:'',patch_sha256:''};
+            fs.writeFileSync('${OUT}/desktop-update-meta-${VER}.json', JSON.stringify(meta,null,2)+'\n');
+            "
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-installer
-          path: desktop/electron-viewer/release-ci/*.exe
+          path: |
+            desktop/electron-viewer/release-ci/*.exe
+            desktop/electron-viewer/release-ci/desktop-shell-manifest-*.json
+            desktop/electron-viewer/release-ci/desktop-update-meta-*.json
+            desktop/electron-viewer/release-ci/go2rtc.Camera.Wall.Patch.*.zip
 
   publish:
     name: Publish GitHub Release
@@ -169,9 +213,20 @@ jobs:
           VER="${{ steps.ver.outputs.version }}"
           WIN_EXE=$(find dist -name "go2rtc_${VER}_windows_amd64.exe" | head -1)
           WIN_SHA=$(cat "${WIN_EXE}.sha256" | awk '{print $1}')
-          DESKTOP=$(find dist -name "*.exe" ! -name "go2rtc_*" ! -name "go2rtc-updater.exe" | head -1)
+          DESKTOP=$(find dist -name "*.exe" ! -name "go2rtc_*" ! -name "go2rtc-updater.exe" ! -name "go2rtc.Camera.Wall.Patch.*" | head -1)
           DESKTOP_NAME=$(basename "$DESKTOP")
           DESKTOP_VER=$(echo "$DESKTOP_NAME" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          META=$(find dist -name "desktop-update-meta-${VER}.json" | head -1)
+          SHELL_CHANGED=true
+          UPDATE_KIND=full
+          PATCH_FILE=""
+          PATCH_SHA=""
+          if [ -n "${META}" ] && [ -f "${META}" ]; then
+            SHELL_CHANGED=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('${META}','utf8')).shell_changed))")
+            UPDATE_KIND=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('${META}','utf8')).update_kind||'full'))")
+            PATCH_FILE=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('${META}','utf8')).patch_file||''))")
+            PATCH_SHA=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('${META}','utf8')).patch_sha256||''))")
+          fi
           cat > release-manifest.json <<EOF
           {
             "version": "${VER}",
@@ -186,6 +241,12 @@ jobs:
             },
             "desktop": {
               "version": "${DESKTOP_VER}",
+              "shell_changed": ${SHELL_CHANGED},
+              "update_kind": "${UPDATE_KIND}",
+              "shell_manifest": "desktop-shell-manifest-${VER}.json",
+              "update_meta": "desktop-update-meta-${VER}.json",
+              "patch_file": "${PATCH_FILE}",
+              "patch_sha256": "${PATCH_SHA}",
               "windows": {
                 "file": "${DESKTOP_NAME}"
               }

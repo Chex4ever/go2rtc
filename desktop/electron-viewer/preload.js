@@ -5,4 +5,10 @@ contextBridge.exposeInMainWorld('go2rtcDesktop', {
     retryViewerLoad: () => ipcRenderer.invoke('viewer:retry-load'),
     openServerExternal: () => ipcRenderer.invoke('viewer:open-server'),
     getClientInfo: () => ipcRenderer.invoke('viewer:client-info'),
+    onUpdateNotice: (callback) => {
+        if (typeof callback !== 'function') {
+            return;
+        }
+        ipcRenderer.on('viewer:update-notice', (_event, message) => callback(message));
+    },
 });

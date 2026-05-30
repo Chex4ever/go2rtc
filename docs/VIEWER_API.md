@@ -27,8 +27,11 @@ No go2rtc API basic auth required when using viewer session or IP trust.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/desktop/update?platform=win32` | JSON: `version`, `download_url`, `notes`, `sha256`, `source`, `release_url` |
-| GET | `/desktop/download` | Installer file (local path or redirect to GitHub asset) |
+| GET | `/desktop/update?platform=win32&from=X.Y.Z` | JSON: `version`, `update_kind` (`none` \| `patch` \| `full`), `shell_changed`, `download_url`, optional `patch_from`, `patch_url`, `patch_sha256`, `notes`, `source`, `release_url` |
+| GET | `/desktop/download` | Full installer (local path or redirect to GitHub asset) |
+| GET | `/desktop/patch/download?from=X.Y.Z` | Patch zip when `update_kind` is `patch` (local or GitHub redirect) |
+
+**Progressive updates:** pass installed app version as `from`. When only the web viewer changed, `update_kind` is `none` — no desktop download. When the Electron shell changed, CI may publish `go2rtc.Camera.Wall.Patch.{from}-{to}.zip` for a small in-place update; otherwise `update_kind` is `full` (NSIS installer).
 
 Configure in `go2rtc.yaml`:
 
@@ -49,10 +52,16 @@ Response includes `"source": "github"` and a `download_url` pointing at the late
 ```yaml
 viewer:
   desktop:
-    version: "1.2.4"
-    installer: "desktop/go2rtc Camera Wall Setup 1.2.4.exe"
+    version: "1.2.11"
+    installer: "desktop/go2rtc Camera Wall Setup 1.2.11.exe"
+    patch: "desktop/go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip"
+    patch_from: "1.2.10"
+    patch_sha256: "..."
+    shell_changed: true
     notes: "Optional text shown in the update dialog"
 ```
+
+Set `shell_changed: false` when only `www/viewer/**` changed (viewer-only release).
 
 Static alternative: `/viewer/desktop/update.json` on the web root.
 

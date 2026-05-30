@@ -101,3 +101,20 @@ export function onWallTouch(e) {
     }
     bumpChrome();
 }
+
+let noticeTimer = null;
+
+/** Brief corner toast (e.g. server-side viewer update in Electron). */
+export function showViewerNotice(message, ms = 5000) {
+    let el = document.getElementById('viewer-notice-toast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'viewer-notice-toast';
+        el.className = 'viewer-notice-toast hidden';
+        document.body.appendChild(el);
+    }
+    clearTimeout(noticeTimer);
+    el.textContent = message || '';
+    el.classList.remove('hidden');
+    noticeTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}

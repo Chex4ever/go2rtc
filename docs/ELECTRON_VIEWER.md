@@ -154,7 +154,11 @@ The desktop app checks the **configured go2rtc server** (`Settings → server UR
    - **Camera Wall app** — installer from server (`viewer.desktop`) or `/viewer/desktop/update.json`
    - **go2rtc server** — latest release from GitHub (`viewer.go2rtc.github`) or local binary (`viewer.go2rtc.binary`)
 
-Camera Wall: **Update now** — downloads the installer from your server or GitHub release, runs a silent in-place upgrade (`/S`), and **restarts the app** (Windows installed build only; settings in `%APPDATA%\go2rtc-viewer\` are kept).
+Camera Wall: **Update now** chooses the smallest path:
+
+- **Viewer-only** (`update_kind: none`) — no download; a 5s toast asks you to reload (Ctrl+R).
+- **Shell patch** — downloads only changed install files (~MB), applies in-place, restarts.
+- **Full installer** — same silent NSIS flow as before (~150 MB).
 
 go2rtc: download new `go2rtc.exe` → stop service → replace binary → start service (configs unchanged).
 

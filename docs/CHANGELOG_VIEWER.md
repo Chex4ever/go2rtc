@@ -1,5 +1,12 @@
 # Camera wall & desktop changelog
 
+## 1.2.11 (2026-05-31)
+
+- **Progressive desktop updates** — three tiers: server UI reload (0 bytes + 5s toast), shell patch zip (changed files only), full NSIS fallback.
+- CI publishes `desktop-shell-manifest-{version}.json`, optional `go2rtc.Camera.Wall.Patch.{from}-{to}.zip`, and `desktop-update-meta-{version}.json`.
+- Update API: `?from=` installed version → `update_kind`: `none` | `patch` | `full`, plus `patch_url` / `shell_changed`.
+- Electron applies patch in-place via PowerShell helper; falls back to full installer on failure.
+
 ## 1.2.10 (2026-05-30)
 
 - **Fix:** Camera Wall one-click update — temp PowerShell helper waits for app exit, NSIS relaunch after silent install, update log in `%TEMP%`.

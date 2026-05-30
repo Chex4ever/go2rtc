@@ -86,13 +86,29 @@ function normalizeUpdateInfo(data, serverBase, platform) {
         return null;
     }
 
-    return {version, downloadUrl, notes, sha256};
+    let patchUrl = String(data.patch_url || data.patchUrl || '').trim();
+    patchUrl = resolveUrl(serverBase, patchUrl);
+
+    return {
+        version,
+        downloadUrl,
+        notes,
+        sha256,
+        updateKind: String(data.update_kind || data.updateKind || 'full').trim().toLowerCase() || 'full',
+        shellChanged: data.shell_changed !== false && data.shellChanged !== false,
+        patchFrom: String(data.patch_from || data.patchFrom || '').trim(),
+        patchUrl,
+        patchSha256: String(data.patch_sha256 || data.patchSha256 || '').trim(),
+        releaseTag: String(data.release_tag || data.releaseTag || '').trim(),
+    };
 }
 
-function updateCheckUrls(serverUrl) {
+function updateCheckUrls(serverUrl, fromVersion) {
     const base = normalizeServerUrl(serverUrl);
+    const from = String(fromVersion || '').trim();
+    const fromQuery = from ? `&from=${encodeURIComponent(from)}` : '';
     return [
-        `${base}/api/viewer/desktop/update?platform=win32`,
+        `${base}/api/viewer/desktop/update?platform=win32${fromQuery}`,
         `${base}/viewer/desktop/update.json`,
     ];
 }

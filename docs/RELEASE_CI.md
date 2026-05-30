@@ -105,7 +105,25 @@ A **hotfix is not a separate delivery channel** — it is a **patch semver relea
 | Component | How clients get the hotfix |
 |-----------|---------------------------|
 | **go2rtc.exe** (embedded `www/viewer`) | `go2rtc-updater` service or manual replace from release asset |
-| **Camera Wall (Electron)** | One-click NSIS from the same GitHub Release (bump desktop version if Electron changed) |
+| **Camera Wall (Electron)** | Progressive update: patch zip, full NSIS, or viewer-only toast (see below) |
+
+### Progressive Camera Wall updates (since 1.2.11)
+
+| Tier | When | Download |
+|------|------|----------|
+| **Viewer only** | Only `www/viewer/**` changed | 0 bytes — 5s corner toast, Ctrl+R |
+| **Shell patch** | Electron shell files changed | `go2rtc.Camera.Wall.Patch.{from}-{to}.zip` |
+| **Full installer** | Skip-version, Electron runtime bump, or large diff | NSIS Setup `.exe` |
+
+Release assets (Windows desktop job):
+
+- `desktop-shell-manifest-{version}.json` — file hashes of unpacked install (for next diff)
+- `desktop-update-meta-{version}.json` — `update_kind`, `shell_changed`, patch checksum
+- `go2rtc.Camera.Wall.Patch.{from}-{to}.zip` — omitted when shell unchanged or diff exceeds ~40%
+
+First release with manifests (e.g. v1.2.11) has no patch zip; v1.2.12+ patches from the previous version automatically.
+
+API: `GET /api/viewer/desktop/update?from=1.2.10` returns `update_kind`, `patch_url`, `shell_changed`.
 
 ### Version rules
 

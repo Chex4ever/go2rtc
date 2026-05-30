@@ -25,13 +25,17 @@ func Init() {
 			TrustIPTTL   string `yaml:"trust_ip_ttl"`
 			CookieSecure bool   `yaml:"cookie_secure"`
 			Desktop      struct {
-				Version   string `yaml:"version"`
-				Installer string `yaml:"installer"`
-				Sha256    string `yaml:"sha256"`
-				Notes     string `yaml:"notes"`
-				Github    string `yaml:"github"`
-				Asset     string `yaml:"asset"`
-				CacheTTL  string `yaml:"cache_ttl"`
+				Version      string `yaml:"version"`
+				Installer    string `yaml:"installer"`
+				Sha256       string `yaml:"sha256"`
+				Notes        string `yaml:"notes"`
+				Github       string `yaml:"github"`
+				Asset        string `yaml:"asset"`
+				CacheTTL     string `yaml:"cache_ttl"`
+				Patch        string `yaml:"patch"`
+				PatchFrom    string `yaml:"patch_from"`
+				PatchSha256  string `yaml:"patch_sha256"`
+				ShellChanged *bool  `yaml:"shell_changed"`
 			} `yaml:"desktop"`
 			Go2rtc struct {
 				Version  string `yaml:"version"`

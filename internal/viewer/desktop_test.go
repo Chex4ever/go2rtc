@@ -162,3 +162,76 @@ func TestDesktopUpdateFromGithubTagNewerThanInstaller(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"version":"3.0.0"`)
 	require.Contains(t, rec.Body.String(), `"release_tag":"3.0.1"`)
 }
+
+func TestDesktopUpdatePatchFromGithub(t *testing.T) {
+	t.Cleanup(resetDesktopUpdate)
+	oldFetch := release.FetchLatestRelease
+	oldAssetFetch := release.FetchAssetBytes
+	release.FetchLatestRelease = func(repo string) (*release.GitHubRelease, error) {
+		return &release.GitHubRelease{
+			TagName: "v1.2.11",
+			Assets: []release.Asset{
+				{Name: "go2rtc.Camera.Wall.Setup.1.2.11.exe", BrowserDownloadURL: "https://example.com/setup.exe"},
+				{Name: "go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip", BrowserDownloadURL: "https://example.com/patch.zip"},
+				{Name: "desktop-update-meta-1.2.11.json", BrowserDownloadURL: "https://example.com/meta.json"},
+			},
+		}, nil
+	}
+	release.FetchAssetBytes = func(url string) ([]byte, error) {
+		if url == "https://example.com/meta.json" {
+			return []byte(`{"version":"1.2.11","from":"1.2.10","to":"1.2.11","shell_changed":true,"update_kind":"patch","patch_file":"go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip","patch_sha256":"deadbeef"}`), nil
+		}
+		return nil, nil
+	}
+	t.Cleanup(func() {
+		release.FetchLatestRelease = oldFetch
+		release.FetchAssetBytes = oldAssetFetch
+	})
+
+	desktopUp.Github = "Chex4ever/go2rtc"
+	desktopUp.ghClient = release.NewClient(desktopUp.Github, time.Minute)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update?from=1.2.10", nil)
+	rec := httptest.NewRecorder()
+	apiDesktopUpdate(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"update_kind":"patch"`)
+	require.Contains(t, rec.Body.String(), `"patch_from":"1.2.10"`)
+	require.Contains(t, rec.Body.String(), `https://example.com/patch.zip`)
+	require.Contains(t, rec.Body.String(), `"patch_sha256":"deadbeef"`)
+}
+
+func TestDesktopUpdateViewerOnlyFromGithub(t *testing.T) {
+	t.Cleanup(resetDesktopUpdate)
+	oldFetch := release.FetchLatestRelease
+	oldAssetFetch := release.FetchAssetBytes
+	release.FetchLatestRelease = func(repo string) (*release.GitHubRelease, error) {
+		return &release.GitHubRelease{
+			TagName: "v1.2.11",
+			Assets: []release.Asset{
+				{Name: "go2rtc.Camera.Wall.Setup.1.2.11.exe", BrowserDownloadURL: "https://example.com/setup.exe"},
+				{Name: "desktop-update-meta-1.2.11.json", BrowserDownloadURL: "https://example.com/meta.json"},
+			},
+		}, nil
+	}
+	release.FetchAssetBytes = func(url string) ([]byte, error) {
+		if url == "https://example.com/meta.json" {
+			return []byte(`{"version":"1.2.11","from":"1.2.10","to":"1.2.11","shell_changed":false,"update_kind":"none"}`), nil
+		}
+		return nil, nil
+	}
+	t.Cleanup(func() {
+		release.FetchLatestRelease = oldFetch
+		release.FetchAssetBytes = oldAssetFetch
+	})
+
+	desktopUp.Github = "Chex4ever/go2rtc"
+	desktopUp.ghClient = release.NewClient(desktopUp.Github, time.Minute)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update?from=1.2.10", nil)
+	rec := httptest.NewRecorder()
+	apiDesktopUpdate(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"update_kind":"none"`)
+	require.Contains(t, rec.Body.String(), `"shell_changed":false`)
+}

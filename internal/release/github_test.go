@@ -24,6 +24,22 @@ func TestPickDesktopInstaller(t *testing.T) {
 	require.Contains(t, a.Name, "Setup")
 }
 
+func TestPickDesktopPatch(t *testing.T) {
+	assets := []Asset{
+		{Name: "go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip", BrowserDownloadURL: "https://example.com/patch.zip"},
+	}
+	a, err := PickDesktopPatch(assets, "1.2.10", "1.2.11")
+	require.NoError(t, err)
+	require.Equal(t, "go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip", a.Name)
+
+	_, err = PickDesktopPatch(assets, "1.2.9", "1.2.11")
+	require.Error(t, err)
+}
+
+func TestPatchAssetName(t *testing.T) {
+	require.Equal(t, "go2rtc.Camera.Wall.Patch.1.2.10-1.2.11.zip", PatchAssetName("1.2.10", "1.2.11"))
+}
+
 func TestCompareSemver(t *testing.T) {
 	require.Equal(t, 1, CompareSemver("1.2.2", "1.2.1"))
 	require.Equal(t, 0, CompareSemver("1.2.0", "1.2.0"))

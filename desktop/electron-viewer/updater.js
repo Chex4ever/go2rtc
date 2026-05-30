@@ -3,7 +3,8 @@ const path = require('path');
 const crypto = require('crypto');
 const {app, dialog} = require('electron');
 const core = require('./updater-core');
-const {launchSilentInstaller, launchSilentInstallerAndRelaunch, resolveInstallDir} = require('./installer-launch');
+const {launchSilentInstallerAndRelaunch, resolveInstallDir} = require('./installer-launch');
+const {launchPatchApplyAndRelaunch} = require('./patch-apply');
 
 /** Set by main.js — allows app.quit() during one-click update. */
 let requestAppQuit = () => app.quit();
@@ -18,9 +19,10 @@ function setRequestAppQuit(fn) {
 async function fetchUpdateInfo(opts) {
     const serverUrl = opts.serverUrl;
     const platform = opts.platform || process.platform;
+    const currentVersion = opts.currentVersion || app.getVersion();
     const serverBase = require('./config-core').normalizeServerUrl(serverUrl);
 
-    for (const url of core.updateCheckUrls(serverUrl)) {
+    for (const url of core.updateCheckUrls(serverUrl, currentVersion)) {
         try {
             const res = await fetch(url, {redirect: 'follow'});
             if (!res.ok) {
@@ -49,6 +51,15 @@ async function checkForUpdates(opts) {
             status: 'unavailable',
             currentVersion,
             message: 'No desktop update published on this go2rtc server.',
+        };
+    }
+    if (info.updateKind === 'none' && core.isNewerVersion(info.version, currentVersion)) {
+        return {
+            status: 'viewer_only',
+            currentVersion,
+            remoteVersion: info.version,
+            info,
+            source,
         };
     }
     if (!core.isNewerVersion(info.version, currentVersion)) {
@@ -115,6 +126,45 @@ async function downloadInstaller(info, onProgress) {
 }
 
 /**
+ * @param {{patchUrl: string, sha256?: string, patchSha256?: string}} info
+ */
+async function downloadPatch(info) {
+    const sha = info.patchSha256 || info.sha256;
+    return downloadInstaller({downloadUrl: info.patchUrl, sha256: sha});
+}
+
+/**
+ * Download patch zip and apply changed shell files in-place, then quit app.
+ * @param {{version: string, patchUrl: string, patchSha256?: string}} info
+ */
+async function applyDesktopPatchOneClick(info) {
+    if (!app.isPackaged) {
+        throw new Error('Patch update works only in the installed application (not npm start).');
+    }
+    if (process.platform !== 'win32') {
+        throw new Error('Automatic patch apply is supported on Windows only.');
+    }
+    if (!info.patchUrl) {
+        throw new Error('Patch URL missing');
+    }
+
+    const downloaded = await downloadPatch(info);
+    const installDir = resolveInstallDir();
+    if (!installDir) {
+        throw new Error('Could not detect install folder');
+    }
+
+    const {helperPid, logPath} = await launchPatchApplyAndRelaunch(
+        downloaded,
+        process.execPath,
+        installDir,
+    );
+    app.quittingForUpdate = true;
+    requestAppQuit();
+    return {patchPath: downloaded, installDir, logPath, helperPid};
+}
+
+/**
  * Download installer and run NSIS silent upgrade in-place, then quit app.
  * @param {{version: string, downloadUrl: string, sha256?: string}} info
  */
@@ -140,6 +190,13 @@ async function applyDesktopUpdateOneClick(info) {
     app.quittingForUpdate = true;
     requestAppQuit();
     return {installerPath: downloaded, installDir, logPath, helperPid};
+}
+
+async function applyDesktopUpdateSmart(info) {
+    if (info.updateKind === 'patch' && info.patchUrl) {
+        return applyDesktopPatchOneClick(info);
+    }
+    return applyDesktopUpdateOneClick(info);
 }
 
 /**
@@ -174,13 +231,28 @@ async function runUpdateFlow(parent, opts) {
         return result;
     }
 
+    if (result.status === 'viewer_only') {
+        if (!opts.silent) {
+            await dialog.showMessageBox(parent || undefined, {
+                type: 'info',
+                title: 'Viewer updated on server',
+                message: 'The camera wall web UI was updated on the go2rtc server.',
+                detail: 'Press Ctrl+R to reload. No desktop download is required.',
+            });
+        }
+        return result;
+    }
+
+    const isPatch = result.info.updateKind === 'patch' && !!result.info.patchUrl;
     const detail = [
         result.info.notes || '',
         '',
         `Installed: ${result.currentVersion}`,
         `Available: ${result.remoteVersion}`,
         '',
-        'One click: download, replace files, and restart the app (Windows installed build).',
+        isPatch
+            ? 'Small update: download changed shell files only, then restart the app.'
+            : 'Full update: download installer, replace files, and restart the app (Windows installed build).',
     ]
         .filter(Boolean)
         .join('\n');
@@ -189,7 +261,9 @@ async function runUpdateFlow(parent, opts) {
     const choice = await dialog.showMessageBox(parent || undefined, {
         type: 'info',
         title: 'Update available',
-        message: `Version ${result.remoteVersion} is available`,
+        message: isPatch
+            ? `Small update ${result.remoteVersion} is available`
+            : `Version ${result.remoteVersion} is available`,
         detail,
         buttons: canOneClick ? ['Update now', 'Later'] : ['OK'],
         defaultId: 0,
@@ -201,14 +275,22 @@ async function runUpdateFlow(parent, opts) {
     }
 
     try {
-        await applyDesktopUpdateOneClick(result.info);
+        await applyDesktopUpdateSmart(result.info);
         return {...result, status: 'installing'};
     } catch (e) {
+        if (isPatch) {
+            try {
+                await applyDesktopUpdateOneClick(result.info);
+                return {...result, status: 'installing', fallback: 'full'};
+            } catch (fallbackErr) {
+                e = fallbackErr;
+            }
+        }
         await dialog.showMessageBox(parent || undefined, {
             type: 'error',
             title: 'Update failed',
             message: e?.message || String(e),
-            detail: result.info.downloadUrl,
+            detail: isPatch ? result.info.patchUrl : result.info.downloadUrl,
         });
         return {...result, error: e};
     }
@@ -362,6 +444,8 @@ async function runAllUpdateFlows(parent, opts) {
     const lines = [];
     if (desktop.status === 'available') {
         lines.push(`Camera Wall app: ${desktop.remoteVersion} available (installed ${desktop.currentVersion}).`);
+    } else if (desktop.status === 'viewer_only') {
+        lines.push(`Camera Wall viewer UI: ${desktop.remoteVersion} on server (reload page; shell ${desktop.currentVersion}).`);
     } else if (desktop.status === 'current') {
         lines.push(`Camera Wall app: up to date (${desktop.currentVersion}).`);
     } else {
@@ -415,7 +499,10 @@ module.exports = {
     checkForUpdates,
     checkGo2rtcUpdates,
     downloadInstaller,
+    downloadPatch,
+    applyDesktopPatchOneClick,
     applyDesktopUpdateOneClick,
+    applyDesktopUpdateSmart,
     runUpdateFlow,
     runGo2rtcUpdateFlow,
     runAllUpdateFlows,

@@ -1,6 +1,6 @@
 {
   "name": "go2rtc-viewer",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "Desktop camera wall client for go2rtc (Тесла)",
   "main": "main.js",
   "author": "Тесла",
@@ -53,7 +53,9 @@
       "load-error-page.js",
       "updater.js",
       "updater-core.js",
-      "installer-launch.js"
+      "installer-launch.js",
+      "patch-apply.js",
+      "shell-patch-lib.js"
     ],
     "nsis": {
       "oneClick": false,

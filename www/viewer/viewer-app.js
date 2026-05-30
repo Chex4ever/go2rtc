@@ -6,7 +6,7 @@ import {planMorningStart} from './morning-start.js';
 import {api, apiUrl, serverHint, isFetchFailure} from './viewer-api.js';
 import {$} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
-import {showFatalError, showScreen, onWallMouseMove, onWallTouch} from './viewer-ui.js';
+import {showFatalError, showScreen, onWallMouseMove, onWallTouch, showViewerNotice} from './viewer-ui.js';
 import {renderWall, exitFocus, applyWallLayoutClasses} from './viewer-wall.js';
 import {openAboutModal} from './viewer-about.js';
 
@@ -164,6 +164,15 @@ async function init() {
     $('#btn-back-layouts').addEventListener('click', showLayoutsScreen);
     $('#btn-exit-focus').addEventListener('click', exitFocus);
     bindAboutButtons();
+
+    if (window.go2rtcDesktop?.onUpdateNotice) {
+        window.go2rtcDesktop.onUpdateNotice((message) => {
+            showViewerNotice(message, 5000);
+        });
+    }
+    if (new URLSearchParams(window.location.search).get('viewer_notice') === 'updated') {
+        showViewerNotice('Viewer updated on server — press Ctrl+R to reload.', 5000);
+    }
 
     document.addEventListener('mousemove', onWallMouseMove);
     document.addEventListener('touchstart', onWallTouch, {passive: true});

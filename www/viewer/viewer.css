@@ -631,3 +631,20 @@ viewer-stream {
 .tile-debug-pipeline li {
     margin-bottom: 10px;
 }
+
+.viewer-notice-toast {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 10000;
+    max-width: min(360px, calc(100vw - 32px));
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(26, 29, 35, 0.96);
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1.35;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}

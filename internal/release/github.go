@@ -103,11 +103,6 @@ var FetchLatestRelease = func(repo string) (*GitHubRelease, error) {
 	return &rel, nil
 }
 
-// VersionFromTag strips leading "v".
-func VersionFromTag(tag string) string {
-	return strings.TrimPrefix(strings.TrimSpace(tag), "v")
-}
-
 // PickDesktopInstaller finds the Camera Wall NSIS installer on a GitHub release.
 func PickDesktopInstaller(assets []Asset) (*Asset, error) {
 	if len(assets) == 0 {
@@ -140,6 +135,49 @@ func PickDesktopInstaller(assets []Asset) (*Asset, error) {
 		return nil, fmt.Errorf("no desktop installer asset found")
 	}
 	return best, nil
+}
+
+// PatchAssetName is the standard progressive-update zip name.
+func PatchAssetName(from, to string) string {
+	from = strings.TrimSpace(from)
+	to = strings.TrimSpace(to)
+	if from == "" || to == "" {
+		return ""
+	}
+	return fmt.Sprintf("go2rtc.Camera.Wall.Patch.%s-%s.zip", from, to)
+}
+
+// PickDesktopPatch finds a shell patch zip for an exact from→to pair.
+func PickDesktopPatch(assets []Asset, from, to string) (*Asset, error) {
+	want := strings.ToLower(PatchAssetName(from, to))
+	if want == "" {
+		return nil, fmt.Errorf("invalid patch versions")
+	}
+	for i := range assets {
+		if strings.EqualFold(assets[i].Name, want) {
+			return &assets[i], nil
+		}
+	}
+	return nil, fmt.Errorf("patch asset not found: %s", want)
+}
+
+// PickAssetByExactName finds a release asset by filename.
+func PickAssetByExactName(assets []Asset, name string) (*Asset, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("empty asset name")
+	}
+	for i := range assets {
+		if strings.EqualFold(assets[i].Name, name) {
+			return &assets[i], nil
+		}
+	}
+	return nil, fmt.Errorf("asset not found: %s", name)
+}
+
+// VersionFromTag strips leading "v".
+func VersionFromTag(tag string) string {
+	return strings.TrimPrefix(strings.TrimSpace(tag), "v")
 }
 
 // PickAsset finds a release asset for os/arch (windows/amd64, etc.).

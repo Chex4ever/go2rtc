@@ -96,6 +96,7 @@
 - [x] **REF-FEAT-13** — `go2rtc-updater` Windows service (auto stop/replace/start go2rtc.exe)
 - [x] **REF-FEAT-14** — Per-tile debug modal (`viewer-tile-debug.js`, 🐞 on wall tiles)
 - [x] **REF-FEAT-15** — Camera Wall updates from GitHub (`viewer.desktop.github`)
+- [x] **REF-FEAT-16** — Progressive desktop updates (patch zip, viewer-only toast, full NSIS fallback)
 
 ## P4 — Later
 

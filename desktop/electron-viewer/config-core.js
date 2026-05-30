@@ -42,6 +42,7 @@ function normalizeConfig(raw, brandingFromFiles) {
         checkUpdatesOnStartup: raw?.checkUpdatesOnStartup !== false,
         autoOpenLayout: raw?.autoOpenLayout !== false,
         defaultLayoutId: String(raw?.defaultLayoutId || '').trim(),
+        lastViewerNoticeVersion: String(raw?.lastViewerNoticeVersion || '').trim(),
         branding: mergeBranding(brandingFromFiles, raw?.branding),
     };
     if (!/^#[0-9A-Fa-f]{6}$/.test(cfg.branding.accentColor)) {

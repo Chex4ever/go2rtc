@@ -17,6 +17,14 @@ The update API reported **1.2.5 available**, but the installer asset was still *
 3. **Tag name** — `vX.Y.Z` must match both go2rtc `-ldflags` version (CI) and desktop `package.json`.
 4. **After CI** — verify release assets: installer filename contains `X.Y.Z` and `/api/viewer/desktop/update` returns `"version":"X.Y.Z"` (from installer filename, not tag alone).
 
+## Progressive updates (since 1.2.11)
+
+The release tag still bumps every hotfix, but **desktop download is gated by `shell_changed` / `update_kind`**, not the tag alone:
+
+- Viewer-only release → API returns `update_kind: none` — no installer prompt.
+- Shell patch → patch zip when previous manifest exists on GitHub.
+- Full installer → skip-version gaps or large Electron diffs.
+
 ## API rule (implemented)
 
 `viewer.desktop.github` update JSON must use **installer filename version**, not GitHub tag, when they differ. Electron client also cross-checks `download_url` filename.

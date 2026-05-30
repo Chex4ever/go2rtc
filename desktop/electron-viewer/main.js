@@ -606,8 +606,35 @@ function scheduleUpdateCheck() {
     setTimeout(() => {
         updater
             .runAllUpdateFlows(mainWindow, {serverUrl: config.serverUrl, silent: true})
+            .then(({desktop}) => {
+                maybeShowViewerUpdateNotice(desktop);
+            })
             .catch(() => {});
     }, 8000);
+}
+
+function maybeShowViewerUpdateNotice(desktopResult) {
+    if (!desktopResult || desktopResult.status !== 'viewer_only') {
+        return;
+    }
+    const remote = String(desktopResult.remoteVersion || '').trim();
+    if (!remote) {
+        return;
+    }
+    const config = getConfig();
+    if (config.lastViewerNoticeVersion === remote) {
+        return;
+    }
+    showViewerNoticeToast('Viewer updated on server — press Ctrl+R to reload.');
+    cfg.saveConfig({...config, lastViewerNoticeVersion: remote});
+}
+
+function showViewerNoticeToast(message) {
+    const win = mainWindow;
+    if (!win || win.isDestroyed()) {
+        return;
+    }
+    win.webContents.send('viewer:update-notice', message);
 }
 
 async function checkForUpdatesNow() {
