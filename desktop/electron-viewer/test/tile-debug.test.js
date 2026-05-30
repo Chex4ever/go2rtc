@@ -20,7 +20,8 @@ describe('viewer-tile-debug.js', () => {
         assert.match(code, /export async function openTileDebugModal/);
         assert.match(code, /export async function buildTileDebugReport/);
         assert.match(code, /buildDiagnosis/);
-        assert.match(code, /probeFrame/);
+        assert.match(code, /buildPipeline/);
+        assert.match(code, /fetchAbout/);
     });
 });
 

@@ -623,3 +623,11 @@ viewer-stream {
 .tile-debug-warn {
     color: #f4b400;
 }
+
+.tile-debug-ok {
+    color: #7dcea0;
+}
+
+.tile-debug-pipeline li {
+    margin-bottom: 10px;
+}

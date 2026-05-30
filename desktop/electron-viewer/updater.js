@@ -3,7 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const {app, dialog} = require('electron');
 const core = require('./updater-core');
-const {launchSilentInstaller, resolveInstallDir} = require('./installer-launch');
+const {launchSilentInstaller, launchSilentInstallerAndRelaunch, resolveInstallDir} = require('./installer-launch');
 
 /** Set by main.js — allows app.quit() during one-click update. */
 let requestAppQuit = () => app.quit();
@@ -132,7 +132,7 @@ async function applyDesktopUpdateOneClick(info) {
         throw new Error('Could not detect install folder');
     }
 
-    await launchSilentInstaller(installerPath, installDir);
+    await launchSilentInstallerAndRelaunch(installerPath, process.execPath, installDir);
     app.quittingForUpdate = true;
     requestAppQuit();
     return {installerPath, installDir};
