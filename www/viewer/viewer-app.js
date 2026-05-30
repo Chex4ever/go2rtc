@@ -3,7 +3,8 @@ import {GRID_PRESETS, slotsFromLayout} from './grids.js';
 import {wallLayoutMode} from './device.js';
 import {saveLastLayoutId} from './layout-auto.js';
 import {planMorningStart} from './morning-start.js';
-import {api, apiUrl, serverHint, isFetchFailure} from './viewer-api.js';
+import {api, apiUrl, serverHint} from './viewer-api.js';
+import {isSessionProbeFatalError, shouldShowLoginScreen} from './viewer-session-boot.js';
 import {$} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
 import {showFatalError, showScreen, onWallMouseMove, onWallTouch, showViewerNotice} from './viewer-ui.js';
@@ -30,7 +31,7 @@ async function trySession() {
         state.layouts = me.layouts || [];
         return true;
     } catch (e) {
-        if (isFetchFailure(e)) {
+        if (isSessionProbeFatalError(e)) {
             showFatalError(
                 'Cannot reach go2rtc',
                 e.message || 'Network error',
@@ -196,9 +197,10 @@ async function init() {
         }
     });
 
-    if (await trySession()) {
+    const sessionOk = await trySession();
+    if (sessionOk) {
         await enterAfterAuth();
-    } else if (!$('#screen-bootstrap') || $('#screen-bootstrap').classList.contains('hidden')) {
+    } else if (shouldShowLoginScreen(sessionOk, $('#bootstrap-error')?.textContent)) {
         showScreen('screen-login');
     }
 }

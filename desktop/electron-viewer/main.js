@@ -294,8 +294,8 @@ function attachViewerLoadHandlers(win, config) {
                     if (window.__viewerShowError) {
                       window.__viewerShowError(
                         'Camera wall did not start',
-                        'Still loading after 20s. Is go2rtc running at the configured server URL?',
-                        'Check Ctrl+Shift+S server URL, restart go2rtc, then Retry (Ctrl+R).'
+                        'Still loading after 20s. Sign in may be required, or go2rtc is not reachable.',
+                        'Open ' + location.origin + '/viewer/ in a browser, or check Ctrl+Shift+S server URL (e.g. http://127.0.0.1:1984), then Retry (Ctrl+R).'
                       );
                     }
                   }, 20000);

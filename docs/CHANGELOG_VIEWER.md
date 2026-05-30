@@ -1,5 +1,12 @@
 # Camera wall & desktop changelog
 
+## 1.2.13 (2026-05-27)
+
+- **Fix:** Camera wall on a new PC — 401 from `/api/viewer/me` now shows **Sign in** immediately instead of staying on “Loading…” for 20s (creating a user in admin does not log the wall in).
+- **Layout admin:** sub-streams (`*_sub`) are separate checkboxes; **Select all** picks main streams only.
+- **Electron:** clearer 20s load-timeout message when the server URL is wrong or go2rtc is down.
+- Regression tests: `viewer-session-boot.js`, layout stream partitioning.
+
 ## 1.2.11 (2026-05-31)
 
 - **Progressive desktop updates** — three tiers: server UI reload (0 bytes + 5s toast), shell patch zip (changed files only), full NSIS fallback.

@@ -17,6 +17,7 @@ const MODULES = [
     'viewer-about.js',
     'layout-auto.js',
     'morning-start.js',
+    'viewer-session-boot.js',
     'admin.js',
     'admin-api.js',
     'admin-ui.js',
@@ -41,5 +42,11 @@ describe('viewer-app morning-start wiring', () => {
         assert.match(src, /import \{planMorningStart\}/);
         assert.match(src, /async function enterAfterAuth[\s\S]*planMorningStart/);
         assert.match(src, /await openLayout\(plan\.layoutId\)/);
+    });
+
+    it('uses shouldShowLoginScreen after trySession', () => {
+        const src = fs.readFileSync(path.join(VIEWER_DIR, 'viewer-app.js'), 'utf8');
+        assert.match(src, /import \{[^}]*shouldShowLoginScreen/);
+        assert.match(src, /shouldShowLoginScreen\(sessionOk/);
     });
 });

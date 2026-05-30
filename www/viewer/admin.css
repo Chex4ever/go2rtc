@@ -173,8 +173,77 @@ dialog h2 {
 }
 
 .camera-checks {
-    max-height: 240px;
+    max-height: 280px;
     overflow-y: auto;
+}
+
+.stream-section {
+    margin-bottom: 12px;
+}
+
+.stream-section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 8px;
+}
+
+.stream-section-preview {
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+}
+
+.stream-section-hint {
+    margin: 0 0 8px;
+}
+
+.stream-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #c5cae9;
+    background: rgba(92, 107, 192, 0.2);
+    border: 1px solid rgba(92, 107, 192, 0.35);
+    vertical-align: middle;
+}
+
+.stream-preview-entities {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.stream-preview-entities li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 8px;
+    margin: 4px 0;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+
+.stream-preview-entities code {
+    color: #90caf9;
+}
+
+.stream-preview-parent {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.check-main-camera {
+    padding-left: 2px;
 }
 
 .hint {

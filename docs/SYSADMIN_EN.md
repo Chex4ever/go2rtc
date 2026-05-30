@@ -118,6 +118,7 @@ Rules:
 
 - `cameras:` is the **allow-list** — only these streams may appear on that layout.
 - Do not assign **more cameras than grid size** (e.g. max 25 on a 25-grid).
+- In the layout editor, **main** and **preview (sub)** streams are separate checkboxes; **Select all** adds mains only — assign preview streams explicitly when needed.
 - **Tile order** is saved per user in `viewer.yaml` (`user_layout_state`); operators can drag tiles on desktop.
 
 ---
@@ -284,6 +285,7 @@ They sign in → pick layout → wall opens. Double-click or ⛶ for fullscreen 
 | Problem | Check |
 |---------|--------|
 | Blank / black viewer window | Should show an **on-screen error** (server unreachable, JS error). If still blank: hard-refresh, rebuild `go2rtc.exe`, check browser console |
+| “Loading…” / “did not start” on new PC | **Viewer admin ≠ wall login** — operator must **Sign in** on `/viewer/` once. If stuck 20s, check server URL (Electron **Ctrl+Shift+S**) and that go2rtc is running |
 | “Cannot reach go2rtc” | Start go2rtc; open `http://SERVER:1984/`; fix server URL in Electron (**Ctrl+Shift+S**) |
 | Desktop app won’t update | `viewer.desktop.github` or local `version`+installer; test `/api/viewer/desktop/update` (`source`) |
 | Black tile | Stream in go2rtc; name in layout allow-list; use **🐞** on tile → preview/substream, RTSP |

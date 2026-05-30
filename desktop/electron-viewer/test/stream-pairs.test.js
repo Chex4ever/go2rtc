@@ -25,3 +25,29 @@ describe('suggestPreviewStream', () => {
         assert.equal(suggestPreviewStream('cam1', ['cam1', 'other']), null);
     });
 });
+
+describe('layout stream partition', () => {
+    it('isLayoutPreviewStream detects _sub and paired names', async () => {
+        const {isLayoutPreviewStream} = await loadStreamPairs();
+        const streams = ['kitchen', 'kitchen_sub', 'garage', 'dvr_ch1', 'dvr_ch102'];
+        assert.equal(isLayoutPreviewStream('kitchen_sub', streams), true);
+        assert.equal(isLayoutPreviewStream('dvr_ch102', streams), true);
+        assert.equal(isLayoutPreviewStream('kitchen', streams), false);
+        assert.equal(isLayoutPreviewStream('garage', streams), false);
+    });
+
+    it('partitionLayoutStreams splits mains and previews', async () => {
+        const {partitionLayoutStreams} = await loadStreamPairs();
+        const {mains, previews} = partitionLayoutStreams(['kitchen', 'kitchen_sub', 'garage']);
+        assert.deepEqual(mains, ['kitchen', 'garage']);
+        assert.deepEqual(previews, ['kitchen_sub']);
+    });
+
+    it('select all mains skips sub streams', async () => {
+        const {partitionLayoutStreams} = await loadStreamPairs();
+        const streams = ['a', 'a_sub', 'b', 'b_sub', 'c'];
+        const {mains} = partitionLayoutStreams(streams);
+        assert.equal(mains.length, 3);
+        assert.ok(!mains.includes('a_sub'));
+    });
+});
