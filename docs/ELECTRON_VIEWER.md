@@ -169,6 +169,16 @@ On each tile, open **🐞** in the control bar. The modal shows:
 
 Use when a tile stays black but other cameras work (wrong preview stream, RTSP offline, stagger/connect queue).
 
+### About (versions)
+
+Check what you are running:
+
+- **Web viewer** — **About** on the login screen, layouts page, or wall header (move the mouse to the top if the menu is hidden).
+- **Electron** — application menu → **About Camera Wall…**
+- **API** — `GET /api/viewer/about` → `go2rtc_version`, `viewer_ui_version`, update sources.
+
+If **Tile debug** shows `no`, replace `go2rtc.exe` with a current build and reload (Ctrl+R).
+
 ### Publishing via GitHub (CI/CD)
 
 Push tag `v1.2.4` → GitHub Actions workflow **Release** builds binaries + installer and attaches them to a GitHub Release.

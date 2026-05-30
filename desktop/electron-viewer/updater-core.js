@@ -30,6 +30,31 @@ function resolveUrl(base, maybeRelative) {
     }
 }
 
+function versionFromInstallerUrl(url) {
+    let path = String(url || '');
+    try {
+        path = new URL(path).pathname;
+    } catch {
+        /* relative URL — use as-is */
+    }
+    const base = path.split(/[/\\]/).pop() || path;
+    const matches = base.match(/\d+\.\d+\.\d+/g);
+    if (!matches || !matches.length) {
+        return '';
+    }
+    return matches[matches.length - 1];
+}
+
+/** Prefer installer filename version when API tag and asset disagree. */
+function effectiveUpdateVersion(data) {
+    const apiVersion = String(data.version || '').trim();
+    const fileVersion = versionFromInstallerUrl(data.download_url || data.downloadUrl || '');
+    if (fileVersion && apiVersion && compareSemver(fileVersion, apiVersion) !== 0) {
+        return fileVersion;
+    }
+    return apiVersion || fileVersion;
+}
+
 /**
  * Normalize API or static update.json into {version, downloadUrl, notes, sha256}.
  * @param {object} data
@@ -38,10 +63,6 @@ function resolveUrl(base, maybeRelative) {
  */
 function normalizeUpdateInfo(data, serverBase, platform) {
     if (!data || typeof data !== 'object') {
-        return null;
-    }
-    const version = String(data.version || '').trim();
-    if (!version) {
         return null;
     }
 
@@ -57,6 +78,11 @@ function normalizeUpdateInfo(data, serverBase, platform) {
 
     downloadUrl = resolveUrl(serverBase, downloadUrl);
     if (!downloadUrl) {
+        return null;
+    }
+
+    const version = effectiveUpdateVersion({...data, download_url: downloadUrl});
+    if (!version) {
         return null;
     }
 
@@ -118,6 +144,8 @@ function isNewerVersion(remote, current) {
 
 module.exports = {
     compareSemver,
+    versionFromInstallerUrl,
+    effectiveUpdateVersion,
     normalizeUpdateInfo,
     normalizeGo2rtcUpdateInfo,
     updateCheckUrls,

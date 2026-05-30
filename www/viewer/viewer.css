@@ -151,6 +151,20 @@ pre.fatal-error {
     color: var(--accent);
 }
 
+button.link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+button.link-btn:hover {
+    filter: brightness(1.15);
+}
+
 #screen-login {
     flex: 1;
     display: flex;

@@ -17,13 +17,15 @@ import (
 )
 
 type desktopUpdateInfo struct {
-	Version     string `json:"version"`
-	Platform    string `json:"platform"`
-	DownloadURL string `json:"download_url"`
-	Notes       string `json:"notes,omitempty"`
-	Sha256      string `json:"sha256,omitempty"`
-	Source      string `json:"source,omitempty"`
-	ReleaseURL  string `json:"release_url,omitempty"`
+	Version       string `json:"version"`
+	ReleaseTag    string `json:"release_tag,omitempty"`
+	InstallerName string `json:"installer_name,omitempty"`
+	Platform      string `json:"platform"`
+	DownloadURL   string `json:"download_url"`
+	Notes         string `json:"notes,omitempty"`
+	Sha256        string `json:"sha256,omitempty"`
+	Source        string `json:"source,omitempty"`
+	ReleaseURL    string `json:"release_url,omitempty"`
 }
 
 type desktopUpdateCfg struct {
@@ -136,7 +138,22 @@ func resolveDesktopUpdate(platform string) (desktopUpdateInfo, error) {
 		if err != nil {
 			return out, err
 		}
-		out.Version = release.VersionFromTag(rel.TagName)
+		tagVersion := release.VersionFromTag(rel.TagName)
+		assetVersion := release.VersionFromDesktopAsset(asset.Name)
+		out.ReleaseTag = tagVersion
+		out.InstallerName = asset.Name
+		if assetVersion != "" {
+			out.Version = assetVersion
+		} else {
+			out.Version = tagVersion
+		}
+		if tagVersion != "" && assetVersion != "" && tagVersion != assetVersion {
+			log.Warn().
+				Str("release_tag", tagVersion).
+				Str("installer_version", assetVersion).
+				Str("installer", asset.Name).
+				Msg("[viewer] desktop release tag differs from installer filename — using installer version for updates")
+		}
 		out.DownloadURL = asset.BrowserDownloadURL
 		out.Notes = strings.TrimSpace(rel.Body)
 		if desktopUp.Notes != "" {

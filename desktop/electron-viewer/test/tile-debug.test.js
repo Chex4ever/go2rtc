@@ -19,6 +19,8 @@ describe('viewer-tile-debug.js', () => {
         const code = fs.readFileSync(TILE_DEBUG, 'utf8');
         assert.match(code, /export async function openTileDebugModal/);
         assert.match(code, /export async function buildTileDebugReport/);
+        assert.match(code, /buildDiagnosis/);
+        assert.match(code, /probeFrame/);
     });
 });
 

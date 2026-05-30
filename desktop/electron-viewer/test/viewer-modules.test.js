@@ -14,6 +14,7 @@ const MODULES = [
     'viewer-dom.js',
     'viewer-wall.js',
     'viewer-tile-debug.js',
+    'viewer-about.js',
     'layout-auto.js',
     'morning-start.js',
     'admin.js',
