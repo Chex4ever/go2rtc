@@ -8,6 +8,20 @@ import {$} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
 import {showFatalError, showScreen, onWallMouseMove, onWallTouch} from './viewer-ui.js';
 import {renderWall, exitFocus, applyWallLayoutClasses} from './viewer-wall.js';
+import {openAboutModal} from './viewer-about.js';
+
+function bindAboutButtons() {
+    for (const id of ['btn-about-login', 'btn-about-layouts', 'btn-about-wall']) {
+        const el = $(id);
+        if (el) {
+            el.addEventListener('click', () => {
+                openAboutModal().catch((e) => {
+                    showFatalError('About', e?.message || String(e));
+                });
+            });
+        }
+    }
+}
 
 async function trySession() {
     try {
@@ -149,6 +163,7 @@ async function init() {
     $('#layout-select').addEventListener('change', (e) => openLayout(e.target.value));
     $('#btn-back-layouts').addEventListener('click', showLayoutsScreen);
     $('#btn-exit-focus').addEventListener('click', exitFocus);
+    bindAboutButtons();
 
     document.addEventListener('mousemove', onWallMouseMove);
     document.addEventListener('touchstart', onWallTouch, {passive: true});

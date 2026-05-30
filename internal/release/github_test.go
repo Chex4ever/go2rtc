@@ -29,3 +29,9 @@ func TestCompareSemver(t *testing.T) {
 	require.Equal(t, 0, CompareSemver("1.2.0", "1.2.0"))
 	require.True(t, IsNewer("2.0.0", "1.9.14"))
 }
+
+func TestVersionFromDesktopAsset(t *testing.T) {
+	require.Equal(t, "1.2.4", VersionFromDesktopAsset("go2rtc.Camera.Wall.Setup.1.2.4.exe"))
+	require.Equal(t, "3.0.1", VersionFromDesktopAsset("go2rtc Camera Wall Setup 3.0.1.exe"))
+	require.Equal(t, "", VersionFromDesktopAsset("go2rtc-updater.exe"))
+}

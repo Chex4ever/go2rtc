@@ -43,6 +43,19 @@ describe('normalizeUpdateInfo', () => {
         );
         assert.match(info.downloadUrl, /setup\.exe$/);
     });
+
+    it('uses installer filename when API version is ahead of asset', () => {
+        const info = normalizeUpdateInfo(
+            {
+                version: '1.2.5',
+                download_url:
+                    'https://github.com/example/releases/download/v1.2.5/go2rtc.Camera.Wall.Setup.1.2.4.exe',
+            },
+            'http://127.0.0.1:1984',
+            'win32',
+        );
+        assert.equal(info.version, '1.2.4');
+    });
 });
 
 describe('isNewerVersion', () => {

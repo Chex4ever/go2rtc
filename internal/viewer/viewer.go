@@ -91,6 +91,8 @@ func Init() {
 
 	log.Info().Str("path", path).Msg("[viewer] config")
 
+	initAbout(path)
+
 	api.HandleFunc("api/viewer/login", apiLogin)
 	api.HandleFunc("api/viewer/logout", apiLogout)
 	api.HandleFunc("api/viewer/me", apiMe)

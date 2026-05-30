@@ -134,6 +134,31 @@ func TestDesktopUpdateFromGithub(t *testing.T) {
 	apiDesktopUpdate(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), `"version":"3.0.1"`)
+	require.Contains(t, rec.Body.String(), `"release_tag":"3.0.1"`)
 	require.Contains(t, rec.Body.String(), `"source":"github"`)
 	require.Contains(t, rec.Body.String(), `https://example.com/setup.exe`)
+}
+
+func TestDesktopUpdateFromGithubTagNewerThanInstaller(t *testing.T) {
+	t.Cleanup(resetDesktopUpdate)
+	oldFetch := release.FetchLatestRelease
+	release.FetchLatestRelease = func(repo string) (*release.GitHubRelease, error) {
+		return &release.GitHubRelease{
+			TagName: "v3.0.1",
+			Assets: []release.Asset{
+				{Name: "go2rtc.Camera.Wall.Setup.3.0.0.exe", BrowserDownloadURL: "https://example.com/setup.exe"},
+			},
+		}, nil
+	}
+	t.Cleanup(func() { release.FetchLatestRelease = oldFetch })
+
+	desktopUp.Github = "Chex4ever/go2rtc"
+	desktopUp.ghClient = release.NewClient(desktopUp.Github, time.Minute)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/viewer/desktop/update", nil)
+	rec := httptest.NewRecorder()
+	apiDesktopUpdate(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Contains(t, rec.Body.String(), `"version":"3.0.0"`)
+	require.Contains(t, rec.Body.String(), `"release_tag":"3.0.1"`)
 }

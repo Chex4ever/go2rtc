@@ -24,8 +24,15 @@ class ViewerStream extends VideoRTC {
     }
 
     getDebugSnapshot() {
+        const pc = this.pc;
         return {
             connectAgeMs: this.connectTS ? Date.now() - this.connectTS : 0,
+            pcConnectionState: pc?.connectionState || '',
+            iceConnectionState: pc?.iceConnectionState || '',
+            signalingState: pc?.signalingState || '',
+            videoSrcObject: Boolean(this.video?.srcObject),
+            videoElementSrc: this.video?.src || '',
+            mseCodecs: this.mseCodecs || '',
             events: [...this._debugEvents],
         };
     }
@@ -58,6 +65,21 @@ class ViewerStream extends VideoRTC {
     onopen() {
         this._logDebug('ws-open');
         super.onopen();
+        if (this.ws) {
+            this.ws.addEventListener('message', (ev) => {
+                if (typeof ev.data !== 'string') {
+                    return;
+                }
+                try {
+                    const msg = JSON.parse(ev.data);
+                    if (msg?.type === 'error') {
+                        this._logDebug('ws-error', msg.value || JSON.stringify(msg));
+                    }
+                } catch {
+                    /* binary handled elsewhere */
+                }
+            });
+        }
     }
 
     onclose() {

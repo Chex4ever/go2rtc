@@ -44,7 +44,7 @@
                 <button type="submit" class="primary">Sign in</button>
                 <div id="login-error" class="error"></div>
             </form>
-            <p class="admin-links"><a href="admin.html">Viewer admin</a></p>
+            <p class="admin-links"><a href="admin.html">Viewer admin</a> · <button type="button" id="btn-about-login" class="link-btn">About</button></p>
         </div>
     </section>
 
@@ -54,6 +54,7 @@
         <div id="layout-list" class="layout-grid"></div>
         <div id="layout-open-error" class="error"></div>
         <p style="margin-top: 24px;">
+            <button type="button" id="btn-about-layouts">About</button>
             <button type="button" id="btn-logout">Sign out</button>
             <button type="button" id="btn-logout-forget">Sign out &amp; forget device</button>
         </p>
@@ -66,6 +67,7 @@
             <select id="layout-select" class="wall-chrome-item" aria-label="Switch layout"></select>
             <button type="button" id="btn-exit-focus" class="hidden wall-chrome-item" title="Back to grid (Esc)">Grid</button>
             <span id="save-hint" class="save-hint wall-chrome-item"></span>
+            <button type="button" id="btn-about-wall" class="wall-chrome-item" title="Versions and diagnostics">About</button>
             <button type="button" id="btn-logout-wall" class="wall-chrome-item">Sign out</button>
         </header>
         <div id="wall-grid" class="wall-grid"></div>

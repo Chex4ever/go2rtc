@@ -1,5 +1,12 @@
 # Camera wall & desktop changelog
 
+## 1.2.6 (2026-05-27)
+
+- **About** dialog — go2rtc version, viewer UI version, desktop app (Electron), update config; web **About** button + Electron menu item.
+- `GET /api/viewer/about` for version metadata.
+- **Fix fake desktop updates** — API uses installer filename version (not GitHub tag alone); Electron cross-checks download URL; CI syncs `package.json` to tag.
+- **Tile debug** — diagnosis section, per-producer RTSP stats, server snapshot probe, `ws-error` events; clearer hints for RTSP/WebRTC failures.
+
 ## 1.2.5 (2026-05-27)
 
 - Docs: `VIEWER_API`, `ELECTRON_VIEWER`, sysadmin guides aligned with GitHub desktop updates and updater API.

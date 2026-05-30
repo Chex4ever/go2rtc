@@ -118,9 +118,13 @@ A **hotfix is not a separate delivery channel** — it is a **patch semver relea
 
 | Change | Bump `package.json`? | Tag + CI? |
 |--------|----------------------|-----------|
-| `www/viewer/*`, Go server, updater | No | Yes |
+| `www/viewer/*`, Go server, updater | Sync tag in CI* | Yes |
 | `desktop/electron-viewer/*` | **Yes** (match tag) | Yes |
-| Both | Yes | Yes |
+| Any CI release | **Yes** — always match tag | Yes |
+
+\*CI now sets `package.json` from the tag before `npm run dist`. Still commit the bump on `master` before tagging so local builds match.
+
+**Version sync rule:** GitHub tag, go2rtc binary, and Camera Wall installer filename must all use the same `X.Y.Z`. The desktop update API reports **installer filename version**, not the release tag alone — otherwise clients see “1.2.5 available” but download a 1.2.4 installer. See `.cursor/rules/release-version-sync.mdc`.
 
 Viewer UI is embedded in `go2rtc.exe` — a **server-only** hotfix is enough for wall UI fixes unless users must install a new Electron build.
 
@@ -128,15 +132,16 @@ Viewer UI is embedded in `go2rtc.exe` — a **server-only** hotfix is enough for
 
 1. Land fix on `master` (PR + merge; see **git-ship** skill).
 2. Decide patch version (next unused `v1.2.x` on [Releases](https://github.com/Chex4ever/go2rtc/releases)).
-3. If desktop code changed: set `desktop/electron-viewer/package.json` `version` to the same `X.Y.Z`.
-4. Tag and push:
+3. Set `desktop/electron-viewer/package.json` `version` to the same `X.Y.Z` as the tag (**every release**, not only when Electron code changed).
+4. If `www/viewer/**` changed: bump `ViewerUIVersion` in `internal/viewer/about.go`.
+5. Tag and push:
 
    ```powershell
    git tag -a v1.2.3 -m "Hotfix: short description"
    git push origin v1.2.3
    ```
 
-5. Wait for **Release** workflow; confirm assets (`go2rtc_X.Y.Z_windows_amd64.exe`, `go2rtc-updater.exe`, installer if built).
+5. Wait for **Release** workflow; confirm assets (`go2rtc_X.Y.Z_windows_amd64.exe`, `go2rtc-updater.exe`, installer filename contains `X.Y.Z`); hit `/api/viewer/desktop/update` and check `"version"` matches installer, not just tag.
 6. Release notes: start with **Hotfix:** and list what changed.
 
 Sites with `updater.github: Chex4ever/go2rtc` and `auto_apply: true` apply server binaries on schedule. Desktop: **Check for updates** or startup check.

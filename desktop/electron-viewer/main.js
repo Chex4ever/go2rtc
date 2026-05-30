@@ -409,6 +409,85 @@ function openServerUrl(pathSuffix) {
     shell.openExternal(url);
 }
 
+async function fetchServerAbout(serverUrl) {
+    const url = `${cfg.normalizeServerUrl(serverUrl)}/api/viewer/about`;
+    const res = await fetch(url, {headers: {Accept: 'application/json'}});
+    if (!res.ok) {
+        throw new Error(`${res.status} ${res.statusText}`);
+    }
+    return res.json();
+}
+
+function formatUpdateSource(src) {
+    if (!src) {
+        return 'not configured';
+    }
+    if (src.source === 'github') {
+        return `GitHub (${src.github})`;
+    }
+    if (src.source === 'local') {
+        return `local v${src.version}`;
+    }
+    return src.source || 'unknown';
+}
+
+function formatAboutDetail(client, server, serverError) {
+    const lines = [
+        `Desktop app: ${client.desktop_app}`,
+        `Electron: ${client.electron}`,
+        `Platform: ${client.platform} (${client.arch})`,
+        `Server URL: ${client.server_url}`,
+        '',
+    ];
+    if (server) {
+        lines.push(
+            `go2rtc server: ${server.go2rtc_version}`,
+            `Camera wall UI: ${server.viewer_ui_version}`,
+            `Tile debug (🐞): ${server.features?.tile_debug ? 'yes' : 'no — upgrade go2rtc.exe'}`,
+            `go2rtc updates: ${formatUpdateSource(server.updates?.go2rtc)}`,
+            `Desktop updates: ${formatUpdateSource(server.updates?.desktop)}`,
+        );
+        if (server.viewer_config) {
+            lines.push(`viewer.yaml: ${server.viewer_config}`);
+        }
+    } else {
+        lines.push(`Server info unavailable: ${serverError || 'unknown error'}`);
+    }
+    lines.push(
+        '',
+        'Tile controls (zoom, snapshot, debug 🐞) appear when you hover a camera tile.',
+        'Move the mouse to the top edge to show the wall menu (About, Sign out).',
+    );
+    return lines.join('\n');
+}
+
+async function showAboutDialog() {
+    const config = getConfig();
+    const b = config.branding;
+    const appLabel = b.productName || 'Camera Wall';
+    const client = {
+        desktop_app: app.getVersion(),
+        electron: process.versions.electron,
+        platform: process.platform,
+        arch: process.arch,
+        server_url: cfg.normalizeServerUrl(config.serverUrl),
+        packaged: app.isPackaged,
+    };
+    let server = null;
+    let serverError = null;
+    try {
+        server = await fetchServerAbout(config.serverUrl);
+    } catch (e) {
+        serverError = e.message || String(e);
+    }
+    await dialog.showMessageBox(mainWindow || settingsWindow, {
+        type: 'info',
+        title: `About ${appLabel}`,
+        message: appLabel,
+        detail: formatAboutDetail(client, server, serverError),
+    });
+}
+
 function buildMenu() {
     const config = getConfig();
     const b = config.branding;
@@ -439,6 +518,14 @@ function buildMenu() {
                 {
                     label: 'Check for updates…',
                     click: () => checkForUpdatesNow(),
+                },
+                {
+                    label: 'About Camera Wall…',
+                    click: () => {
+                        showAboutDialog().catch((e) => {
+                            dialog.showErrorBox('About', e.message || String(e));
+                        });
+                    },
                 },
                 {type: 'separator'},
                 {role: 'quit'},
@@ -548,6 +635,19 @@ ipcMain.handle('viewer:retry-load', async () => {
 ipcMain.handle('viewer:open-server', async () => {
     const config = getConfig();
     await shell.openExternal(cfg.normalizeServerUrl(config.serverUrl));
+});
+
+ipcMain.handle('viewer:client-info', () => {
+    const config = getConfig();
+    return {
+        desktop_app: app.getVersion(),
+        electron: process.versions.electron,
+        node: process.versions.node,
+        platform: process.platform,
+        arch: process.arch,
+        server_url: cfg.normalizeServerUrl(config.serverUrl),
+        packaged: app.isPackaged,
+    };
 });
 
 ipcMain.handle('settings:get', () => {

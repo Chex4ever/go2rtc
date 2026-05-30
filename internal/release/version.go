@@ -1,6 +1,21 @@
 package release
 
-import "strconv"
+import (
+	"regexp"
+	"strconv"
+)
+
+var desktopAssetVersionRe = regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+
+// VersionFromDesktopAsset extracts semver from an installer filename
+// (e.g. "go2rtc.Camera.Wall.Setup.1.2.4.exe" → "1.2.4").
+func VersionFromDesktopAsset(name string) string {
+	matches := desktopAssetVersionRe.FindAllString(name, -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	return matches[len(matches)-1]
+}
 
 // CompareSemver returns 1 if a>b, -1 if a<b, 0 if equal (numeric dot parts).
 func CompareSemver(a, b string) int {

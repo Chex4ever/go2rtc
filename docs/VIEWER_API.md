@@ -7,6 +7,7 @@ No go2rtc API basic auth required when using viewer session or IP trust.
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/about` | JSON: `go2rtc_version`, `viewer_ui_version`, `features`, `updates` (no login) |
 | POST | `/login` | Body: `{user, password, remember?}` → sets session cookie |
 | POST | `/logout` | `?forget=1` clears IP trust |
 | GET | `/me` | Current user + layout list |
@@ -110,4 +111,6 @@ See [UPDATER_SERVICE.md](UPDATER_SERVICE.md).
 - `/viewer/` — camera wall (`?auto_open=1&default_layout=wall_25` for kiosk)
 - `/viewer/admin.html` — admin UI
 
-Per-tile **debug** (🐞 on tile controls): layout channels, `/api/streams`, WebRTC/WebSocket state, event log, copy JSON report — for black-tile troubleshooting.
+Per-tile **debug** (🐞 on tile controls): layout channels, `/api/streams`, WebRTC/WebSocket state, event log, copy JSON report — for black-tile troubleshooting. Controls appear on **tile hover**.
+
+**About** — wall header / layouts / login, or Electron menu **About Camera Wall…** — shows go2rtc version, viewer UI version, desktop app version, update sources.

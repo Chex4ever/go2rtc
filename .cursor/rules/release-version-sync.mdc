@@ -1,0 +1,30 @@
+---
+description: Keep GitHub release tag, go2rtc binary, and Camera Wall installer versions in sync
+alwaysApply: true
+---
+
+# Release version sync (Camera Wall + go2rtc)
+
+## The bug we must not repeat
+
+GitHub release tag `v1.2.5` was published while `desktop/electron-viewer/package.json` stayed at `1.2.4`.  
+The update API reported **1.2.5 available**, but the installer asset was still **1.2.4** — Camera Wall offered a fake upgrade and reinstalled the same version.
+
+## Before every `git tag vX.Y.Z`
+
+1. **`desktop/electron-viewer/package.json`** — set `"version": "X.Y.Z"` to **match the tag** (always, for every release that runs CI — not only when Electron code changed).
+2. **`internal/viewer/about.go`** — bump `ViewerUIVersion` when `www/viewer/**` changed.
+3. **Tag name** — `vX.Y.Z` must match both go2rtc `-ldflags` version (CI) and desktop `package.json`.
+4. **After CI** — verify release assets: installer filename contains `X.Y.Z` and `/api/viewer/desktop/update` returns `"version":"X.Y.Z"` (from installer filename, not tag alone).
+
+## API rule (implemented)
+
+`viewer.desktop.github` update JSON must use **installer filename version**, not GitHub tag, when they differ. Electron client also cross-checks `download_url` filename.
+
+## Do not
+
+- Push a release tag without syncing `package.json`.
+- Report a desktop update as available when installer semver ≤ installed app version.
+- Assume tag version equals installer version — always check the `.exe` name on the release.
+
+See [docs/RELEASE_CI.md](docs/RELEASE_CI.md) and `.cursor/rules/patch-releases.mdc`.
