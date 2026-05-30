@@ -5,6 +5,7 @@ const {execFileSync} = require('child_process');
 
 const FULL_UPDATE_FILES = new Set([
     'electron.exe',
+    'go2rtc camera wall.exe',
     'ffmpeg.dll',
     'libEGL.dll',
     'libGLESv2.dll',

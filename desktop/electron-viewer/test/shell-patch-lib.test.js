@@ -40,6 +40,15 @@ describe('shell-patch-lib', () => {
         assert.equal(shouldUseFullUpdate(diff), true);
     });
 
+    it('shouldUseFullUpdate when branded app exe changes', () => {
+        const diff = {
+            changed: [{path: 'go2rtc Camera Wall.exe'}],
+            changedBytes: 1000,
+            totalBytes: 2000,
+        };
+        assert.equal(shouldUseFullUpdate(diff), true);
+    });
+
     it('shouldUseFullUpdate when byte ratio exceeds threshold', () => {
         const diff = {
             changed: [{path: 'resources/app.asar'}],

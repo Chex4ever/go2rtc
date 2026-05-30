@@ -1,6 +1,13 @@
 # Camera wall & desktop changelog
 
-## 1.2.13 (2026-05-27)
+## 1.2.14 (2026-05-31)
+
+- **Fix:** Connection refused on startup — clearer error (not a login problem), **Server settings** button, auto-open Settings on localhost, retry ~12s while go2rtc service starts.
+- **Fix:** Login form missing `isFetchFailure` import (network error during sign-in).
+- **CI:** Full git history on release build — patch meta no longer skipped; `validate-desktop-update-meta.mjs` rejects fake `changed_files: 0`.
+- **Patch policy:** `go2rtc Camera Wall.exe` changes always trigger full installer (not patch zip).
+
+## 1.2.13 (2026-05-31)
 
 - **Fix:** Camera wall on a new PC — 401 from `/api/viewer/me` now shows **Sign in** immediately instead of staying on “Loading…” for 20s (creating a user in admin does not log the wall in).
 - **Layout admin:** sub-streams (`*_sub`) are separate checkboxes; **Select all** picks main streams only.

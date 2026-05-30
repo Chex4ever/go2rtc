@@ -4,6 +4,7 @@ const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('go2rtcDesktop', {
     retryViewerLoad: () => ipcRenderer.invoke('viewer:retry-load'),
     openServerExternal: () => ipcRenderer.invoke('viewer:open-server'),
+    openSettings: () => ipcRenderer.invoke('viewer:open-settings'),
     getClientInfo: () => ipcRenderer.invoke('viewer:client-info'),
     onUpdateNotice: (callback) => {
         if (typeof callback !== 'function') {

@@ -98,6 +98,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Resolve version
         id: ver
@@ -137,6 +140,7 @@ jobs:
       - name: Build shell manifest and patch
         shell: bash
         run: |
+          set -euo pipefail
           VER="${{ steps.ver.outputs.version }}"
           TAG="${{ steps.ver.outputs.tag }}"
           OUT="desktop/electron-viewer/release-ci"
@@ -148,9 +152,24 @@ jobs:
 
           PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
           if [ -z "${PREV_TAG}" ]; then
+            echo "::warning::git describe failed for ${TAG}^ — trying latest prior tag"
+            PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -v "^${TAG}$" | head -1 || true)
+          fi
+          if [ -z "${PREV_TAG}" ]; then
+            echo "No prior release tag — first release with shell manifests"
             node -e "
             const fs=require('fs');
-            const meta={version:'${VER}',shell_changed:true,update_kind:'full',changed_files:0,changed_bytes:0,total_bytes:0,patch_file:'',patch_sha256:''};
+            const meta={
+              version:'${VER}',
+              shell_changed:true,
+              update_kind:'full',
+              changed_files:0,
+              changed_bytes:0,
+              total_bytes:0,
+              patch_file:'',
+              patch_sha256:'',
+              patch_skip_reason:'first_shell_manifest'
+            };
             fs.writeFileSync('${OUT}/desktop-update-meta-${VER}.json', JSON.stringify(meta,null,2)+'\n');
             "
             exit 0
@@ -164,11 +183,28 @@ jobs:
               --from-manifest "${PREV_MANIFEST}" \
               --to-manifest "${MANIFEST}" \
               --out-dir "${OUT}"
+            node scripts/validate-desktop-update-meta.mjs \
+              --meta "${OUT}/desktop-update-meta-${VER}.json" \
+              --from-manifest "${PREV_MANIFEST}" \
+              --to-manifest "${MANIFEST}" \
+              --out-dir "${OUT}"
           else
-            echo "Previous shell manifest not found — first progressive release from ${PREV_TAG}"
+            echo "Previous shell manifest not on GitHub (${URL}) — full update only from ${PREV_VER}"
             node -e "
             const fs=require('fs');
-            const meta={version:'${VER}',from:'${PREV_VER}',to:'${VER}',shell_changed:true,update_kind:'full',changed_files:0,changed_bytes:0,total_bytes:0,patch_file:'',patch_sha256:''};
+            const meta={
+              version:'${VER}',
+              from:'${PREV_VER}',
+              to:'${VER}',
+              shell_changed:true,
+              update_kind:'full',
+              changed_files:0,
+              changed_bytes:0,
+              total_bytes:0,
+              patch_file:'',
+              patch_sha256:'',
+              patch_skip_reason:'no_prev_manifest_on_release'
+            };
             fs.writeFileSync('${OUT}/desktop-update-meta-${VER}.json', JSON.stringify(meta,null,2)+'\n');
             "
           fi

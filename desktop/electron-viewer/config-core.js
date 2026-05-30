@@ -76,6 +76,15 @@ function logoFileUrl(branding, searchDirs, exists) {
     return `file:///${p.replace(/\\/g, '/')}`;
 }
 
+function isLocalhostServer(url) {
+    try {
+        const host = new URL(normalizeServerUrl(url)).hostname.toLowerCase();
+        return host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '[::1]';
+    } catch {
+        return false;
+    }
+}
+
 function normalizeServerUrl(url) {
     let u = String(url || '').trim();
     if (!u) {
@@ -150,6 +159,7 @@ module.exports = {
     resolveLogoPath,
     logoFileUrl,
     normalizeServerUrl,
+    isLocalhostServer,
     viewerUrl,
     adminUrls,
     configFromInstallMode,

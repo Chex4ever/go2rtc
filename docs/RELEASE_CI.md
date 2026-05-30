@@ -123,6 +123,8 @@ Release assets (Windows desktop job):
 
 First release with manifests (e.g. v1.2.11) has no patch zip; v1.2.12+ patches from the previous version automatically.
 
+Release CI checks out **full git history** (`fetch-depth: 0`) so the previous tag resolves correctly, then runs `scripts/validate-desktop-update-meta.mjs` to ensure `desktop-update-meta-*.json` matches the manifest diff (catches bogus `changed_files: 0`).
+
 API: `GET /api/viewer/desktop/update?from=1.2.10` returns `update_kind`, `patch_url`, `shell_changed`.
 
 ### Version rules

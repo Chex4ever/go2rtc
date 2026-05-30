@@ -3,7 +3,7 @@ import {GRID_PRESETS, slotsFromLayout} from './grids.js';
 import {wallLayoutMode} from './device.js';
 import {saveLastLayoutId} from './layout-auto.js';
 import {planMorningStart} from './morning-start.js';
-import {api, apiUrl, serverHint} from './viewer-api.js';
+import {api, apiUrl, serverHint, isFetchFailure} from './viewer-api.js';
 import {isSessionProbeFatalError, shouldShowLoginScreen} from './viewer-session-boot.js';
 import {$} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';

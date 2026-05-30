@@ -43,6 +43,12 @@ describe('viewer-app.js syntax', () => {
             acorn.parse(code, {ecmaVersion: 'latest', sourceType: 'module'});
         });
     });
+
+    it('imports isFetchFailure for login network errors', () => {
+        const code = readViewerApp();
+        assert.match(code, /import \{[^}]*isFetchFailure[^}]*\} from '\.\/viewer-api\.js'/);
+        assert.match(code, /isFetchFailure\(e\)/);
+    });
 });
 
 describe('renderWall() regression', () => {

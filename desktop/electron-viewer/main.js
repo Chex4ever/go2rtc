@@ -22,6 +22,11 @@ let settingsWindow = null;
 /** @type {ReturnType<typeof cfg.loadConfig> | null} */
 let currentConfig = null;
 
+const LOAD_RETRY_MAX = 8;
+const LOAD_RETRY_MS = 1500;
+/** @type {boolean} */
+let promptedConnectionSettings = false;
+
 if (cfg.earlyLoadConfig().allowInsecureHttps) {
     app.commandLine.appendSwitch('ignore-certificate-errors');
 }
@@ -239,11 +244,15 @@ function wireLoadErrorPageActions(win) {
                   if (!api) return;
                   var retry = document.getElementById('load-error-retry');
                   var openSrv = document.getElementById('load-error-open-server');
+                  var openSettings = document.getElementById('load-error-open-settings');
                   if (retry) {
                     retry.addEventListener('click', function () { api.retryViewerLoad(); });
                   }
                   if (openSrv) {
                     openSrv.addEventListener('click', function () { api.openServerExternal(); });
+                  }
+                  if (openSettings) {
+                    openSettings.addEventListener('click', function () { api.openSettings(); });
                   }
                 })();`,
             )
@@ -262,9 +271,21 @@ function showViewerLoadError(win, config, details) {
     });
     wireLoadErrorPageActions(win);
     win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    win.setTitle(config.branding.windowTitle || 'Camera Wall');
+
+    if (
+        !promptedConnectionSettings &&
+        details.errorCode === -102 &&
+        cfg.isLocalhostServer(serverUrl)
+    ) {
+        promptedConnectionSettings = true;
+        setTimeout(() => openSettings(), 400);
+    }
 }
 
 function attachViewerLoadHandlers(win, config) {
+    let loadRetryCount = 0;
+
     win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
         if (!isMainFrame) {
             return;
@@ -274,7 +295,23 @@ function attachViewerLoadHandlers(win, config) {
             return;
         }
         event.preventDefault();
-        showViewerLoadError(win, config, {errorCode, errorDescription, validatedURL});
+
+        const retryable = errorCode === -102 || errorCode === -105 || errorCode === -106;
+        if (retryable && loadRetryCount < LOAD_RETRY_MAX) {
+            loadRetryCount += 1;
+            const title = config.branding.windowTitle || 'Camera Wall';
+            win.setTitle(`${title} — waiting for go2rtc (${loadRetryCount}/${LOAD_RETRY_MAX})…`);
+            setTimeout(() => {
+                if (win.isDestroyed()) {
+                    return;
+                }
+                win.loadURL(viewerUrlForConfig(getConfig()));
+            }, LOAD_RETRY_MS);
+            return;
+        }
+
+        loadRetryCount = 0;
+        showViewerLoadError(win, getConfig(), {errorCode, errorDescription, validatedURL});
     });
 
     win.webContents.on('did-finish-load', () => {
@@ -282,6 +319,8 @@ function attachViewerLoadHandlers(win, config) {
         if (!url || url.startsWith('data:')) {
             return;
         }
+        loadRetryCount = 0;
+        win.setTitle(config.branding.windowTitle || 'Camera Wall');
         injectViewerBranding(win, config);
         win.webContents
             .executeJavaScript(
@@ -657,6 +696,10 @@ ipcMain.handle('viewer:retry-load', async () => {
         return;
     }
     await win.loadURL(viewerUrlForConfig(config));
+});
+
+ipcMain.handle('viewer:open-settings', async () => {
+    openSettings();
 });
 
 ipcMain.handle('viewer:open-server', async () => {
