@@ -80,7 +80,7 @@ body.touch-device .wall-header select {
     display: none;
 }
 
-#screen-wall.wall-mobile.focus-mode .cell.focused {
+#screen-wall.wall-mobile.focus-mode.show-top-chrome .cell.focused {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
 }

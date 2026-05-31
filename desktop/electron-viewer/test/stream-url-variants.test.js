@@ -33,4 +33,58 @@ describe('subStreamUrlVariants', () => {
         assert.ok(!all.includes(main));
         assert.equal(new Set(all).size, all.length);
     });
+
+    it('flips Dahua subtype=0 to subtype=1', () => {
+        const main =
+            'rtsp://admin:pass@192.168.1.48:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif';
+        const subs = lib.subStreamUrlVariants(main);
+        assert.ok(subs.some((u) => u.includes('subtype=1') && !u.includes('subtype=0')));
+    });
+});
+
+describe('preferPreviewUrl', () => {
+    const main =
+        'rtsp://admin:pass@192.168.1.48:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif';
+
+    it('falls back when ONVIF returns the same stream as main', () => {
+        const preview = lib.preferPreviewUrl(main, main);
+        assert.ok(preview.includes('subtype=1'));
+        assert.ok(!lib.rtspStreamsEquivalent(main, preview));
+    });
+
+    it('falls back when candidate repeats main stream key', () => {
+        const onvifMain =
+            'rtsp://192.168.1.48:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif';
+        const preview = lib.preferPreviewUrl(main, onvifMain);
+        assert.ok(preview.includes('subtype=1'));
+    });
+
+    it('keeps a distinct resolved profile URL from ONVIF', () => {
+        const onvifSub =
+            'rtsp://192.168.1.48:554/cam/realmonitor?channel=1&subtype=2&unicast=true&proto=Onvif';
+        const preview = lib.preferPreviewUrl(main, onvifSub);
+        assert.equal(preview, onvifSub);
+    });
+});
+
+describe('isDahuaRealmonitorUrl', () => {
+    it('detects Dahua realmonitor paths', () => {
+        assert.ok(
+            lib.isDahuaRealmonitorUrl(
+                'rtsp://x/cam/realmonitor?channel=1&subtype=0',
+            ),
+        );
+        assert.ok(!lib.isDahuaRealmonitorUrl('rtsp://x/Streaming/Channels/101'));
+    });
+});
+
+describe('mergeRtspCredentials', () => {
+    it('copies auth from main stream onto ONVIF profile url', () => {
+        const main =
+            'rtsp://admin:!Q2w3e4r5t@192.168.1.48:554/cam/realmonitor?channel=1&subtype=0';
+        const profile = 'rtsp://192.168.1.48:554/cam/realmonitor?channel=1&subtype=1';
+        const merged = lib.mergeRtspCredentials(main, profile);
+        assert.ok(merged.includes('admin:!Q2w3e4r5t@'));
+        assert.ok(merged.includes('subtype=1'));
+    });
 });

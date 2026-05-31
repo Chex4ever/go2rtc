@@ -6,6 +6,8 @@ export const GRID_PRESETS = {
     36: {cols: 6, rows: 6},
 };
 
+/** @typedef {'preview' | 'main'} TileViewMode */
+
 export function gridSize(grid) {
     const p = GRID_PRESETS[grid];
     return p ? p.cols * p.rows : 0;
@@ -22,20 +24,55 @@ export function slotStream(slot) {
     return slot.stream || null;
 }
 
-/** @returns {object|null} */
-export function slotView(slot) {
+/**
+ * Tile viewport settings for preview (grid) or main (fullscreen) channel.
+ * @param {object|string|null} slot
+ * @param {TileViewMode} [mode]
+ * @returns {object|null}
+ */
+export function slotView(slot, mode = 'preview') {
     if (!slot || typeof slot === 'string') {
         return null;
+    }
+    if (mode === 'main') {
+        return slot.viewMain || slot.view || null;
     }
     return slot.view || null;
 }
 
-export function setSlotView(slots, index, view) {
+/**
+ * @param {Array} slots
+ * @param {number} index
+ * @param {object|null} view
+ * @param {TileViewMode} [mode]
+ */
+export function setSlotView(slots, index, view, mode = 'preview') {
     const stream = slotStream(slots[index]);
     if (!stream) {
         return;
     }
-    slots[index] = view ? {stream, view} : stream;
+
+    const prev = slots[index];
+    const next =
+        typeof prev === 'object' && prev !== null && prev.stream ? {...prev, stream} : {stream};
+
+    if (mode === 'main') {
+        if (view) {
+            next.viewMain = view;
+        } else {
+            delete next.viewMain;
+        }
+    } else if (view) {
+        next.view = view;
+    } else {
+        delete next.view;
+    }
+
+    if (!next.view && !next.viewMain) {
+        slots[index] = stream;
+    } else {
+        slots[index] = next;
+    }
 }
 
 export function slotsFromLayout(layout) {
@@ -51,8 +88,17 @@ export function slotsFromLayout(layout) {
         for (const t of layout.tiles) {
             const i = t.y * preset.cols + t.x;
             if (i >= 0 && i < total) {
-                if (t.view && typeof t.view === 'object') {
-                    slots[i] = {stream: t.stream, view: t.view};
+                const hasView = t.view && typeof t.view === 'object';
+                const hasViewMain = t.viewMain && typeof t.viewMain === 'object';
+                if (hasView || hasViewMain) {
+                    const entry = {stream: t.stream};
+                    if (hasView) {
+                        entry.view = t.view;
+                    }
+                    if (hasViewMain) {
+                        entry.viewMain = t.viewMain;
+                    }
+                    slots[i] = entry;
                 } else {
                     slots[i] = t.stream;
                 }
@@ -85,9 +131,15 @@ export function tilesFromSlots(slots, cols) {
             w: 1,
             h: 1,
         };
-        const view = slotView(slots[i]);
-        if (view) {
-            tile.view = view;
+        const previewView =
+            typeof slots[i] === 'object' && slots[i]?.view ? slots[i].view : null;
+        const mainView =
+            typeof slots[i] === 'object' && slots[i]?.viewMain ? slots[i].viewMain : null;
+        if (previewView) {
+            tile.view = previewView;
+        }
+        if (mainView) {
+            tile.viewMain = mainView;
         }
         tiles.push(tile);
     }

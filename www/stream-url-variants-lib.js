@@ -91,10 +91,82 @@ function subStreamUrlVariants(mainUrl) {
     return out;
 }
 
+/** Compare stream identity ignoring credentials and parameter order. */
+function rtspStreamKey(url) {
+    if (!url || typeof url !== 'string') {
+        return '';
+    }
+    try {
+        const u = new URL(url.replace(/^onvif:\/\//i, 'rtsp://').replace(/^rtsp:\/\//i, 'http://'));
+        const bits = [u.pathname.toLowerCase()];
+        for (const key of ['channel', 'subtype', 'stream']) {
+            if (u.searchParams.has(key)) {
+                bits.push(`${key}=${u.searchParams.get(key)}`);
+            }
+        }
+        return bits.join('|');
+    } catch {
+        return url.trim();
+    }
+}
+
+function rtspStreamsEquivalent(a, b) {
+    return !!a && !!b && rtspStreamKey(a) === rtspStreamKey(b);
+}
+
+function mergeRtspCredentials(mainUrl, profileUrl) {
+    if (!profileUrl) {
+        return profileUrl;
+    }
+    try {
+        const from = new URL(mainUrl.replace(/^onvif:\/\//i, 'rtsp://'));
+        const to = new URL(profileUrl.replace(/^onvif:\/\//i, 'rtsp://'));
+        if (from.username) {
+            to.username = from.username;
+        }
+        if (from.password) {
+            to.password = from.password;
+        }
+        return to.toString();
+    } catch {
+        return profileUrl;
+    }
+}
+
+/** Prefer a distinct sub-stream URL; flip subtype/channel when candidate repeats main. */
+function preferPreviewUrl(mainUrl, candidateUrl) {
+    const variants = subStreamUrlVariants(mainUrl);
+    const fallback = variants.find((v) => !rtspStreamsEquivalent(mainUrl, v)) || null;
+    if (!candidateUrl) {
+        return fallback;
+    }
+    if (rtspStreamsEquivalent(mainUrl, candidateUrl)) {
+        return fallback;
+    }
+    return candidateUrl;
+}
+
+function isDahuaRealmonitorUrl(url) {
+    if (!url) {
+        return false;
+    }
+    try {
+        const u = new URL(url.replace(/^onvif:\/\//i, 'rtsp://'));
+        return /\/cam\/realmonitor/i.test(u.pathname);
+    } catch {
+        return false;
+    }
+}
+
 const lib = {
     hikvisionDvrSubUrlVariants,
     rtspQuerySubUrlVariants,
     subStreamUrlVariants,
+    rtspStreamKey,
+    rtspStreamsEquivalent,
+    mergeRtspCredentials,
+    preferPreviewUrl,
+    isDahuaRealmonitorUrl,
 };
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -103,4 +175,9 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof globalThis !== 'undefined') {
     globalThis.go2rtcSubStreamUrlVariants = lib.subStreamUrlVariants;
     globalThis.go2rtcHikvisionDvrSubUrlVariants = lib.hikvisionDvrSubUrlVariants;
+    globalThis.go2rtcRtspStreamKey = lib.rtspStreamKey;
+    globalThis.go2rtcRtspStreamsEquivalent = lib.rtspStreamsEquivalent;
+    globalThis.go2rtcMergeRtspCredentials = lib.mergeRtspCredentials;
+    globalThis.go2rtcPreferPreviewUrl = lib.preferPreviewUrl;
+    globalThis.go2rtcIsDahuaRealmonitorUrl = lib.isDahuaRealmonitorUrl;
 }

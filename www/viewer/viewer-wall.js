@@ -73,12 +73,16 @@ function setActiveTile(tile) {
     }
 }
 
-function loadTileSettings(slot) {
-    return slotView(state.slots[slot]) || null;
+function tileViewMode(inFocus) {
+    return inFocus ? 'main' : 'preview';
 }
 
-function saveTileSettings(slot, viewport) {
-    setSlotView(state.slots, slot, viewport.toJSON());
+function loadTileSettings(slotIndex, inFocus) {
+    return slotView(state.slots[slotIndex], tileViewMode(inFocus)) || null;
+}
+
+function saveTileSettings(slotIndex, viewport, inFocus) {
+    setSlotView(state.slots, slotIndex, viewport.toJSON(), tileViewMode(inFocus));
     scheduleSave();
 }
 
@@ -130,11 +134,11 @@ export function enterFocus(slotIndex) {
     state.focusSlot = slotIndex;
     renderWall();
     const wall = $('#screen-wall');
-    wall.classList.add('focus-mode');
-    wall.classList.remove('chrome-hidden', 'show-top-chrome');
+    wall.classList.add('focus-mode', 'chrome-hidden');
+    wall.classList.remove('show-top-chrome');
     $('#btn-exit-focus')?.classList.remove('hidden');
     clearTimeout(state.chromeTimer);
-    state.chromeTimer = setTimeout(() => wall.classList.add('chrome-hidden'), CHROME_HIDE_MS);
+    state.chromeTimer = null;
 }
 
 export function renderWall() {
@@ -225,10 +229,11 @@ export function renderWall() {
 }
 
 function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, tile, playbackName) {
+    const channelLabel = inFocus ? 'main' : 'preview';
     const bar = document.createElement('div');
     bar.className = 'tile-controls';
     bar.innerHTML = `
-        <button type="button" data-act="fit" title="Aspect ratio">◫</button>
+        <button type="button" data-act="fit" title="Aspect ratio (${channelLabel})">◫</button>
         <button type="button" data-act="width-dec" title="Narrower width">◁</button>
         <button type="button" data-act="width-inc" title="Wider width">▷</button>
         <button type="button" data-act="zoom-out" title="Zoom out">−</button>
@@ -251,7 +256,7 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
         switch (btn.dataset.act) {
             case 'fit': {
                 const fit = viewport.cycleFit();
-                btn.title = `Aspect: ${fit}`;
+                btn.title = `Aspect (${channelLabel}): ${fit}`;
                 break;
             }
             case 'width-dec': {
@@ -418,8 +423,8 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
     const viewport = new TileViewport(viewportWrap);
     viewport.mount(vs);
     scheduleStreamSrc(vs, src, connectIndex);
-    viewport.fromJSON(loadTileSettings(slotIndex));
-    viewport.onChange = () => saveTileSettings(slotIndex, viewport);
+    viewport.fromJSON(loadTileSettings(slotIndex, inFocus));
+    viewport.onChange = () => saveTileSettings(slotIndex, viewport, inFocus);
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);

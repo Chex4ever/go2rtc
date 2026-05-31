@@ -219,11 +219,23 @@ func apiOnvif(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		resolve := r.URL.Query().Get("resolve") == "1"
+
 		for i, token := range tokens {
-			items = append(items, &api.Source{
+			profileURL := src + "?subtype=" + url.QueryEscape(token)
+			item := &api.Source{
 				Name: name + " stream" + strconv.Itoa(i),
-				URL:  src + "?subtype=" + token,
-			})
+				URL:  profileURL,
+			}
+			if resolve {
+				resolveClient, err := onvif.NewClient(profileURL)
+				if err == nil {
+					if rtspURL, err := resolveClient.GetURI(); err == nil {
+						item.Info = rtspURL
+					}
+				}
+			}
+			items = append(items, item)
 		}
 
 		if len(tokens) > 0 && client.HasSnapshots() {

@@ -107,6 +107,30 @@ func TestAPI_layoutTiles(t *testing.T) {
 	require.InDelta(t, 1.1, st.Tiles[0].View.WidthScale, 0.001)
 }
 
+func TestAPI_layoutTilesViewMain(t *testing.T) {
+	setupAPI(t)
+
+	token, _ := sessions.Create("alice")
+	req := httptest.NewRequest(http.MethodPut, "/api/viewer/layouts/wall/tiles", bytes.NewBufferString(
+		`{"tiles":[{"stream":"cam1","x":0,"y":0,"w":1,"h":1,"view":{"fit":"contain","scale":1},"viewMain":{"fit":"cover","scale":1.8,"widthScale":1.25}}]}`,
+	))
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: token})
+	req.URL.Path = "/api/viewer/layouts/wall/tiles"
+
+	w := httptest.NewRecorder()
+	apiLayouts(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	st := store.LayoutState("alice", "wall")
+	require.Len(t, st.Tiles, 1)
+	require.NotNil(t, st.Tiles[0].View)
+	require.Equal(t, "contain", st.Tiles[0].View.Fit)
+	require.NotNil(t, st.Tiles[0].ViewMain)
+	require.Equal(t, "cover", st.Tiles[0].ViewMain.Fit)
+	require.InDelta(t, 1.8, st.Tiles[0].ViewMain.Scale, 0.001)
+	require.InDelta(t, 1.25, st.Tiles[0].ViewMain.WidthScale, 0.001)
+}
+
 func TestAPI_adminRequiresHeader(t *testing.T) {
 	setupAPI(t)
 

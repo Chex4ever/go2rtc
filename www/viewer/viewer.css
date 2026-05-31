@@ -318,14 +318,17 @@ button.link-btn:hover {
     background: #000;
 }
 
-#screen-wall.focus-mode.chrome-hidden:not(.show-top-chrome) .wall-header {
+#screen-wall.focus-mode .wall-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     transform: translateY(-100%);
     opacity: 0;
     pointer-events: none;
 }
 
-#screen-wall.focus-mode.show-top-chrome .wall-header,
-#screen-wall.focus-mode:not(.chrome-hidden) .wall-header {
+#screen-wall.focus-mode.show-top-chrome .wall-header {
     transform: translateY(0);
     opacity: 1;
     pointer-events: auto;

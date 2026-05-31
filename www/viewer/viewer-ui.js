@@ -73,12 +73,12 @@ export function onWallMouseMove(e) {
     }
 
     if (state.focusSlot !== null) {
-        wall.classList.toggle('show-top-chrome', e.clientY < 56);
-        if (e.clientY >= 56) {
-            clearTimeout(state.chromeTimer);
-            state.chromeTimer = setTimeout(() => wall.classList.add('chrome-hidden'), CHROME_HIDE_MS);
-        } else {
-            wall.classList.remove('chrome-hidden');
+        const atTop = e.clientY < 56;
+        wall.classList.toggle('show-top-chrome', atTop);
+        wall.classList.add('chrome-hidden');
+        clearTimeout(state.chromeTimer);
+        if (!atTop) {
+            state.chromeTimer = setTimeout(() => wall.classList.remove('show-top-chrome'), CHROME_HIDE_MS);
         }
         return;
     }
@@ -93,10 +93,13 @@ export function onWallTouch(e) {
     }
     if (state.focusSlot !== null) {
         const y = e.touches?.[0]?.clientY ?? 0;
-        wall.classList.toggle('show-top-chrome', y < 56);
-        wall.classList.remove('chrome-hidden');
+        const atTop = y < 56;
+        wall.classList.toggle('show-top-chrome', atTop);
+        wall.classList.add('chrome-hidden');
         clearTimeout(state.chromeTimer);
-        state.chromeTimer = setTimeout(() => wall.classList.add('chrome-hidden'), CHROME_HIDE_MS);
+        if (!atTop) {
+            state.chromeTimer = setTimeout(() => wall.classList.remove('show-top-chrome'), CHROME_HIDE_MS);
+        }
         return;
     }
     bumpChrome();

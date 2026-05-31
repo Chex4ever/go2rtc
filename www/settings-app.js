@@ -403,6 +403,68 @@ function subStreamUrlVariants(mainUrl) {
     return rtspSubUrlVariantsFallback(mainUrl);
 }
 
+function rtspStreamsEquivalent(a, b) {
+    if (typeof go2rtcRtspStreamsEquivalent === 'function') {
+        return go2rtcRtspStreamsEquivalent(a, b);
+    }
+    return a === b;
+}
+
+function mergeRtspCredentials(mainUrl, profileUrl) {
+    if (typeof go2rtcMergeRtspCredentials === 'function') {
+        return go2rtcMergeRtspCredentials(mainUrl, profileUrl);
+    }
+    return profileUrl;
+}
+
+function preferPreviewUrl(mainUrl, candidateUrl) {
+    if (typeof go2rtcPreferPreviewUrl === 'function') {
+        return go2rtcPreferPreviewUrl(mainUrl, candidateUrl);
+    }
+    const variants = subStreamUrlVariants(mainUrl);
+    if (!candidateUrl || candidateUrl === mainUrl) {
+        return variants[0] || null;
+    }
+    return candidateUrl;
+}
+
+function resolvePreviewStreamUrl(mainUrl, profiles) {
+    const list = (profiles || []).filter((p) => p.url && !p.url.includes('snapshot'));
+    const resolved = list.filter((p) => onvifProfileRtsp(p));
+    let onvifResolved = false;
+
+    if (resolved.length) {
+        onvifResolved = true;
+        const subProf = pickSubProfile(profiles, mainUrl);
+        const rtsp = subProf && onvifProfileRtsp(subProf);
+        if (rtsp && !rtspStreamsEquivalent(mainUrl, rtsp)) {
+            return mergeRtspCredentials(mainUrl, rtsp);
+        }
+    }
+
+    if (onvifResolved && isDahuaRealmonitorUrl(mainUrl)) {
+        // Dahua ONVIF often maps subtype=1 to main; don't guess subtype flip after ONVIF.
+        return null;
+    }
+
+    return preferPreviewUrl(mainUrl, null);
+}
+
+function onvifProfileRtsp(profile) {
+    const rtsp = profile?.info?.trim();
+    if (rtsp && /^rtsp:/i.test(rtsp)) {
+        return rtsp;
+    }
+    return null;
+}
+
+function isDahuaRealmonitorUrl(url) {
+    if (typeof go2rtcIsDahuaRealmonitorUrl === 'function') {
+        return go2rtcIsDahuaRealmonitorUrl(url);
+    }
+    return false;
+}
+
 function rtspSubUrlVariantsFallback(mainUrl) {
     const variants = [];
     if (!mainUrl || typeof mainUrl !== 'string') {
@@ -500,9 +562,12 @@ function onvifSrcForMain(mainUrl) {
     return candidates[0] || null;
 }
 
-async function probeOnvifProfilesForSrc(src) {
+async function probeOnvifProfilesForSrc(src, resolve = true) {
     const url = new URL('api/onvif', location.href);
     url.searchParams.set('src', src);
+    if (resolve) {
+        url.searchParams.set('resolve', '1');
+    }
     const r = await apiFetch(url);
     if (!r.ok) {
         return null;
@@ -524,21 +589,39 @@ async function discoverOnvifProfiles(mainUrl) {
 
 function pickSubProfile(profiles, mainUrl) {
     const list = profiles.filter((p) => p.url && !p.url.includes('snapshot'));
-    if (list.length < 2) {
+    if (!list.length) {
         return null;
     }
-    const norm = (s) => String(s || '').replace(/\/$/, '');
-    const mainN = norm(mainUrl);
-    let mainIdx = list.findIndex((p) => {
-        const u = norm(p.url);
-        return u === mainN || mainN.includes(u) || u.includes(mainN);
+
+    const mainProfileIdx = list.findIndex((p) => {
+        const rtsp = onvifProfileRtsp(p);
+        return rtsp && rtspStreamsEquivalent(mainUrl, rtsp);
     });
-    if (mainIdx < 0) {
-        mainIdx = 0;
-    }
-    const rest = list.filter((_, i) => i !== mainIdx);
-    const hinted = rest.find((p) => /sub|low|minor|2|second|preview/i.test(p.name || ''));
-    return hinted || rest[0] || null;
+
+    const ranked = list
+        .map((p, idx) => {
+            const rtsp = onvifProfileRtsp(p);
+            let score = 0;
+
+            if (rtsp && rtspStreamsEquivalent(mainUrl, rtsp)) {
+                score -= 30;
+            }
+            if (mainProfileIdx >= 0 && idx !== mainProfileIdx) {
+                score += 12;
+            }
+            if (/sub|low|minor|preview|second/i.test(p.name || '')) {
+                score += 6;
+            }
+            if (/main|high|primary|master/i.test(p.name || '')) {
+                score -= 6;
+            }
+
+            return {p, score, rtsp};
+        })
+        .filter((r) => !r.rtsp || !rtspStreamsEquivalent(mainUrl, r.rtsp))
+        .sort((a, b) => b.score - a.score);
+
+    return ranked[0]?.p || null;
 }
 
 async function detectPreviewChannels() {
@@ -573,17 +656,10 @@ async function detectPreviewChannels() {
         const profiles = await discoverOnvifProfiles(mainUrl);
         if (!profiles.length) {
             onvifMiss++;
-            const variants = subStreamUrlVariants(mainUrl);
-            if (variants.length && !names.includes(subName)) {
-                await putStream(subName, variants[0]);
-                names.push(subName);
-                added++;
-            }
-            continue;
         }
-        const subProf = pickSubProfile(profiles, row.main);
-        if (subProf?.url && subProf.url !== row.main && !names.includes(subName)) {
-            await putStream(subName, subProf.url);
+        const previewUrl = resolvePreviewStreamUrl(mainUrl, profiles);
+        if (previewUrl && !rtspStreamsEquivalent(mainUrl, previewUrl) && !names.includes(subName)) {
+            await putStream(subName, previewUrl);
             names.push(subName);
             added++;
         }
@@ -987,7 +1063,25 @@ async function addDualFromOnvif() {
     const mainUrl = onvifProfileUrlWithCredentials(state.onvifProfiles[mainIdx].url);
     await putStream(base, mainUrl);
     if (subIdx !== mainIdx) {
-        await putStream(`${base}_sub`, onvifProfileUrlWithCredentials(state.onvifProfiles[subIdx].url));
+        const mainResolved = onvifProfileRtsp(state.onvifProfiles[mainIdx]);
+        let subUrl = onvifProfileRtsp(state.onvifProfiles[subIdx]);
+        if (subUrl) {
+            subUrl = mergeRtspCredentials(mainUrl, subUrl);
+        } else {
+            subUrl = onvifProfileUrlWithCredentials(state.onvifProfiles[subIdx].url);
+            subUrl = preferPreviewUrl(mainUrl, mergeRtspCredentials(mainUrl, subUrl));
+        }
+        if (mainResolved && subUrl && rtspStreamsEquivalent(mainResolved, subUrl)) {
+            subUrl = preferPreviewUrl(mainUrl, null);
+        }
+        if (subUrl && !rtspStreamsEquivalent(mainUrl, subUrl)) {
+            await putStream(`${base}_sub`, subUrl);
+        }
+    } else {
+        const subUrl = preferPreviewUrl(mainUrl, null);
+        if (subUrl && !rtspStreamsEquivalent(mainUrl, subUrl)) {
+            await putStream(`${base}_sub`, subUrl);
+        }
     }
 }
 

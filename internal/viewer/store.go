@@ -23,12 +23,13 @@ type TileView struct {
 }
 
 type Tile struct {
-	Stream string    `json:"stream" yaml:"stream"`
-	X      int       `json:"x" yaml:"x"`
-	Y      int       `json:"y" yaml:"y"`
-	W      int       `json:"w" yaml:"w"`
-	H      int       `json:"h" yaml:"h"`
-	View   *TileView `json:"view,omitempty" yaml:"view,omitempty"`
+	Stream   string    `json:"stream" yaml:"stream"`
+	X        int       `json:"x" yaml:"x"`
+	Y        int       `json:"y" yaml:"y"`
+	W        int       `json:"w" yaml:"w"`
+	H        int       `json:"h" yaml:"h"`
+	View     *TileView `json:"view,omitempty" yaml:"view,omitempty"`         // grid / preview channel
+	ViewMain *TileView `json:"viewMain,omitempty" yaml:"viewMain,omitempty"` // fullscreen / main channel
 }
 
 type User struct {

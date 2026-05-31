@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.19 (2026-05-27)
+
+- **Feature:** Separate tile view settings for **preview** (grid) and **main** (fullscreen): aspect ratio, zoom, pan, width — saved per user in layout (`view` / `viewMain`).
+- **Fix:** Focus mode — wall header hides until mouse at top edge (no layout strip reserved over video).
+- **Fix:** Detect preview channels for Dahua — resolve ONVIF profiles to RTSP URLs instead of blindly flipping `subtype=0`→`1` (which is often still main on Dahua).
+
 ## 1.2.18 (2026-05-27)
 
 - **Fix:** Camera Wall 1.2.17 crash on startup — `updater-cache.js` was missing from the electron-builder `files` list (module not found in app.asar).

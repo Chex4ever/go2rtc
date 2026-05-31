@@ -89,6 +89,19 @@ describe('viewer error UI', () => {
     });
 });
 
+describe('focus mode top chrome', () => {
+    it('enters focus hidden and reveals header only at top edge', () => {
+        const wall = readViewerWall();
+        const ui = fs.readFileSync(path.join(VIEWER_DIR, 'viewer-ui.js'), 'utf8');
+        const css = fs.readFileSync(path.join(VIEWER_DIR, 'viewer.css'), 'utf8');
+        assert.match(wall, /classList\.add\('focus-mode', 'chrome-hidden'\)/);
+        assert.match(ui, /classList\.toggle\('show-top-chrome', atTop\)/);
+        assert.match(css, /#screen-wall\.focus-mode \.wall-header[\s\S]*position: fixed/);
+        assert.match(css, /#screen-wall\.focus-mode\.show-top-chrome \.wall-header/);
+        assert.doesNotMatch(css, /focus-mode:not\(\.chrome-hidden\) \.wall-header/);
+    });
+});
+
 describe('openLayout() grid preset check', () => {
     it('uses a separate grid variable name from renderWall DOM element', () => {
         const openBody = extractFunctionBody(readViewerApp(), 'openLayout');
