@@ -114,7 +114,7 @@ Used by **`/config.html` → Settings → Install updater service** (Windows). P
 | POST | `/api/updater?action=install-updater` | Install Windows service |
 | POST | `/api/updater?action=uninstall-updater` | Remove Windows service |
 | POST | `/api/updater?action=check-now` | Check for newer go2rtc binary (uses `updater:` config) |
-| POST | `/api/updater?action=apply-now` | Run `go2rtc-updater run-once` (stop service, replace exe, restart; UAC) |
+| POST | `/api/updater?action=apply-now` | Run `go2rtc-updater apply-once` (stop service, replace exe, restart; UAC; ignores `auto_apply`) |
 
 Configure the updater binary in `go2rtc.yaml`:
 

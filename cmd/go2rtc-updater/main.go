@@ -20,7 +20,8 @@ func main() {
 
 Usage:
   go2rtc-updater run-service          Run check loop (for Windows service)
-  go2rtc-updater run-once -config PATH  Single check/apply
+  go2rtc-updater run-once -config PATH  Scheduled check/apply (respects updater.enabled / auto_apply)
+  go2rtc-updater apply-once -config PATH Manual apply (always replaces when newer)
   go2rtc-updater check -config PATH     Check only
   go2rtc-updater install-service -config PATH
   go2rtc-updater uninstall-service
@@ -55,6 +56,8 @@ Config: same go2rtc.yaml with top-level updater: section.
 		}
 	case "run-once":
 		runOnce(cfg)
+	case "apply-once":
+		runApplyOnce(cfg)
 	case "check":
 		cfg.AutoApply = false
 		runOnce(cfg)
@@ -95,6 +98,15 @@ func runOnce(cfg updater.Config) {
 	ctx := context.Background()
 	if err := r.RunOnce(ctx); err != nil {
 		log.Fatal().Err(err).Msg("run")
+	}
+	log.Info().Msg("done")
+}
+
+func runApplyOnce(cfg updater.Config) {
+	r := updater.NewRunner(cfg)
+	ctx := context.Background()
+	if err := r.RunApplyOnce(ctx); err != nil {
+		log.Fatal().Err(err).Msg("apply")
 	}
 	log.Info().Msg("done")
 }

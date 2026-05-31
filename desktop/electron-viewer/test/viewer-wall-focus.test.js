@@ -36,7 +36,18 @@ describe('viewer-wall focus streams', () => {
         assert.match(wallJs, /streamWsKey/);
         assert.match(wallCss, /viewer-stream\.stream-main/);
         assert.match(wallCss, /stream-preview/);
+        assert.match(wallCss, /stream-main\.is-playing\)[\s\S]*stream-preview/);
         assert.match(wallCss, /focus-animating/);
+    });
+
+    it('does not reconnect when main and preview are the same stream', () => {
+        const attachBody = wallJs.match(/function attachFocusMainStream\([\s\S]*?\n\}/)?.[0] || '';
+        const sameStreamBranch =
+            attachBody.match(/if \(!previewName \|\| previewName === logicalName\) \{[\s\S]*?\n    \}/)?.[0] ||
+            '';
+        assert.match(sameStreamBranch, /detachFocusMainStream\(slotIndex\)/);
+        assert.doesNotMatch(sameStreamBranch, /forceDisconnect/);
+        assert.doesNotMatch(sameStreamBranch, /connectStreamSrc/);
     });
 
     it('double-click exits focus on main channel', () => {

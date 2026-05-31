@@ -245,18 +245,15 @@ function attachFocusMainStream(slotIndex, logicalName) {
     if (!previewVs) {
         return;
     }
-    const mainSrc = streamSrc(logicalName);
-    const mainKey = streamWsKey(mainSrc);
 
+    // Same go2rtc stream in grid and fullscreen — keep the live connection, animate layout only.
     if (!previewName || previewName === logicalName) {
-        if (streamWsKey(previewVs.wsURL) !== mainKey) {
-            if (previewVs.ws || previewVs.pc) {
-                previewVs.forceDisconnect?.();
-            }
-            connectStreamSrc(previewVs, mainSrc);
-        }
+        detachFocusMainStream(slotIndex);
         return;
     }
+
+    const mainSrc = streamSrc(logicalName);
+    const mainKey = streamWsKey(mainSrc);
 
     const inner = previewVs.parentElement;
     if (!inner) {
@@ -419,6 +416,7 @@ export function enterFocus(slotIndex) {
     if (state.focusSlot === slotIndex) {
         return;
     }
+    deactivateTileChrome();
     stopAllRecordings();
     const cell = getTileCell(slotIndex);
 

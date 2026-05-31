@@ -871,6 +871,53 @@ function formatUpdaterLastStatus(st) {
     return parts.join(' · ');
 }
 
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Poll updater status while go2rtc restarts after manual apply. */
+async function pollUpdaterApplyStatus(maxMs = 120000) {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+        await sleep(2000);
+        try {
+            const r = await apiFetch('api/updater/status');
+            if (!r.ok) {
+                setGo2rtcUpdateStatus('go2rtc is restarting…');
+                continue;
+            }
+            const st = await r.json();
+            await refreshUpdaterStatus();
+            if (st.state === 'applying') {
+                setGo2rtcUpdateStatus(st.message || 'Applying update…');
+                continue;
+            }
+            if (st.state === 'updated') {
+                setGo2rtcUpdateStatus(st.message || 'Update complete.');
+                return;
+            }
+            if (st.state === 'error') {
+                setGo2rtcUpdateStatus(st.message || 'Update failed.', true);
+                return;
+            }
+            if (st.state === 'current') {
+                setGo2rtcUpdateStatus(st.message || 'Already up to date.');
+                return;
+            }
+            if (st.state === 'disabled') {
+                setGo2rtcUpdateStatus(st.message || 'Updater is disabled in config.', true);
+                return;
+            }
+        } catch {
+            setGo2rtcUpdateStatus('go2rtc is restarting…');
+        }
+    }
+    setGo2rtcUpdateStatus(
+        'Update may still be running — refresh this page or check the go2rtc service.',
+        true,
+    );
+}
+
 async function refreshUpdaterStatus() {
     const host = $('#updater-service-status');
     const last = $('#updater-last-status');
@@ -1282,7 +1329,7 @@ function wireSettings() {
             }
             const info = await r.json();
             setGo2rtcUpdateStatus(info.message || 'Update started.');
-            await refreshUpdaterStatus();
+            await pollUpdaterApplyStatus();
         } catch (e) {
             const msg = formatFetchError(e, applyUrl);
             setGo2rtcUpdateStatus(msg, true);

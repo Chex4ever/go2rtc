@@ -279,7 +279,7 @@ func (r *Runner) resolveTarget() (string, error) {
 	return ServiceExePath(r.Config.Service)
 }
 
-// RunOnce checks and optionally applies.
+// RunOnce checks and optionally applies (respects enabled and auto_apply).
 func (r *Runner) RunOnce(ctx context.Context) error {
 	if !r.Config.Enabled {
 		r.writeStatus("disabled", "updater.enabled is false", nil)
@@ -293,6 +293,20 @@ func (r *Runner) RunOnce(ctx context.Context) error {
 		return r.Apply(ctx, cr)
 	}
 	return nil
+}
+
+// RunApplyOnce checks and applies when a newer build exists (manual apply from Settings).
+// Ignores enabled and auto_apply.
+func (r *Runner) RunApplyOnce(ctx context.Context) error {
+	cr, err := r.Check(ctx)
+	if err != nil {
+		return err
+	}
+	if !cr.Needs {
+		r.writeStatus("current", fmt.Sprintf("already running %s (latest %s)", cr.Running, cr.Latest), &cr)
+		return nil
+	}
+	return r.Apply(ctx, cr)
 }
 
 // RunLoop ticks until ctx cancelled.

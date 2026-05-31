@@ -7,7 +7,7 @@ import {api, apiUrl, serverHint, isFetchFailure} from './viewer-api.js';
 import {isSessionProbeFatalError, shouldShowLoginScreen} from './viewer-session-boot.js';
 import {$} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
-import {showFatalError, showScreen, onWallMouseMove, onWallTouch} from './viewer-ui.js';
+import {showFatalError, showScreen, onWallMouseMove, onWallTouch, bindWallTileChromeDismiss} from './viewer-ui.js';
 import {initDesktopUpdateUi, showDesktopNotice} from './desktop-update-ui.js';
 import {renderWall, exitFocus, applyWallLayoutClasses} from './viewer-wall.js';
 import {openAboutModal} from './viewer-about.js';
@@ -193,6 +193,7 @@ async function init() {
 
     document.addEventListener('mousemove', onWallMouseMove);
     document.addEventListener('touchstart', onWallTouch, {passive: true});
+    bindWallTileChromeDismiss();
 
     let lastLayoutMode = wallLayoutMode();
     window.addEventListener('resize', () => {

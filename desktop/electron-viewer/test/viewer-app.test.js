@@ -94,12 +94,16 @@ describe('focus mode top chrome', () => {
         const wall = readViewerWall();
         const ui = fs.readFileSync(path.join(VIEWER_DIR, 'viewer-ui.js'), 'utf8');
         const css = fs.readFileSync(path.join(VIEWER_DIR, 'viewer.css'), 'utf8');
+        assert.match(wall, /deactivateTileChrome\(\)/);
         assert.match(wall, /classList\.add\('focus-mode', 'chrome-hidden'\)/);
         assert.match(ui, /TOP_CHROME_ZONE_PX = 5/);
         assert.match(ui, /TOP_CHROME_FOCUS_ZONE_PX = 5/);
         assert.match(ui, /TOP_CHROME_AUTO_HIDE_MS/);
         assert.match(ui, /TILE_CHROME_FADE_MS/);
+        assert.match(ui, /TILE_CHROME_HIDE_DELAY_MS/);
         assert.match(ui, /bindTileChromeHover/);
+        assert.match(ui, /bindWallTileChromeDismiss/);
+        assert.match(ui, /scheduleTileChromeHide\(tile\)/);
         assert.match(ui, /tile-chrome-passthrough/);
         assert.match(css, /tile\.tile-active\.tile-chrome-passthrough/);
         assert.match(ui, /scheduleTopChromeHide/);

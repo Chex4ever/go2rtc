@@ -457,7 +457,7 @@ button.link-btn:hover {
     opacity: 1;
 }
 
-#screen-wall.focus-mode .cell.focused .viewport-inner:has(viewer-stream.stream-main) viewer-stream.stream-preview {
+#screen-wall.focus-mode .cell.focused .viewport-inner:has(viewer-stream.stream-main.is-playing) viewer-stream.stream-preview {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

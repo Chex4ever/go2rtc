@@ -31,7 +31,7 @@ updater:
 | Field | Description |
 |-------|-------------|
 | `enabled` | Master switch |
-| `auto_apply` | If false, only check and write status (no replace) |
+| `auto_apply` | If false, scheduled `run-once` only checks (no replace). Manual **Install go2rtc update now** still applies. |
 | `interval` | How often to check (`6h`, `24h`, …) |
 | `github` | Latest release from GitHub (recommended) |
 | `version` + `binary` | Air-gapped: local file instead of GitHub |
@@ -67,7 +67,7 @@ This registers service **`go2rtc-updater`** with `start=auto`.
 In go2rtc **Settings → Auto-update**:
 
 - **Check for go2rtc update** — `POST /api/updater?action=check-now` (reads `updater.github` or local `version`/`binary`)
-- **Install go2rtc update now** — `POST /api/updater?action=apply-now` (runs `go2rtc-updater run-once`; UAC; go2rtc restarts)
+- **Install go2rtc update now** — `POST /api/updater?action=apply-now` (runs `go2rtc-updater apply-once`; UAC; go2rtc restarts)
 
 Requires `go2rtc-updater.exe` next to `go2rtc.exe`. Does not require the updater Windows service.
 

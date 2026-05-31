@@ -156,6 +156,7 @@ export function activateTileChrome(tile) {
         }
         state.tileChromeFadeTimer = null;
     }, TILE_CHROME_FADE_MS);
+    scheduleTileChromeHide(tile);
 }
 
 export function scheduleTileChromeHide(tile) {
@@ -180,27 +181,61 @@ function isWithinSameTileChrome(related, tile) {
     return related?.closest?.('.tile-bar, .tile-controls') && tile.contains(related);
 }
 
-/** Auto-hide tile chrome 1s after pointer leaves bar/controls (desktop). */
+/** Auto-hide tile chrome 2s after pointer leaves tile or bar/controls (desktop). */
 export function bindTileChromeHover(tile) {
     if (!tile || isTouchDevice()) {
         return;
     }
+    const onEnter = () => {
+        if (state.activeTile === tile) {
+            cancelTileChromeHide();
+        }
+    };
+    const onLeaveChrome = (e) => {
+        if (state.activeTile !== tile) {
+            return;
+        }
+        if (isWithinSameTileChrome(e.relatedTarget, tile)) {
+            return;
+        }
+        scheduleTileChromeHide(tile);
+    };
+    const onLeaveTile = (e) => {
+        if (state.activeTile !== tile) {
+            return;
+        }
+        const related = e.relatedTarget;
+        if (related && tile.contains(related)) {
+            return;
+        }
+        scheduleTileChromeHide(tile);
+    };
+    tile.addEventListener('mouseenter', onEnter);
+    tile.addEventListener('mouseleave', onLeaveTile);
     for (const el of tile.querySelectorAll('.tile-bar, .tile-controls')) {
-        el.addEventListener('mouseenter', () => {
-            if (state.activeTile === tile) {
-                cancelTileChromeHide();
-            }
-        });
-        el.addEventListener('mouseleave', (e) => {
-            if (state.activeTile !== tile) {
-                return;
-            }
-            if (isWithinSameTileChrome(e.relatedTarget, tile)) {
-                return;
-            }
-            scheduleTileChromeHide(tile);
-        });
+        el.addEventListener('mouseenter', onEnter);
+        el.addEventListener('mouseleave', onLeaveChrome);
     }
+}
+
+/** Click on empty grid area starts hide timer for the active tile. */
+export function bindWallTileChromeDismiss() {
+    const grid = $('#wall-grid');
+    if (!grid || grid.dataset.tileChromeDismissBound) {
+        return;
+    }
+    grid.dataset.tileChromeDismissBound = '1';
+    grid.addEventListener('click', (e) => {
+        if (state.focusSlot !== null) {
+            return;
+        }
+        if (e.target.closest('.tile')) {
+            return;
+        }
+        if (state.activeTile) {
+            scheduleTileChromeHide(state.activeTile);
+        }
+    });
 }
 
 export function onWallMouseMove(e) {

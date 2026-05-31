@@ -21,7 +21,7 @@ func CheckNowFromGo2rtc(cfg Config) (CheckResult, error) {
 	return r.Check(context.Background())
 }
 
-// ApplyNowFromGo2rtc runs go2rtc-updater run-once (stop service, replace exe, restart).
+// ApplyNowFromGo2rtc runs go2rtc-updater apply-once (stop service, replace exe, restart).
 func ApplyNowFromGo2rtc() error {
 	st, err := UpdaterServiceStatus()
 	if err != nil {
@@ -49,7 +49,7 @@ func ApplyNowFromGo2rtc() error {
 	if err != nil {
 		return err
 	}
-	return spawnUpdaterCmd(updaterExe, cfgPath, "run-once", true)
+	return spawnUpdaterCmd(updaterExe, cfgPath, "apply-once", true)
 }
 
 func spawnUpdaterCmd(updaterExe, configPath, subcommand string, detached bool) error {
@@ -100,7 +100,7 @@ func runUpdaterElevated(exe string, args []string, detached bool) error {
 	script := fmt.Sprintf(
 		"$ErrorActionPreference='Stop'; "+
 			"try { "+
-			"$p = Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -WindowStyle Hidden -PassThru -Wait:%s; "+
+			"$p = Start-Process -FilePath %s -ArgumentList @(%s) -Verb RunAs -PassThru -Wait:%s; "+
 			"if (-not $p) { exit 1223 }; "+
 			"if ($p.ExitCode -and $p.ExitCode -ne 0) { exit $p.ExitCode } "+
 			"} catch { exit 1223 }",

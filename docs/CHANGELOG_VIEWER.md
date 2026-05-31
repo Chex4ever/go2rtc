@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.34 (2026-05-27)
+
+- **Fix:** Fullscreen focus — preview stays visible until main stream plays (no black flash); same main/preview stream keeps one connection (layout animation only).
+- **Fix:** Tile bar/controls auto-hide after 2s (tile leave, grid click, or activation timer); cleared when entering fullscreen focus.
+- **Fix:** Manual go2rtc update — Settings **Install go2rtc update now** runs `apply-once` (works with `auto_apply: false` / `enabled: false`); status polling after apply.
+
 ## 1.2.33 (2026-05-27)
 
 - **Fix:** Desktop autoupdate — kill all Camera Wall processes before silent NSIS; helper relaunches app and clears install lock; block startup while helper runs; show helper log on failed install; skip NSIS wizard page in silent mode.
