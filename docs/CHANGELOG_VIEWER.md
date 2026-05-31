@@ -1,5 +1,9 @@
 # Camera wall & desktop changelog
 
+## 1.2.18 (2026-05-27)
+
+- **Fix:** Camera Wall 1.2.17 crash on startup — `updater-cache.js` was missing from the electron-builder `files` list (module not found in app.asar).
+
 ## 1.2.17 (2026-05-27)
 
 - **Fix:** Tile zoom, aspect ratio, pan, and custom width multiplier are saved in the layout (per user, per tile) instead of session-only storage.
