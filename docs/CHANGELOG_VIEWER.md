@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## 1.2.16 (2026-05-27)
+
+- **Fix:** Tile title bars overlay the video (like bottom controls) so auto-hide no longer leaves a dark strip or resizes/zooms the stream.
+- **Fix:** Focus mode chrome auto-hide now hides tile title bars, not only the bottom control bar.
+
 ## 1.2.15 (2026-05-31)
 
 - **Fix:** Windows shell patch zip — `Compress-Archive -Path` (was `-LiteralPath`, glob never matched; patch updates failed to build on Windows CI).

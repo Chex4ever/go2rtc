@@ -382,7 +382,6 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
 
     if (inFocus) {
         bar.querySelector('.drag-handle')?.remove();
-        tile.appendChild(bar);
     } else if (allowTileDrag()) {
         const handle = bar.querySelector('.drag-handle');
         handle.draggable = true;
@@ -393,7 +392,6 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
             tile.classList.add('dragging');
         });
         handle.addEventListener('dragend', () => tile.classList.remove('dragging'));
-        tile.appendChild(bar);
     } else {
         bar.querySelector('.drag-handle')?.remove();
         const expand = document.createElement('button');
@@ -406,7 +404,6 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
             enterFocus(slotIndex);
         });
         bar.appendChild(expand);
-        tile.appendChild(bar);
     }
 
     const body = document.createElement('div');
@@ -424,6 +421,7 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);
+    body.appendChild(bar);
     body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus, tile, playback));
 
     body.addEventListener('dblclick', (e) => {
