@@ -1,4 +1,5 @@
 const path = require('path');
+const {normalizeWindowBounds} = require('./window-bounds');
 
 const DEFAULT_SERVER = 'http://127.0.0.1:1984';
 
@@ -45,6 +46,7 @@ function normalizeConfig(raw, brandingFromFiles) {
         defaultLayoutId: String(raw?.defaultLayoutId || '').trim(),
         lastViewerNoticeVersion: String(raw?.lastViewerNoticeVersion || '').trim(),
         lastSeenAppVersion: String(raw?.lastSeenAppVersion || '').trim(),
+        windowBounds: normalizeWindowBounds(raw?.windowBounds),
         branding: mergeBranding(brandingFromFiles, raw?.branding),
     };
     if (!/^#[0-9A-Fa-f]{6}$/.test(cfg.branding.accentColor)) {

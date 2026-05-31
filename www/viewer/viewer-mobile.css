@@ -89,11 +89,17 @@ body.touch-device .wall-header select {
     bottom: max(8px, env(safe-area-inset-bottom));
 }
 
-/* Touch: show controls when tile is active */
-body.touch-device .tile.tile-active .tile-controls,
-body.touch-device .tile.tile-active .tile-bar {
+/* Touch: show controls when tile is active (grid only; focus uses top-edge chrome) */
+body.touch-device #screen-wall:not(.focus-mode) .tile.tile-active .tile-controls,
+body.touch-device #screen-wall:not(.focus-mode) .tile.tile-active .tile-bar,
+body.touch-device #screen-wall.focus-mode.show-top-chrome .tile.tile-active .tile-bar {
     opacity: 1;
     pointer-events: auto;
+}
+
+body.touch-device #screen-wall.focus-mode:not(.show-top-chrome) .tile-bar {
+    opacity: 0;
+    pointer-events: none;
 }
 
 @media (max-width: 767px) {

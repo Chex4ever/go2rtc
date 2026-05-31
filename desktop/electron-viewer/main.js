@@ -1,4 +1,4 @@
-const {app, BrowserWindow, Menu, shell, ipcMain, dialog, globalShortcut} = require('electron');
+const {app, BrowserWindow, Menu, shell, ipcMain, dialog, globalShortcut, screen} = require('electron');
 const path = require('path');
 const fs = require('fs');
 const cfg = require('./config');
@@ -41,6 +41,7 @@ updater.setRequestAppQuit(() => {
     setTimeout(() => app.exit(0), 1500);
 });
 const brandingAssets = require('./branding-assets');
+const windowBoundsLib = require('./window-bounds');
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
@@ -371,17 +372,72 @@ function attachViewerLoadHandlers(win, config) {
     });
 }
 
+/** @type {ReturnType<typeof setTimeout> | null} */
+let saveBoundsTimer = null;
+
+function loadMainWindowBounds(existingBounds) {
+    const config = getConfig();
+    if (config.kiosk) {
+        return existingBounds || null;
+    }
+    if (existingBounds) {
+        return windowBoundsLib.normalizeWindowBounds(existingBounds) || existingBounds;
+    }
+    return windowBoundsLib.resolveWindowBounds(config.windowBounds, screen.getAllDisplays());
+}
+
+function persistMainWindowBounds() {
+    const config = getConfig();
+    if (config.kiosk || !mainWindow || mainWindow.isDestroyed()) {
+        return;
+    }
+    const normalized = windowBoundsLib.normalizeWindowBounds(mainWindow.getBounds());
+    if (!normalized) {
+        return;
+    }
+    const prev = config.windowBounds;
+    if (
+        prev &&
+        prev.x === normalized.x &&
+        prev.y === normalized.y &&
+        prev.width === normalized.width &&
+        prev.height === normalized.height
+    ) {
+        return;
+    }
+    cfg.saveConfig({...config, windowBounds: normalized});
+}
+
+function schedulePersistMainWindowBounds() {
+    clearTimeout(saveBoundsTimer);
+    saveBoundsTimer = setTimeout(() => {
+        saveBoundsTimer = null;
+        persistMainWindowBounds();
+    }, 400);
+}
+
+function attachMainWindowBoundsPersistence(win) {
+    if (!win || getConfig().kiosk) {
+        return;
+    }
+    win.on('move', schedulePersistMainWindowBounds);
+    win.on('resize', schedulePersistMainWindowBounds);
+    win.on('close', () => {
+        clearTimeout(saveBoundsTimer);
+        persistMainWindowBounds();
+    });
+}
+
 function createMainWindow(existingBounds) {
     const config = getConfig();
     applyAppBranding(config);
+    const savedBounds = loadMainWindowBounds(existingBounds);
 
     const winOpts = {
         backgroundColor: '#0f1114',
         show: false,
-        width: existingBounds?.width || 1360,
-        height: existingBounds?.height || 860,
-        x: existingBounds?.x,
-        y: existingBounds?.y,
+        width: savedBounds?.width || 1360,
+        height: savedBounds?.height || 860,
         minWidth: config.kiosk ? undefined : 800,
         minHeight: config.kiosk ? undefined : 600,
         title: config.branding.windowTitle || 'Camera Wall',
@@ -396,6 +452,10 @@ function createMainWindow(existingBounds) {
             sandbox: true,
         },
     };
+    if (savedBounds?.x != null && savedBounds?.y != null) {
+        winOpts.x = savedBounds.x;
+        winOpts.y = savedBounds.y;
+    }
     const icon = appIconPath();
     if (icon) {
         winOpts.icon = icon;
@@ -403,6 +463,7 @@ function createMainWindow(existingBounds) {
 
     mainWindow = new BrowserWindow(winOpts);
     applyWindowIcon(mainWindow);
+    attachMainWindowBoundsPersistence(mainWindow);
     attachViewerLoadHandlers(mainWindow, config);
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show();

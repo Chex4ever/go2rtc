@@ -337,16 +337,20 @@ button.link-btn:hover {
 #screen-wall.focus-mode .tile-bar {
     opacity: 0;
     pointer-events: none;
+    transition: opacity 0.25s ease;
 }
 
-#screen-wall.focus-mode.chrome-hidden .tile-controls,
-#screen-wall.focus-mode.chrome-hidden .tile-bar {
+#screen-wall.focus-mode.show-top-chrome .tile-bar {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#screen-wall.focus-mode.chrome-hidden .tile-controls {
     opacity: 0;
     pointer-events: none;
 }
 
 #screen-wall.focus-mode .cell.focused:hover .tile-controls,
-#screen-wall.focus-mode .cell.focused:hover .tile-bar,
 #screen-wall.focus-mode .cell.focused .tile-controls:focus-within {
     opacity: 1;
     pointer-events: auto;

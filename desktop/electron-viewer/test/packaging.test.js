@@ -16,6 +16,7 @@ const RUNTIME_MODULES = [
     'updater-core.js',
     'updater-cache.js',
     'update-notify.js',
+    'window-bounds.js',
     'installer-launch.js',
     'patch-apply.js',
     'shell-patch-lib.js',

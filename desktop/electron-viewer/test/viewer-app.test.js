@@ -98,7 +98,15 @@ describe('focus mode top chrome', () => {
         assert.match(ui, /classList\.toggle\('show-top-chrome', atTop\)/);
         assert.match(css, /#screen-wall\.focus-mode \.wall-header[\s\S]*position: fixed/);
         assert.match(css, /#screen-wall\.focus-mode\.show-top-chrome \.wall-header/);
+        assert.match(css, /#screen-wall\.focus-mode\.show-top-chrome \.tile-bar/);
         assert.doesNotMatch(css, /focus-mode:not\(\.chrome-hidden\) \.wall-header/);
+        assert.doesNotMatch(css, /#screen-wall\.focus-mode \.cell\.focused:hover \.tile-bar/);
+    });
+
+    it('swaps fullscreen control for back-to-grid in focus mode', () => {
+        const wall = readViewerWall();
+        assert.match(wall, /data-act="exit-focus"/);
+        assert.match(wall, /case 'exit-focus':[\s\S]*exitFocus\(\)/);
     });
 });
 

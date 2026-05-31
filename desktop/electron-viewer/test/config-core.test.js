@@ -86,6 +86,19 @@ describe('normalizeConfig', () => {
         const cfg = core.normalizeConfig({autoDownloadUpdates: false}, core.DEFAULT_BRANDING);
         assert.equal(cfg.autoDownloadUpdates, false);
     });
+
+    it('stores normalized windowBounds', () => {
+        const cfg = core.normalizeConfig(
+            {windowBounds: {x: 10, y: 20, width: 1200, height: 800}},
+            core.DEFAULT_BRANDING,
+        );
+        assert.deepEqual(cfg.windowBounds, {x: 10, y: 20, width: 1200, height: 800});
+    });
+
+    it('drops invalid windowBounds', () => {
+        const cfg = core.normalizeConfig({windowBounds: {x: 0, y: 0, width: 100, height: 100}}, core.DEFAULT_BRANDING);
+        assert.equal(cfg.windowBounds, null);
+    });
 });
 
 describe('mergeBrandingFromDirs', () => {

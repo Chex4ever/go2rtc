@@ -76,6 +76,8 @@ See [desktop/electron-viewer/branding/README.md](../desktop/electron-viewer/bran
 
 Use the **built installer** (`npm run dist`). Dev mode (`npm start`) may register Electron instead of the packaged app.
 
+**Window position (multi-monitor):** there is no separate checkbox — the app remembers the last main-window position and size in `%APPDATA%\\go2rtc-viewer\\config.json` (`windowBounds`) when you move or resize it, and restores that monitor on the next launch (including after **Start at Windows login**). Kiosk mode ignores saved bounds.
+
 ## Command line
 
 ```bash

@@ -244,7 +244,7 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
         <button type="button" data-act="record" title="Record">⏺</button>
         <button type="button" data-act="refresh" title="Refresh stream">↻</button>
         <button type="button" data-act="debug" title="Debug this camera">🐞</button>
-        ${inFocus ? '' : '<button type="button" data-act="focus" title="Full screen">⛶</button>'}
+        ${inFocus ? '<button type="button" data-act="exit-focus" title="Back to grid (Esc)">←</button>' : '<button type="button" data-act="focus" title="Full screen">⛶</button>'}
     `;
 
     bar.addEventListener('click', (e) => {
@@ -354,6 +354,9 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
             case 'focus':
                 enterFocus(slotIndex);
                 break;
+            case 'exit-focus':
+                exitFocus();
+                break;
         }
     });
 
@@ -388,6 +391,16 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
 
     if (inFocus) {
         bar.querySelector('.drag-handle')?.remove();
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'tile-focus-btn';
+        back.textContent = '←';
+        back.title = 'Back to grid (Esc)';
+        back.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exitFocus();
+        });
+        bar.appendChild(back);
     } else if (allowTileDrag()) {
         const handle = bar.querySelector('.drag-handle');
         handle.draggable = true;

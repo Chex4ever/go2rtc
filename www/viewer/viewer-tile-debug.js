@@ -587,7 +587,7 @@ export async function buildTileDebugReport(ctx) {
     }
 
     const mainSummary = summarizeStreamEntry(ctx.logicalName, streams[ctx.logicalName]);
-    const previewSummary = preview ? summarizeStreamEntry(preview, streams[preview]) : null;
+    let previewSummary = preview ? summarizeStreamEntry(preview, streams[preview]) : null;
     let playbackSummary = summarizeStreamEntry(ctx.playbackName, streams[ctx.playbackName]);
 
     const [playbackDetail, mainDetail, serverAbout, yamlSources] = await Promise.all([

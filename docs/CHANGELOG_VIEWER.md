@@ -1,5 +1,12 @@
 # Camera wall & desktop changelog
 
+## 1.2.22 (2026-05-27)
+
+- **Fix:** Focus mode — tile title bars stay hidden until the pointer is at the top edge (no longer pop in on any hover over the video).
+- **Fix:** Focus mode — **← Back to grid** replaces **⛶ Full screen** in the tile bar and bottom controls when viewing the main channel.
+- **Fix:** Tile debug crash (`Assignment to constant variable`) on cameras with a preview sub-stream.
+- **Feature:** Desktop app remembers window position/monitor (`windowBounds` in config) and restores it on launch, including after **Start at Windows login**.
+
 ## 1.2.21 (2026-05-27)
 
 - **Feature:** In-app update notifications — no Windows toast dialogs. Cards in the camera wall show download progress, **Restart now / Later**, and post-upgrade “You are now running version …”.

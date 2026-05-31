@@ -1,5 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const {pathToFileURL} = require('node:url');
 
@@ -7,6 +8,11 @@ const TILE_DEBUG = path.join(__dirname, '..', '..', '..', 'www', 'viewer', 'view
 
 describe('tile-debug logic', async () => {
     const mod = await import(pathToFileURL(TILE_DEBUG).href);
+
+    it('uses let for previewSummary so yaml merge does not throw', () => {
+        const src = fs.readFileSync(TILE_DEBUG, 'utf8');
+        assert.match(src, /let previewSummary = preview/);
+    });
 
     it('parseYamlStreamSources reads RTSP credentials from yaml', () => {
         const yaml = `
