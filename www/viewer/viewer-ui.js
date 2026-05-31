@@ -2,9 +2,9 @@ import {$, CHROME_HIDE_MS} from './viewer-dom.js';
 import {state} from './viewer-state.js';
 
 /** Pointer within this many px from top reveals wall-header + electron-brand-bar. */
-export const TOP_CHROME_ZONE_PX = 56;
-/** Focus mode: taller zone so the pointer can reach the tile back bar below the wall header. */
-export const TOP_CHROME_FOCUS_ZONE_PX = 140;
+export const TOP_CHROME_ZONE_PX = 40;
+/** Focus mode: thin strip only — wall header must not cover the tile back bar. */
+export const TOP_CHROME_FOCUS_ZONE_PX = 48;
 
 const CHROME_UI_SELECTOR =
     '.wall-header, #electron-brand-bar, .tile-bar, .tile-focus-btn-back, #btn-exit-focus, .wall-header button, .wall-header select';

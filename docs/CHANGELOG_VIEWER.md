@@ -1,5 +1,18 @@
 # Camera wall & desktop changelog
 
+## 1.2.29 (2026-05-31)
+
+- **Fix:** Top chrome reveal zone is much thinner (grid ~40px, focus ~48px) so moving the pointer over top tile buttons no longer keeps the wall header open over them.
+- **Fix:** Focus tile bar sits above the wall header (z-index) and stays clickable; grid tile bars on hover also stack above the header.
+
+## 1.2.28 (2026-05-31)
+
+- **Fix:** Desktop autoupdate — pending installers no longer deleted during cleanup; install lock prevents parallel NSIS runs; startup vs user retry limits separated.
+- **Fix:** Focus fullscreen — main channel connects and fades in over preview (preview stays until main is playing).
+- **Fix:** Settings **Install updater service** — async install with polling; clearer errors when the API is unreachable; `go2rtc-updater.exe` presence shown in status.
+- **Fix:** Tile debug pipeline (ONVIF sources, WebRTC transport, optional snapshot when video OK); link to camera web UI in debug modal.
+- **Fix:** Drag-and-drop tile swap without reconnecting all streams.
+
 ## 1.2.27 (2026-05-31)
 
 - **Feature:** Camera wall — preview sub-streams stay connected in the grid while a camera is in main-channel focus; returning to the layout shows video immediately (no full reconnect).
@@ -23,7 +36,7 @@
 
 ## 1.2.24 (2026-05-31)
 
-- **Fix:** **electron-brand-bar** and **wall-header** auto-hide on the camera wall (grid and focus) — move the pointer to the top edge (~56px) to reveal them; tile controls still show on hover.
+- **Fix:** **electron-brand-bar** and **wall-header** auto-hide on the camera wall (grid and focus) — move the pointer to the top edge (~40px grid / ~48px focus) to reveal them; tile controls show on hover.
 
 ## 1.2.23 (2026-05-31)
 

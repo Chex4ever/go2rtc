@@ -329,6 +329,10 @@ button.link-btn:hover {
     pointer-events: auto;
 }
 
+#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-bar {
+    z-index: 25;
+}
+
 /* —— Phase 3: 100% focus mode —— */
 #screen-wall.focus-mode .wall-grid {
     padding: 0;
@@ -372,9 +376,15 @@ button.link-btn:hover {
 }
 
 #screen-wall.focus-mode .tile-bar {
+    z-index: 25;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.5s ease;
+}
+
+#screen-wall.focus-mode .cell.focused .tile-bar {
+    opacity: 0.9;
+    pointer-events: auto;
 }
 
 #screen-wall.focus-mode.show-top-chrome .tile-bar,
