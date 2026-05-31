@@ -126,14 +126,15 @@ function fileNameFromUrl(downloadUrl) {
  */
 async function downloadInstaller(info, onProgress) {
     initUpdaterCache();
-    const cached = cache.findCachedArtifact(info);
-    if (cached) {
-        cache.logUpdate('reusing cached installer', {path: cached.path});
-        cache.rememberPendingUpdate(info, cached.path);
+    const currentVersion = app.getVersion();
+    const existing = cache.resolveLocalArtifact(info, currentVersion);
+    if (existing?.path) {
+        cache.logUpdate('reusing cached installer', {path: existing.path, pending: existing.pending});
+        cache.rememberPendingUpdate(info, existing.path);
         if (onProgress) {
             onProgress(100);
         }
-        return cached.path;
+        return existing.path;
     }
 
     const res = await fetch(info.downloadUrl, {redirect: 'follow'});
@@ -192,8 +193,20 @@ async function downloadUpdateArtifact(info, onProgress) {
     return downloadInstaller(info, onProgress);
 }
 
-function pendingReadyForInstall(currentVersion) {
+function pendingReadyForInstall(currentVersion, info) {
     initUpdaterCache();
+    const local = info ? cache.resolveLocalArtifact(info, currentVersion) : null;
+    if (local?.path) {
+        if (info) {
+            cache.rememberPendingUpdate(info, local.path);
+        }
+        const pending = cache.readPendingUpdate();
+        if (pending?.path && fs.existsSync(pending.path)) {
+            return pending;
+        }
+        return {version: local.version, path: local.path};
+    }
+
     const pending = cache.readPendingUpdate();
     if (!pending?.path || !pending.version) {
         return null;
@@ -208,9 +221,8 @@ function pendingReadyForInstall(currentVersion) {
         return null;
     }
     if (pending.sha256 && !cache.verifyArtifact(pending.path, pending.sha256)) {
-        cache.logUpdate('pending update checksum mismatch', pending);
-        cache.clearPendingUpdate();
-        return null;
+        cache.logUpdate('pending update checksum mismatch — keeping file for retry', pending);
+        return pending;
     }
     return pending;
 }
@@ -422,7 +434,7 @@ async function runUpdateFlow(parent, opts) {
         return result;
     }
 
-    const pending = pendingReadyForInstall(result.currentVersion);
+    const pending = pendingReadyForInstall(result.currentVersion, result.info);
     if (pending && pending.version === result.remoteVersion) {
         const install = await promptInstallReady(parent, pending, opts);
         if (!install) {
@@ -436,7 +448,12 @@ async function runUpdateFlow(parent, opts) {
                 type: 'error',
                 title: 'Update failed',
                 message: e?.message || String(e),
-                detail: `See log: ${cache.updateLogFile()}`,
+                detail: [
+                    'The installer could not run. Check the update log for details.',
+                    '',
+                    `Log: ${cache.updateLogFile()}`,
+                    `Helper log: ${path.join(require('os').tmpdir(), `go2rtc-viewer-update-${process.pid}.log`)}`,
+                ].join('\n'),
             });
             return {...result, error: e, pending};
         }
@@ -540,8 +557,8 @@ async function runStartupUpdateCheck(parent, opts) {
         return result;
     }
 
-    const cached = cache.findCachedArtifact(result.info);
-    if (cached) {
+    const cached = cache.resolveLocalArtifact(result.info, currentVersion);
+    if (cached?.path) {
         cache.rememberPendingUpdate(result.info, cached.path);
         const ready = cache.readPendingUpdate();
         const install = await promptInstallReady(parent, ready, {silent: false});

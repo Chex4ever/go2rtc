@@ -24,13 +24,15 @@ describe('installer-launch', () => {
             installDir: 'C:\\Program Files\\App',
             parentPid: 4242,
             logPath: 'C:\\Temp\\go2rtc-viewer-update.log',
+            appExePath: 'C:\\Program Files\\App\\go2rtc Camera Wall.exe',
         });
         assert.match(script, /pidToWait = 4242/);
         assert.match(script, /setup\.exe/);
         assert.match(script, /'\/S'/);
         assert.match(script, /'\/D=C:\\Program Files\\App'/);
         assert.match(script, /Start-Sleep -Seconds 2/);
-        assert.doesNotMatch(script, /Start-Process.*Camera Wall/);
+        assert.match(script, /Relaunching app/);
+        assert.match(script, /go2rtc Camera Wall\.exe/);
     });
 
     it('quotes paths with spaces', () => {

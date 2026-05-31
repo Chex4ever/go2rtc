@@ -1,6 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert/strict');
-const {slotsFromLayout, tilesFromSlots, slotStream, slotView, setSlotView} = require('../../../www/viewer/grids.js');
+const {slotsFromLayout, tilesFromSlots, slotStream, slotView, setSlotView, mergeLayoutCamerasIntoSlots} = require('../../../www/viewer/grids.js');
 
 describe('grids tile view persistence', () => {
     it('loads and saves preview view settings per tile', () => {
@@ -63,5 +63,24 @@ describe('grids tile view persistence', () => {
         const tiles = tilesFromSlots(slots, 3);
         assert.deepEqual(tiles[0].view.fit, 'contain');
         assert.deepEqual(tiles[0].viewMain.fit, 'cover');
+    });
+
+    it('adds new layout cameras into empty saved tiles', () => {
+        const layout = {
+            grid: 6,
+            cameras: ['cam1', 'cam2', 'cam3'],
+            tiles: [{stream: 'cam1', x: 0, y: 0, w: 1, h: 1}],
+        };
+        const slots = slotsFromLayout(layout);
+        assert.equal(slotStream(slots[0]), 'cam1');
+        assert.equal(slotStream(slots[1]), 'cam2');
+        assert.equal(slotStream(slots[2]), 'cam3');
+    });
+
+    it('removes cameras dropped from layout allow-list', () => {
+        const slots = ['cam1', 'cam2', null, null, null, null];
+        mergeLayoutCamerasIntoSlots(slots, ['cam1']);
+        assert.equal(slotStream(slots[0]), 'cam1');
+        assert.equal(slotStream(slots[1]), null);
     });
 });

@@ -75,6 +75,52 @@ export function setSlotView(slots, index, view, mode = 'preview') {
     }
 }
 
+function slotEntryFromTile(t) {
+    const hasView = t.view && typeof t.view === 'object';
+    const hasViewMain = t.viewMain && typeof t.viewMain === 'object';
+    if (hasView || hasViewMain) {
+        const entry = {stream: t.stream};
+        if (hasView) {
+            entry.view = t.view;
+        }
+        if (hasViewMain) {
+            entry.viewMain = t.viewMain;
+        }
+        return entry;
+    }
+    return t.stream;
+}
+
+/** Drop cameras removed from layout; fill empty slots with newly allowed cameras. */
+export function mergeLayoutCamerasIntoSlots(slots, cameras) {
+    const allowed = new Set(cameras || []);
+    const placed = new Set();
+
+    for (let i = 0; i < slots.length; i++) {
+        const name = slotStream(slots[i]);
+        if (!name) {
+            continue;
+        }
+        if (!allowed.has(name)) {
+            slots[i] = null;
+            continue;
+        }
+        placed.add(name);
+    }
+
+    for (const cam of cameras || []) {
+        if (placed.has(cam)) {
+            continue;
+        }
+        const emptyIdx = slots.findIndex((s) => !slotStream(s));
+        if (emptyIdx < 0) {
+            break;
+        }
+        slots[emptyIdx] = cam;
+        placed.add(cam);
+    }
+}
+
 export function slotsFromLayout(layout) {
     const grid = Number(layout?.grid);
     const preset = GRID_PRESETS[grid];
@@ -83,38 +129,31 @@ export function slotsFromLayout(layout) {
     }
     const total = preset.cols * preset.rows;
     const slots = new Array(total).fill(null);
+    const cameras = layout.cameras || [];
 
     if (layout.tiles && layout.tiles.length > 0) {
         for (const t of layout.tiles) {
             const i = t.y * preset.cols + t.x;
-            if (i >= 0 && i < total) {
-                const hasView = t.view && typeof t.view === 'object';
-                const hasViewMain = t.viewMain && typeof t.viewMain === 'object';
-                if (hasView || hasViewMain) {
-                    const entry = {stream: t.stream};
-                    if (hasView) {
-                        entry.view = t.view;
-                    }
-                    if (hasViewMain) {
-                        entry.viewMain = t.viewMain;
-                    }
-                    slots[i] = entry;
-                } else {
-                    slots[i] = t.stream;
-                }
+            if (i >= 0 && i < total && allowedCameraOnLayout(t.stream, cameras)) {
+                slots[i] = slotEntryFromTile(t);
             }
         }
+        mergeLayoutCamerasIntoSlots(slots, cameras);
         return slots;
     }
 
     let i = 0;
-    for (const cam of layout.cameras || []) {
+    for (const cam of cameras) {
         if (i >= total) {
             break;
         }
         slots[i++] = cam;
     }
     return slots;
+}
+
+function allowedCameraOnLayout(stream, cameras) {
+    return !!stream && (!cameras.length || cameras.includes(stream));
 }
 
 export function tilesFromSlots(slots, cols) {

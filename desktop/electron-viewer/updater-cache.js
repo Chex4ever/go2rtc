@@ -102,10 +102,78 @@ function findCachedArtifact(info) {
     const url = kind === 'patch' ? info.patchUrl : info.downloadUrl;
     const sha = kind === 'patch' ? (info.patchSha256 || info.sha256) : info.sha256;
     const dest = artifactPath(info.version, kind, url);
-    if (!verifyArtifact(dest, sha)) {
+    if (verifyArtifact(dest, sha)) {
+        return {path: dest, reused: true, kind, url, sha256: sha || ''};
+    }
+    return findCachedArtifactByVersion(info.version, kind, sha);
+}
+
+/** Reuse any verified file in updates/ for this version (stable even if download URL changed). */
+function findCachedArtifactByVersion(version, kind, sha256) {
+    if (!version) {
         return null;
     }
-    return {path: dest, reused: true, kind, url, sha256: sha || ''};
+    const prefix = `${version}-${kind}-`;
+    let dir;
+    try {
+        dir = updatesDir();
+    } catch {
+        return null;
+    }
+    for (const name of fs.readdirSync(dir)) {
+        if (!name.startsWith(prefix)) {
+            continue;
+        }
+        const filePath = path.join(dir, name);
+        if (verifyArtifact(filePath, sha256)) {
+            return {path: filePath, reused: true, kind, sha256: sha256 || ''};
+        }
+    }
+    return null;
+}
+
+/**
+ * Prefer pending-update.json, then version/kind cache (ignore URL drift).
+ * @param {object} info
+ * @param {string} currentVersion
+ */
+function resolveLocalArtifact(info, currentVersion) {
+    const pending = readPendingUpdate();
+    if (pending?.path && pending.version && fs.existsSync(pending.path)) {
+        if (coreIsNewerVersion(pending.version, currentVersion)) {
+            if (!info?.version || pending.version === info.version) {
+                if (!pending.sha256 || verifyArtifact(pending.path, pending.sha256)) {
+                    return {path: pending.path, pending: true, version: pending.version};
+                }
+            }
+        }
+    }
+
+    if (info?.version) {
+        const cached = findCachedArtifact(info);
+        if (cached?.path) {
+            return {path: cached.path, pending: false, version: info.version};
+        }
+    }
+    return null;
+}
+
+/** Avoid circular require — duplicated semver check for cache-only use. */
+function coreIsNewerVersion(remote, current) {
+    const pa = String(remote || '0').split('.').map((n) => parseInt(n, 10) || 0);
+    const pb = String(current || '0').split('.').map((n) => parseInt(n, 10) || 0);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+        const da = pa[i] || 0;
+        const db = pb[i] || 0;
+        if (da > db) {
+            return true;
+        }
+        if (da < db) {
+            return false;
+        }
+    }
+    return false;
 }
 
 function cleanupOldUpdates(keepVersion) {
@@ -168,6 +236,8 @@ module.exports = {
     artifactPath,
     verifyArtifact,
     findCachedArtifact,
+    findCachedArtifactByVersion,
+    resolveLocalArtifact,
     cleanupOldUpdates,
     cleanupAfterSuccessfulUpdate,
     rememberPendingUpdate,

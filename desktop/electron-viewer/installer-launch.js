@@ -55,9 +55,18 @@ function psEscapeLiteral(value) {
  * @param {number} opts.parentPid
  * @param {string} opts.logPath
  */
-function buildUpdatePs1({installerPath, installDir, parentPid, logPath}) {
+function buildUpdatePs1({installerPath, installDir, parentPid, logPath, appExePath}) {
     const instArgs = silentInstallArgs(installDir);
     const argLines = instArgs.map((a) => `    '${psEscapeLiteral(a)}'`).join(',\n');
+    const exeName = appExePath ? path.basename(appExePath) : '';
+    const waitByName = exeName
+        ? [
+              `$procName = '${psEscapeLiteral(path.basename(exeName, path.extname(exeName)))}'`,
+              'while ((Get-Process -Name $procName -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {',
+              '    Start-Sleep -Milliseconds 400',
+              '}',
+          ].join('\n')
+        : '';
     return [
         '$ErrorActionPreference = "Stop"',
         `$log = '${psEscapeLiteral(logPath)}'`,
@@ -66,10 +75,11 @@ function buildUpdatePs1({installerPath, installDir, parentPid, logPath}) {
         '}',
         `Write-Log "Camera Wall update helper started (parent PID ${parentPid})"`,
         `$pidToWait = ${parentPid}`,
-        '$deadline = (Get-Date).AddSeconds(90)',
+        '$deadline = (Get-Date).AddSeconds(120)',
         'while ((Get-Process -Id $pidToWait -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {',
         '    Start-Sleep -Milliseconds 400',
         '}',
+        waitByName,
         'Start-Sleep -Seconds 2',
         `Write-Log "Running installer: ${installerPath}"`,
         `$p = Start-Process -LiteralPath '${psEscapeLiteral(installerPath)}' -ArgumentList @(`,
@@ -78,7 +88,13 @@ function buildUpdatePs1({installerPath, installDir, parentPid, logPath}) {
         'if (-not $p) { Write-Log "Start-Process returned null"; exit 1 }',
         'Write-Log ("Installer exit code: {0}" -f $p.ExitCode)',
         'if ($p.ExitCode -ne 0) { exit $p.ExitCode }',
-        'Write-Log "Install finished — NSIS should relaunch the app"',
+        appExePath
+            ? [
+                  `Write-Log "Relaunching app: ${appExePath}"`,
+                  `Start-Process -LiteralPath '${psEscapeLiteral(appExePath)}' | Out-Null`,
+                  'Write-Log "App relaunch requested"',
+              ].join('\n')
+            : 'Write-Log "Install finished — NSIS may relaunch the app"',
     ].join('\n');
 }
 
@@ -139,7 +155,7 @@ function launchSilentInstallerAndRelaunch(installerPath, appExePath, installDir 
     }
     const logPath = updateLogPath(parentPid);
     const ps1Path = updateScriptPath(parentPid);
-    const script = buildUpdatePs1({installerPath, installDir, parentPid, logPath});
+    const script = buildUpdatePs1({installerPath, installDir, parentPid, logPath, appExePath});
     fs.writeFileSync(ps1Path, script, 'utf8');
 
     return new Promise((resolve, reject) => {

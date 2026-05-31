@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.20 (2026-05-31)
+
+- **Fix:** Desktop autoupdate reuses cached installer in `%APPDATA%/go2rtc-viewer/updates/` until install succeeds (no re-download when URL changes).
+- **Fix:** Silent install helper relaunches Camera Wall after NSIS finishes; waits longer for all app processes to exit.
+- **Fix:** New cameras added to a layout appear in empty grid slots (saved tile positions are merged with the current allow-list).
+
 ## 1.2.19 (2026-05-27)
 
 - **Feature:** Separate tile view settings for **preview** (grid) and **main** (fullscreen): aspect ratio, zoom, pan, width — saved per user in layout (`view` / `viewMain`).

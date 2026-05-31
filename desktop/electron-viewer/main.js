@@ -11,7 +11,7 @@ updater.setRequestAppQuit(() => {
             w.destroy();
         }
     }
-    setTimeout(() => app.exit(0), 500);
+    setTimeout(() => app.exit(0), 1500);
 });
 const brandingAssets = require('./branding-assets');
 

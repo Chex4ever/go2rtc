@@ -55,6 +55,29 @@ describe('updater-cache', () => {
         assert.equal(cache.readPendingUpdate(), null);
     });
 
+    it('resolveLocalArtifact reuses pending file when URL changes', () => {
+        const bytes = 'cached-installer';
+        const dest = cache.artifactPath('1.2.19', 'full', 'https://example.test/old-url.exe');
+        fs.mkdirSync(path.dirname(dest), {recursive: true});
+        fs.writeFileSync(dest, bytes);
+        cache.writePendingUpdate({
+            version: '1.2.19',
+            kind: 'full',
+            path: dest,
+        });
+
+        const resolved = cache.resolveLocalArtifact(
+            {
+                version: '1.2.19',
+                downloadUrl: 'https://example.test/new-url.exe',
+                updateKind: 'full',
+            },
+            '1.2.18',
+        );
+        assert.ok(resolved);
+        assert.equal(resolved.path, dest);
+    });
+
     it('appends update log lines', () => {
         cache.logUpdate('test event', {ok: true});
         const text = fs.readFileSync(cache.updateLogFile(), 'utf8');
