@@ -115,6 +115,11 @@ function renderTechnicalHtml(server, client) {
             ['Signed in as', client.signed_in_as],
             ['Current layout', client.current_layout],
         ]),
+        renderSection('Logs (desktop)', [
+            ['Update log', client.update_log],
+            ['App log', client.app_log],
+            ['Pending update', client.pending_update],
+        ]),
         renderSection('Updates configured on server', [
             ['go2rtc binary', formatUpdateSource(server?.updates?.go2rtc)],
             ['Camera Wall app', formatUpdateSource(server?.updates?.desktop)],

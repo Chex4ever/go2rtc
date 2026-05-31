@@ -29,6 +29,93 @@ function pendingUpdateFile() {
     return path.join(getUserDataPath(), 'pending-update.json');
 }
 
+function installStateFile() {
+    return path.join(getUserDataPath(), 'install-state.json');
+}
+
+const MAX_STARTUP_INSTALL_ATTEMPTS = 2;
+const INSTALL_COOLDOWN_MS = 120000;
+
+function readInstallState() {
+    try {
+        return JSON.parse(fs.readFileSync(installStateFile(), 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+function writeInstallState(state) {
+    fs.writeFileSync(installStateFile(), JSON.stringify(state, null, 2), 'utf8');
+}
+
+function clearInstallState() {
+    try {
+        fs.unlinkSync(installStateFile());
+    } catch {
+        /* ignore */
+    }
+}
+
+/**
+ * @param {object} pending
+ * @param {string} currentVersion
+ * @returns {{ok: boolean, reason?: string}}
+ */
+function shouldRunStartupInstall(pending, currentVersion) {
+    if (!pending?.version || !pending?.path) {
+        return {ok: false, reason: 'no_pending'};
+    }
+    if (!coreIsNewerVersion(pending.version, currentVersion)) {
+        return {ok: false, reason: 'already_installed'};
+    }
+    const st = readInstallState();
+    if (st?.version !== pending.version) {
+        return {ok: true};
+    }
+    if ((st.attempts || 0) >= MAX_STARTUP_INSTALL_ATTEMPTS) {
+        return {ok: false, reason: 'max_attempts'};
+    }
+    const last = Date.parse(st.lastAttemptAt || 0);
+    if (Number.isFinite(last) && Date.now() - last < INSTALL_COOLDOWN_MS) {
+        return {ok: false, reason: 'cooldown'};
+    }
+    return {ok: true};
+}
+
+function recordInstallAttempt(pending, source) {
+    const st = readInstallState();
+    const attempts = st?.version === pending.version ? (st.attempts || 0) + 1 : 1;
+    writeInstallState({
+        version: pending.version,
+        source,
+        attempts,
+        lastAttemptAt: new Date().toISOString(),
+    });
+    logUpdate('install attempt recorded', {version: pending.version, source, attempts});
+}
+
+function abandonPendingInstall(reason, extra) {
+    logUpdate('abandoning pending install', {reason, ...extra});
+    clearPendingUpdate();
+    clearInstallState();
+}
+
+function finalizeSuccessfulLaunch(installedVersion) {
+    const pending = readPendingUpdate();
+    if (pending && pending.version === installedVersion) {
+        clearPendingUpdate();
+        clearInstallState();
+        cleanupOldUpdates(installedVersion);
+        logUpdate('launch finalized after update', {installedVersion});
+        return true;
+    }
+    if (pending && !coreIsNewerVersion(pending.version, installedVersion)) {
+        clearPendingUpdate();
+        clearInstallState();
+    }
+    return false;
+}
+
 function logUpdate(message, extra) {
     const line = extra
         ? `[${new Date().toISOString()}] ${message} ${JSON.stringify(extra)}\n`
@@ -200,6 +287,7 @@ function cleanupAfterSuccessfulUpdate(installedVersion) {
     const pending = readPendingUpdate();
     if (pending && pending.version === installedVersion) {
         clearPendingUpdate();
+        clearInstallState();
         cleanupOldUpdates(installedVersion);
         logUpdate('cleanup after successful update', {installedVersion});
         return;
@@ -213,6 +301,7 @@ function cleanupAfterSuccessfulUpdate(installedVersion) {
     }
     if (pending) {
         clearPendingUpdate();
+        clearInstallState();
     }
     cleanupOldUpdates(installedVersion);
     logUpdate('cleanup after successful update', {installedVersion});
@@ -242,6 +331,16 @@ module.exports = {
     logsDir,
     updateLogFile,
     pendingUpdateFile,
+    installStateFile,
+    readInstallState,
+    writeInstallState,
+    clearInstallState,
+    shouldRunStartupInstall,
+    recordInstallAttempt,
+    abandonPendingInstall,
+    finalizeSuccessfulLaunch,
+    MAX_STARTUP_INSTALL_ATTEMPTS,
+    INSTALL_COOLDOWN_MS,
     logUpdate,
     readPendingUpdate,
     writePendingUpdate,

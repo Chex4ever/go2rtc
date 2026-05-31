@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.26 (2026-05-31)
+
+- **Fix:** Autoupdate no longer loops quit-on-start when install is in progress or failed — install cooldown, max 2 startup attempts, then pending update is cleared so the app can open.
+- **Fix:** Full installer no longer relaunches the app twice (NSIS only; removed duplicate PowerShell `Start-Process`).
+- **Feature:** Logging — `%APPDATA%\go2rtc-viewer\logs\camera-wall-update.log` and `camera-wall.log`; paths shown in **About → Logs (desktop)**.
+
 ## 1.2.25 (2026-05-31)
 
 - **Fix:** **About** on the login screen opens a modal (no longer replaces the page on error); shows credits and version info.

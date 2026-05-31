@@ -211,6 +211,10 @@ async function applyDesktopPatchOneClick(info, localPath) {
     }
 
     cache.logUpdate('starting patch apply', {patchPath, installDir});
+    cache.recordInstallAttempt(
+        {version: info.version, path: patchPath},
+        'user',
+    );
     notify.emitUpdateEvent({
         kind: 'installing',
         version: info.version,
@@ -241,6 +245,10 @@ async function applyDesktopUpdateOneClick(info, localPath) {
     }
 
     cache.logUpdate('starting full installer apply', {installerPath, installDir});
+    cache.recordInstallAttempt(
+        {version: info.version, path: installerPath},
+        'user',
+    );
     notify.emitUpdateEvent({
         kind: 'installing',
         version: info.version,
@@ -339,18 +347,62 @@ async function trySilentStartupInstall() {
         return false;
     }
     initUpdaterCache();
-    const pending = pendingReadyForInstall(app.getVersion());
+    const currentVersion = app.getVersion();
+    const pending = pendingReadyForInstall(currentVersion);
     if (!pending) {
         return false;
     }
+
+    const gate = cache.shouldRunStartupInstall(pending, currentVersion);
+    if (!gate.ok) {
+        if (gate.reason === 'max_attempts') {
+            cache.abandonPendingInstall('max_startup_attempts', {
+                version: pending.version,
+                currentVersion,
+                log: cache.updateLogFile(),
+            });
+        } else {
+            cache.logUpdate('startup silent install skipped', {
+                reason: gate.reason,
+                version: pending.version,
+                currentVersion,
+            });
+        }
+        return false;
+    }
+
     cache.logUpdate('startup silent install', pending);
+    cache.recordInstallAttempt(pending, 'startup');
     try {
         await installPendingUpdate(null, pending);
         return true;
     } catch (e) {
-        cache.logUpdate('startup silent install failed', {error: String(e?.message || e)});
+        cache.logUpdate('startup silent install failed', {error: String(e?.message || e), pending});
+        cache.writeInstallState({
+            ...(cache.readInstallState() || {}),
+            version: pending.version,
+            lastError: String(e?.message || e),
+            lastAttemptAt: new Date().toISOString(),
+        });
         return false;
     }
+}
+
+function finalizeSuccessfulLaunch(installedVersion) {
+    initUpdaterCache();
+    return cache.finalizeSuccessfulLaunch(installedVersion || app.getVersion());
+}
+
+function getUpdateDiagnostics() {
+    initUpdaterCache();
+    const appLog = require('./app-log');
+    return {
+        update_log: cache.updateLogFile(),
+        app_log: appLog.appLogFile(),
+        pending_update: cache.pendingUpdateFile(),
+        install_state: cache.installStateFile(),
+        updates_dir: cache.updatesDir(),
+    };
 }
 
 /**
@@ -610,6 +662,8 @@ module.exports = {
     applyDesktopUpdateSmart,
     installPendingUpdate,
     trySilentStartupInstall,
+    finalizeSuccessfulLaunch,
+    getUpdateDiagnostics,
     runBackgroundUpdateCheck,
     runManualDesktopUpdateCheck,
     runUpdateFlow,

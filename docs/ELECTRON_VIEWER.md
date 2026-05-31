@@ -174,6 +174,21 @@ Update kind (same as before):
 
 go2rtc: still uses a classic dialog from **Check for updates…** — download new `go2rtc.exe` → stop service → replace binary → start service (configs unchanged).
 
+#### Update troubleshooting & logs
+
+If Camera Wall flashes and closes after **Restart now**, or update loops fail:
+
+| Log | Path (Windows) |
+|-----|----------------|
+| **Update log** (download, install, pending) | `%APPDATA%\go2rtc-viewer\logs\camera-wall-update.log` |
+| **App log** (startup, crashes) | `%APPDATA%\go2rtc-viewer\logs\camera-wall.log` |
+| **Pending update** | `%APPDATA%\go2rtc-viewer\pending-update.json` |
+| **Install helper** (one run) | `%TEMP%\go2rtc-viewer-update-{PID}.log` |
+
+In the desktop app: **About** → section **Logs (desktop)** (or app menu **About Camera Wall…**).
+
+**Recovery:** delete `pending-update.json` and `install-state.json` in `%APPDATA%\go2rtc-viewer\`, then reinstall from the latest Setup `.exe` from GitHub Releases.
+
 ### Tile debug (black cameras)
 
 On each tile, open **🐞** in the control bar. The modal shows:

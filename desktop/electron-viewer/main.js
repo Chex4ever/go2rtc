@@ -5,6 +5,16 @@ const cfg = require('./config');
 const {buildLoadErrorPage} = require('./load-error-page');
 const updater = require('./updater');
 const updateNotify = require('./update-notify');
+const appLog = require('./app-log');
+
+appLog.setUserDataPath(() => {
+    try {
+        return require('electron').app.getPath('userData');
+    } catch {
+        return cfg.userDataDir();
+    }
+});
+appLog.installProcessLogHandlers();
 function sendUpdateEventToViewer(payload) {
     const win = mainWindow;
     if (!win || win.isDestroyed()) {
@@ -20,9 +30,24 @@ updateNotify.setUpdateEventSender(sendUpdateEventToViewer);
 
 async function installPendingUpdateFromMenu() {
     updater.initUpdaterCache();
-    const pending = updater.pendingReadyForInstall(app.getVersion());
+    const currentVersion = app.getVersion();
+    let pending = updater.pendingReadyForInstall(currentVersion);
     if (!pending) {
-        updateNotify.emitUpdateEvent({kind: 'error', message: 'No downloaded update is ready to install.'});
+        try {
+            const check = await updater.checkForUpdates({serverUrl: getConfig().serverUrl});
+            if (check.info) {
+                pending = updater.pendingReadyForInstall(currentVersion, check.info);
+            }
+        } catch (e) {
+            require('./updater-cache').logUpdate('install menu resolve failed', {error: String(e?.message || e)});
+        }
+    }
+    if (!pending) {
+        const diag = updater.getUpdateDiagnostics();
+        updateNotify.emitUpdateEvent({
+            kind: 'error',
+            message: `No downloaded update is ready to install. Log: ${diag.update_log}`,
+        });
         return;
     }
     try {
@@ -837,6 +862,7 @@ ipcMain.handle('viewer:client-info', () => {
         arch: process.arch,
         server_url: cfg.normalizeServerUrl(config.serverUrl),
         packaged: app.isPackaged,
+        ...updater.getUpdateDiagnostics(),
     };
 });
 
@@ -1000,6 +1026,8 @@ app.whenReady().then(async () => {
     buildMenu();
     registerShortcuts();
     createMainWindow();
+    updater.finalizeSuccessfulLaunch(app.getVersion());
+    appLog.appendAppLog('app', 'Camera Wall started', {version: app.getVersion(), packaged: app.isPackaged});
 
     if (upgraded) {
         const version = app.getVersion();

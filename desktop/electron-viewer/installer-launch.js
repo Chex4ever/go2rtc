@@ -88,13 +88,7 @@ function buildUpdatePs1({installerPath, installDir, parentPid, logPath, appExePa
         'if (-not $p) { Write-Log "Start-Process returned null"; exit 1 }',
         'Write-Log ("Installer exit code: {0}" -f $p.ExitCode)',
         'if ($p.ExitCode -ne 0) { exit $p.ExitCode }',
-        appExePath
-            ? [
-                  `Write-Log "Relaunching app: ${appExePath}"`,
-                  `Start-Process -LiteralPath '${psEscapeLiteral(appExePath)}' | Out-Null`,
-                  'Write-Log "App relaunch requested"',
-              ].join('\n')
-            : 'Write-Log "Install finished — NSIS may relaunch the app"',
+        'Write-Log "Install finished — NSIS silent update relaunches the app when isUpdated"',
     ].join('\n');
 }
 

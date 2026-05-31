@@ -98,4 +98,17 @@ describe('updater-cache', () => {
         assert.match(text, /test event/);
         assert.match(text, /"ok":true/);
     });
+
+    it('limits startup install retries and cooldown', () => {
+        const pending = {version: '1.2.26', path: 'C:\\Temp\\setup.exe'};
+        assert.equal(cache.shouldRunStartupInstall(pending, '1.2.25').ok, true);
+        cache.recordInstallAttempt(pending, 'startup');
+        assert.equal(cache.shouldRunStartupInstall(pending, '1.2.25').reason, 'cooldown');
+        cache.writeInstallState({
+            version: '1.2.26',
+            attempts: 2,
+            lastAttemptAt: new Date(Date.now() - 200000).toISOString(),
+        });
+        assert.equal(cache.shouldRunStartupInstall(pending, '1.2.25').reason, 'max_attempts');
+    });
 });
