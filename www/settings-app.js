@@ -97,35 +97,10 @@ function formatFetchError(err, url) {
     if (msg === 'Failed to fetch' || err instanceof TypeError) {
         return (
             `Cannot reach go2rtc API (${url}). ` +
-            'Check that go2rtc is running and this page URL matches api.listen in go2rtc.yaml. ' +
-            'If the server runs as a Windows service, use an elevated Command Prompt instead: ' +
-            'go2rtc-updater install-service -config go2rtc.yaml'
+            'Check that go2rtc is running and this page URL matches api.listen in go2rtc.yaml.'
         );
     }
     return msg;
-}
-
-async function pollUpdaterInstallJob(maxMs = 180000) {
-    const deadline = Date.now() + maxMs;
-    while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        const r = await apiFetch(apiUrl('api/updater?action=install-job'));
-        if (!r.ok) {
-            continue;
-        }
-        const job = await r.json();
-        if (job.running) {
-            setUpdaterActionStatus('Installing… approve UAC if Windows shows a prompt.');
-            continue;
-        }
-        if (job.error) {
-            throw new Error(job.error);
-        }
-        return;
-    }
-    throw new Error(
-        'Install timed out waiting for UAC. Run in an elevated Command Prompt: go2rtc-updater install-service -config go2rtc.yaml',
-    );
 }
 
 async function fetchConfig() {
@@ -1208,19 +1183,12 @@ function wireSettings() {
             return;
         }
         state.updaterBusy = true;
-        setUpdaterActionStatus('Installing…');
+        setUpdaterActionStatus('Installing… Windows may show a UAC prompt (same as go2rtc service).');
         const installUrl = apiUrl('api/updater?action=install-updater');
         try {
-            const r = await apiFetch(installUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: '{}',
-            });
+            const r = await apiFetch(installUrl, {method: 'POST'});
             if (!r.ok) {
                 throw new Error(await r.text() || r.statusText);
-            }
-            if (r.status === 202) {
-                await pollUpdaterInstallJob();
             }
             setUpdaterActionStatus('Installed. Updater will apply updates on schedule.');
             await refreshUpdaterStatus();
@@ -1245,11 +1213,7 @@ function wireSettings() {
         setUpdaterActionStatus('Uninstalling…');
         const uninstallUrl = apiUrl('api/updater?action=uninstall-updater');
         try {
-            const r = await apiFetch(uninstallUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: '{}',
-            });
+            const r = await apiFetch(uninstallUrl, {method: 'POST'});
             if (!r.ok) {
                 throw new Error(await r.text() || r.statusText);
             }

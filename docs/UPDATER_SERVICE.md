@@ -52,7 +52,7 @@ Settings → **Install updater service**, or:
 POST /api/updater?action=install-updater
 ```
 
-Windows will show a **UAC elevation prompt** (Administrator required). If go2rtc runs as a non-interactive service and UAC cannot appear, use option B instead.
+Windows will show a **UAC elevation prompt** when you install (same as **Run go2rtc as a Windows service** above). If the browser request fails, use option B.
 
 ### B — Command line (elevated)
 

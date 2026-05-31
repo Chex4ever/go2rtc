@@ -110,7 +110,7 @@ Used by **`/config.html` → Settings → Install updater service** (Windows). P
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/updater?action=status` | Service installed / running state |
+| GET | `/api/updater?action=updater-status` | Service installed / running state |
 | POST | `/api/updater?action=install-updater` | Install Windows service |
 | POST | `/api/updater?action=uninstall-updater` | Remove Windows service |
 

@@ -1,5 +1,9 @@
 # Camera wall & desktop changelog
 
+## 1.2.30 (2026-05-27)
+
+- **Fix:** Settings **Install updater service** — synchronous install with UAC elevation (same as **Run go2rtc as a Windows service**), not async polling.
+
 ## 1.2.29 (2026-05-31)
 
 - **Fix:** Top chrome reveal zone is much thinner (grid ~40px, focus ~48px) so moving the pointer over top tile buttons no longer keeps the wall header open over them.

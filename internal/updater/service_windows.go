@@ -23,17 +23,20 @@ func InstallService(updaterExe, configPath string) error {
 	if err != nil {
 		return err
 	}
-	bin := `"` + updaterExe + `" run-service`
+	binPath := updaterExe + " run-service"
 	if configPath != "" {
 		cfg, err := filepath.Abs(configPath)
 		if err != nil {
 			return err
 		}
-		bin += ` -config "` + cfg + `"`
+		binPath += " -config " + cfg
+	}
+	if strings.Contains(binPath, " ") {
+		binPath = `"` + binPath + `"`
 	}
 
 	return winsvc.RunSc(true, "create", updaterServiceName,
-		"binPath=", bin,
+		"binPath=", binPath,
 		"start=", "auto",
 		"DisplayName=", "go2rtc auto-updater",
 	)
@@ -41,6 +44,13 @@ func InstallService(updaterExe, configPath string) error {
 
 // UninstallService removes go2rtc-updater service.
 func UninstallService() error {
+	st, err := UpdaterServiceStatus()
+	if err != nil {
+		return err
+	}
+	if !st.Installed {
+		return nil
+	}
 	_ = winsvc.RunSc(true, "stop", updaterServiceName)
 	return winsvc.RunSc(true, "delete", updaterServiceName)
 }
