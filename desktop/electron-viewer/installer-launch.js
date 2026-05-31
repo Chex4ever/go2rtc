@@ -62,6 +62,8 @@ function buildUpdatePs1({installerPath, installDir, parentPid, logPath, appExePa
     const waitByName = exeName
         ? [
               `$procName = '${psEscapeLiteral(path.basename(exeName, path.extname(exeName)))}'`,
+              'Get-Process -Name $procName -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
+              'Start-Sleep -Seconds 1',
               'while ((Get-Process -Name $procName -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {',
               '    Start-Sleep -Milliseconds 400',
               '}',

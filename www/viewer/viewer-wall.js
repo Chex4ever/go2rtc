@@ -226,15 +226,40 @@ function detachFocusMainStream(slotIndex) {
     }
 }
 
+function streamWsKey(url) {
+    let s = String(url || '');
+    if (s.startsWith('http')) {
+        s = 'ws' + s.slice(4);
+    } else if (s.startsWith('/')) {
+        s = 'ws' + location.origin.slice(4) + s;
+    }
+    try {
+        const u = new URL(s, location.href.replace(/^http/, 'ws'));
+        return u.pathname + u.search;
+    } catch {
+        return s;
+    }
+}
+
 function attachFocusMainStream(slotIndex, logicalName) {
     const previewName = state.layoutDetail?.preview?.[logicalName];
-    if (!previewName) {
-        return;
-    }
     const previewVs = getTilePreviewStream(slotIndex);
     if (!previewVs) {
         return;
     }
+    const mainSrc = streamSrc(logicalName);
+    const mainKey = streamWsKey(mainSrc);
+
+    if (!previewName || previewName === logicalName) {
+        if (streamWsKey(previewVs.wsURL) !== mainKey) {
+            if (previewVs.ws || previewVs.pc) {
+                previewVs.forceDisconnect?.();
+            }
+            connectStreamSrc(previewVs, mainSrc);
+        }
+        return;
+    }
+
     const inner = previewVs.parentElement;
     if (!inner) {
         return;
@@ -265,9 +290,7 @@ function attachFocusMainStream(slotIndex, logicalName) {
         }
     }
 
-    const mainSrc = streamSrc(logicalName);
-    const mainWs = mainVs.wsURL || '';
-    if (mainWs !== mainSrc) {
+    if (streamWsKey(mainVs.wsURL) !== mainKey) {
         if (mainVs.ws || mainVs.pc) {
             mainVs.forceDisconnect?.();
         }

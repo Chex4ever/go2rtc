@@ -1,5 +1,12 @@
 # Camera wall & desktop changelog
 
+## 1.2.32 (2026-05-31)
+
+- **Fix:** “Update ready” card auto-hides after 10 seconds (pending install stays available in the menu).
+- **Fix:** Top chrome reveal strip ~5px; header hides 2s after pointer leaves.
+- **Fix:** Focus mode always connects the main stream (URL compare + hide preview under main).
+- **Fix:** Desktop autoupdate — clear stale install locks on restart, kill app processes before NSIS, keep pending installer after max startup retries, reset startup counter on user install.
+
 ## 1.2.31 (2026-05-27)
 
 - **Fix:** Autostart / kiosk — Camera Wall opens fullscreen (F11) with wall chrome hidden until top edge or tile click.

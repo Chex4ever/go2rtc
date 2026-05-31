@@ -33,7 +33,9 @@ describe('viewer-wall focus streams', () => {
         assert.match(wallJs, /connectStreamSrc/);
         assert.match(wallJs, /FOCUS_ANIM_MS = 500/);
         assert.match(wallJs, /flipFocusCell/);
+        assert.match(wallJs, /streamWsKey/);
         assert.match(wallCss, /viewer-stream\.stream-main/);
+        assert.match(wallCss, /stream-preview/);
         assert.match(wallCss, /focus-animating/);
     });
 

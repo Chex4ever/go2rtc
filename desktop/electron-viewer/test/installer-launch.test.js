@@ -31,6 +31,7 @@ describe('installer-launch', () => {
         assert.match(script, /'\/S'/);
         assert.match(script, /'\/D=C:\\Program Files\\App'/);
         assert.match(script, /Start-Sleep -Seconds 2/);
+        assert.match(script, /Stop-Process -Force/);
         assert.match(script, /NSIS silent update relaunches/);
         assert.doesNotMatch(script, /Start-Process -LiteralPath.*go2rtc Camera Wall/);
     });

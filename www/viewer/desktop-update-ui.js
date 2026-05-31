@@ -133,6 +133,7 @@ export function handleUpdateEvent(event) {
                 </div>
             </div>
             `,
+            10000,
         );
         bindActions(card, [
             [

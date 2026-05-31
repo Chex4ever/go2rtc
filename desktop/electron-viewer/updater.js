@@ -238,6 +238,7 @@ async function applyDesktopUpdateOneClick(info, localPath, source = 'user') {
     if (!canApplyUpdates()) {
         throw new Error('One-click update works only in the installed Windows application.');
     }
+    cache.reconcileInstallLockOnStartup(app.getVersion());
     if (cache.isInstallInProgress()) {
         throw new Error('An update is already installing. Please wait for the app to restart.');
     }
@@ -355,6 +356,7 @@ async function trySilentStartupInstall() {
     }
     initUpdaterCache();
     const currentVersion = app.getVersion();
+    cache.reconcileInstallLockOnStartup(currentVersion);
     const pending = pendingReadyForInstall(currentVersion);
     if (!pending) {
         return false;
@@ -363,16 +365,15 @@ async function trySilentStartupInstall() {
     const gate = cache.shouldRunStartupInstall(pending, currentVersion);
     if (!gate.ok) {
         if (gate.reason === 'max_attempts') {
-            cache.abandonPendingInstall('max_startup_attempts', {
+            cache.logUpdate('startup auto-install paused — use menu Restart to install', {
                 version: pending.version,
                 currentVersion,
                 log: cache.updateLogFile(),
             });
             notify.emitUpdateEvent({
-                kind: 'error',
-                message:
-                    `Automatic install of version ${pending.version} did not complete. ` +
-                    `Use Restart to install from the menu, or run the Setup manually. Log: ${cache.updateLogFile()}`,
+                kind: 'ready',
+                version: pending.version,
+                message: `Version ${pending.version} is ready. Use Restart to install from the menu.`,
             });
         } else {
             cache.logUpdate('startup silent install skipped', {

@@ -138,14 +138,10 @@ function recordInstallAttempt(pending, source) {
     const st = readInstallState();
     const sameVersion = st?.version === pending.version;
     const attempts = sameVersion ? (st.attempts || 0) + 1 : 1;
-    const startupAttempts =
-        source === 'startup'
-            ? sameVersion
-                ? (st.startupAttempts || 0) + 1
-                : 1
-            : sameVersion
-              ? st.startupAttempts || 0
-              : 0;
+    let startupAttempts = 0;
+    if (source === 'startup') {
+        startupAttempts = sameVersion ? (st.startupAttempts || 0) + 1 : 1;
+    }
     writeInstallState({
         version: pending.version,
         lastSource: source,
@@ -165,6 +161,33 @@ function abandonPendingInstall(reason, extra) {
     logUpdate('install retries paused — pending installer kept', {reason, ...extra});
     clearInstallState();
     clearInstallLock();
+}
+
+/**
+ * Clear a stale install lock after the app has restarted (helper finished or failed).
+ * @param {string} installedVersion
+ */
+function reconcileInstallLockOnStartup(installedVersion) {
+    const lock = readInstallLock();
+    if (!lock?.startedAt) {
+        return null;
+    }
+    const age = Date.now() - Date.parse(lock.startedAt);
+    if (!Number.isFinite(age) || age < 8000) {
+        return null;
+    }
+    clearInstallLock();
+    const pending = readPendingUpdate();
+    const stillPending =
+        pending?.version && installedVersion && coreIsNewerVersion(pending.version, installedVersion);
+    if (stillPending) {
+        logUpdate('install lock cleared on startup — update still pending', {
+            pendingVersion: pending.version,
+            installedVersion,
+            lockAgeMs: age,
+        });
+    }
+    return lock;
 }
 
 function finalizeSuccessfulLaunch(installedVersion) {
@@ -426,6 +449,7 @@ module.exports = {
     shouldRunStartupInstall,
     recordInstallAttempt,
     abandonPendingInstall,
+    reconcileInstallLockOnStartup,
     finalizeSuccessfulLaunch,
     MAX_STARTUP_INSTALL_ATTEMPTS,
     INSTALL_COOLDOWN_MS,

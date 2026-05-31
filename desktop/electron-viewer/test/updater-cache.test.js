@@ -117,8 +117,37 @@ describe('updater-cache', () => {
         cache.recordInstallAttempt(pending, 'user');
         cache.recordInstallAttempt(pending, 'user');
         assert.equal(cache.readInstallState()?.startupAttempts || 0, 0);
+        cache.writeInstallState({
+            version: '1.2.27',
+            startupAttempts: 3,
+            lastAttemptAt: new Date(Date.now() - 200000).toISOString(),
+        });
+        cache.recordInstallAttempt(pending, 'user');
+        assert.equal(cache.readInstallState()?.startupAttempts, 0);
         assert.equal(cache.shouldRunStartupInstall(pending, '1.2.26').ok, false);
         assert.equal(cache.shouldRunStartupInstall(pending, '1.2.26').reason, 'cooldown');
+    });
+
+    it('clears stale install lock on startup when update still pending', () => {
+        const pending = {version: '1.2.30', path: 'C:\\Temp\\setup.exe'};
+        cache.writePendingUpdate({...pending, kind: 'full', sha256: ''});
+        fs.writeFileSync(
+            cache.installLockFile(),
+            JSON.stringify(
+                {
+                    version: pending.version,
+                    kind: 'full',
+                    path: pending.path,
+                    startedAt: new Date(Date.now() - 15000).toISOString(),
+                },
+                null,
+                2,
+            ),
+            'utf8',
+        );
+        cache.reconcileInstallLockOnStartup('1.2.27');
+        assert.equal(cache.readInstallLock(), null);
+        assert.equal(cache.readPendingUpdate()?.version, '1.2.30');
     });
 
     it('keeps newer cached installer even without pending metadata', () => {

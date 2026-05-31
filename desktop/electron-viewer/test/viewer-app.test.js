@@ -95,8 +95,9 @@ describe('focus mode top chrome', () => {
         const ui = fs.readFileSync(path.join(VIEWER_DIR, 'viewer-ui.js'), 'utf8');
         const css = fs.readFileSync(path.join(VIEWER_DIR, 'viewer.css'), 'utf8');
         assert.match(wall, /classList\.add\('focus-mode', 'chrome-hidden'\)/);
-        assert.match(ui, /TOP_CHROME_ZONE_PX = 40/);
-        assert.match(ui, /TOP_CHROME_FOCUS_ZONE_PX = 48/);
+        assert.match(ui, /TOP_CHROME_ZONE_PX = 5/);
+        assert.match(ui, /TOP_CHROME_FOCUS_ZONE_PX = 5/);
+        assert.match(ui, /TOP_CHROME_AUTO_HIDE_MS/);
         assert.match(ui, /scheduleTopChromeHide/);
         assert.match(ui, /CHROME_UI_SELECTOR/);
         assert.match(ui, /revealTopChromeOnPointer/);

@@ -1,10 +1,10 @@
-import {$, CHROME_HIDE_MS} from './viewer-dom.js';
+import {$, CHROME_HIDE_MS, TOP_CHROME_AUTO_HIDE_MS} from './viewer-dom.js';
 import {state} from './viewer-state.js';
 
 /** Pointer within this many px from top reveals wall-header + electron-brand-bar. */
-export const TOP_CHROME_ZONE_PX = 40;
-/** Focus mode: thin strip only — wall header must not cover the tile back bar. */
-export const TOP_CHROME_FOCUS_ZONE_PX = 48;
+export const TOP_CHROME_ZONE_PX = 5;
+/** Focus mode: thin strip at top edge for tile back bar + wall header. */
+export const TOP_CHROME_FOCUS_ZONE_PX = 5;
 
 const CHROME_UI_SELECTOR =
     '.wall-header, #electron-brand-bar, .tile-bar, .tile-focus-btn-back, #btn-exit-focus, .wall-header button, .wall-header select';
@@ -16,7 +16,7 @@ function syncTopChrome(wall, visible) {
 
 function scheduleTopChromeHide(wall) {
     clearTimeout(state.chromeTimer);
-    state.chromeTimer = setTimeout(() => syncTopChrome(wall, false), CHROME_HIDE_MS);
+    state.chromeTimer = setTimeout(() => syncTopChrome(wall, false), TOP_CHROME_AUTO_HIDE_MS);
 }
 
 function revealTopChromeOnPointer(wall, atTop) {

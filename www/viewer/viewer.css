@@ -439,6 +439,12 @@ button.link-btn:hover {
     opacity: 1;
 }
 
+#screen-wall.focus-mode .cell.focused .viewport-inner:has(viewer-stream.stream-main) viewer-stream.stream-preview {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .viewport-inner viewer-stream,
 .viewport-inner video {
     width: 100%;
