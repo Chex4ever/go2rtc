@@ -36,6 +36,13 @@ describe('electron-builder packaging', () => {
         assert.match(nsh, /IfFileExists "\$APPDATA\\go2rtc-viewer\\config\.json"/);
     });
 
+    it('skips viewer mode page in silent NSIS install', () => {
+        const nsh = fs.readFileSync(path.join(__dirname, '..', 'build', 'installer.nsh'), 'utf8');
+        assert.match(nsh, /Function ViewerModePagePre/);
+        assert.match(nsh, /\$\{If\} \$\{Silent\}/);
+        assert.match(nsh, /Abort/);
+    });
+
     it('includes all main-process runtime modules in build.files', () => {
         const pkg = JSON.parse(
             fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),

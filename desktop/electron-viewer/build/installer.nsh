@@ -11,10 +11,14 @@ Var ViewerModeAutostart
 Var ViewerModeKiosk
 
 !macro customPageAfterChangeDir
-  ${IfNot} ${Silent}
-    Page custom ViewerModePageCreate ViewerModePageLeave
-  ${EndIf}
+  Page custom ViewerModePageCreate ViewerModePageLeave ViewerModePagePre
 !macroend
+
+Function ViewerModePagePre
+  ${If} ${Silent}
+    Abort
+  ${EndIf}
+FunctionEnd
 
 Function ViewerModePageCreate
   nsDialogs::Create 1018

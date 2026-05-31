@@ -168,11 +168,14 @@ jobs:
           "
 
       - name: Install, dist, and unpack
+        shell: bash
         working-directory: desktop/electron-viewer
         run: |
+          set -euo pipefail
           npm ci --no-audit --no-fund
           npm run dist -- --config.directories.output=release-ci
           npm run pack -- --config.directories.output=release-ci-unpacked
+          test -f "release-ci/go2rtc Camera Wall Setup ${{ steps.ver.outputs.version }}.exe"
 
       - name: Build shell manifest and patch
         shell: bash
@@ -283,12 +286,19 @@ jobs:
       - name: Build release manifest
         shell: bash
         run: |
+          set -euo pipefail
           VER="${{ steps.ver.outputs.version }}"
           WIN_EXE=$(find dist -name "go2rtc_${VER}_windows_amd64.exe" | head -1)
-          WIN_SHA=$(cat "${WIN_EXE}.sha256" | awk '{print $1}')
-          DESKTOP=$(find dist -name "*.exe" ! -name "go2rtc_*" ! -name "go2rtc-updater.exe" ! -name "go2rtc.Camera.Wall.Patch.*" | head -1)
+          test -n "${WIN_EXE}" && test -f "${WIN_EXE}.sha256"
+          WIN_SHA=$(awk '{print $1}' "${WIN_EXE}.sha256")
+          DESKTOP=$(find dist -name "*Setup*${VER}*.exe" | head -1)
+          if [ -z "${DESKTOP}" ]; then
+            DESKTOP=$(find dist -name "*.exe" ! -name "go2rtc_*" ! -name "go2rtc-updater.exe" ! -name "go2rtc.Camera.Wall.Patch.*" | head -1)
+          fi
+          test -n "${DESKTOP}" && test -f "${DESKTOP}"
           DESKTOP_NAME=$(basename "$DESKTOP")
           DESKTOP_VER=$(echo "$DESKTOP_NAME" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          test -n "${DESKTOP_VER}"
           META=$(find dist -name "desktop-update-meta-${VER}.json" | head -1)
           SHELL_CHANGED=true
           UPDATE_KIND=full
