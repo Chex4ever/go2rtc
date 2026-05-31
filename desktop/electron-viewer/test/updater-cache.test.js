@@ -106,10 +106,51 @@ describe('updater-cache', () => {
         assert.equal(cache.shouldRunStartupInstall(pending, '1.2.25').reason, 'cooldown');
         cache.writeInstallState({
             version: '1.2.26',
-            attempts: 2,
+            startupAttempts: 3,
             lastAttemptAt: new Date(Date.now() - 200000).toISOString(),
         });
         assert.equal(cache.shouldRunStartupInstall(pending, '1.2.25').reason, 'max_attempts');
+    });
+
+    it('does not count user install attempts toward startup retry limit', () => {
+        const pending = {version: '1.2.27', path: 'C:\\Temp\\setup.exe'};
+        cache.recordInstallAttempt(pending, 'user');
+        cache.recordInstallAttempt(pending, 'user');
+        assert.equal(cache.readInstallState()?.startupAttempts || 0, 0);
+        assert.equal(cache.shouldRunStartupInstall(pending, '1.2.26').ok, false);
+        assert.equal(cache.shouldRunStartupInstall(pending, '1.2.26').reason, 'cooldown');
+    });
+
+    it('keeps newer cached installer even without pending metadata', () => {
+        const dir = cache.updatesDir();
+        const oldFile = path.join(dir, '1.2.26-full-old.exe');
+        const newFile = path.join(dir, '1.2.27-full-new.exe');
+        fs.writeFileSync(oldFile, 'old');
+        fs.writeFileSync(newFile, 'new');
+
+        cache.cleanupOldUpdates('1.2.26');
+
+        assert.equal(fs.existsSync(oldFile), true);
+        assert.equal(fs.existsSync(newFile), true);
+    });
+
+    it('abandon keeps pending installer on disk', () => {
+        const dir = cache.updatesDir();
+        const installer = path.join(dir, '1.2.27-full-new.exe');
+        fs.writeFileSync(installer, 'new');
+        cache.writePendingUpdate({version: '1.2.27', kind: 'full', path: installer});
+
+        cache.abandonPendingInstall('max_startup_attempts', {currentVersion: '1.2.26'});
+
+        assert.equal(fs.existsSync(installer), true);
+        assert.equal(cache.readPendingUpdate()?.version, '1.2.27');
+        assert.equal(cache.readInstallState(), null);
+    });
+
+    it('blocks startup install while helper lock is active', () => {
+        const pending = {version: '1.2.27', path: 'C:\\Temp\\setup.exe'};
+        cache.writeInstallLock({version: '1.2.27', kind: 'full', path: pending.path});
+        assert.equal(cache.shouldRunStartupInstall(pending, '1.2.26').reason, 'install_in_progress');
     });
 
     it('clears stale pending when app is already at pending version', () => {

@@ -47,17 +47,43 @@ func apiUpdaterControl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		api.ResponseJSON(w, st)
+	case "install-job":
+		job := GetInstallJob()
+		if job.Done && job.Error == "" {
+			st, _ := UpdaterServiceStatus()
+			if st.Installed {
+				ClearInstallJob()
+			}
+		}
+		api.ResponseJSON(w, GetInstallJob())
 	case "install-updater":
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST required", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := InstallUpdaterFromGo2rtc(); err != nil {
+		st, err := UpdaterServiceStatus()
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		st, _ := UpdaterServiceStatus()
-		api.ResponseJSON(w, st)
+		if !st.UpdaterExeFound {
+			http.Error(w, st.Message, http.StatusBadRequest)
+			return
+		}
+		if st.Installed {
+			api.ResponseJSON(w, st)
+			return
+		}
+		if !StartInstallJob() {
+			w.WriteHeader(http.StatusAccepted)
+			api.ResponseJSON(w, GetInstallJob())
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		api.ResponseJSON(w, map[string]string{
+			"status":  "installing",
+			"message": "Approve the Windows UAC prompt if shown. Waiting for service registration…",
+		})
 	case "uninstall-updater":
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST required", http.StatusMethodNotAllowed)
@@ -69,7 +95,7 @@ func apiUpdaterControl(w http.ResponseWriter, r *http.Request) {
 		}
 		api.ResponseJSON(w, map[string]string{"ok": "true"})
 	default:
-		http.Error(w, "action: updater-status, install-updater, uninstall-updater", http.StatusBadRequest)
+		http.Error(w, "action: updater-status, install-updater, uninstall-updater, install-job", http.StatusBadRequest)
 	}
 }
 

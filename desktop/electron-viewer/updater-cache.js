@@ -33,8 +33,50 @@ function installStateFile() {
     return path.join(getUserDataPath(), 'install-state.json');
 }
 
-const MAX_STARTUP_INSTALL_ATTEMPTS = 2;
-const INSTALL_COOLDOWN_MS = 120000;
+function installLockFile() {
+    return path.join(getUserDataPath(), 'install.lock');
+}
+
+const MAX_STARTUP_INSTALL_ATTEMPTS = 3;
+const INSTALL_COOLDOWN_MS = 180000;
+const INSTALL_LOCK_MAX_AGE_MS = 600000;
+
+function readInstallLock() {
+    try {
+        return JSON.parse(fs.readFileSync(installLockFile(), 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+function writeInstallLock(data) {
+    fs.writeFileSync(
+        installLockFile(),
+        JSON.stringify({...data, startedAt: new Date().toISOString()}, null, 2),
+        'utf8',
+    );
+}
+
+function clearInstallLock() {
+    try {
+        fs.unlinkSync(installLockFile());
+    } catch {
+        /* ignore */
+    }
+}
+
+function isInstallInProgress(maxAgeMs = INSTALL_LOCK_MAX_AGE_MS) {
+    const lock = readInstallLock();
+    if (!lock?.startedAt) {
+        return false;
+    }
+    const age = Date.now() - Date.parse(lock.startedAt);
+    if (!Number.isFinite(age) || age > maxAgeMs) {
+        clearInstallLock();
+        return false;
+    }
+    return true;
+}
 
 function readInstallState() {
     try {
@@ -75,11 +117,14 @@ function shouldRunStartupInstall(pending, currentVersion) {
         });
         return {ok: false, reason: 'already_installed'};
     }
+    if (isInstallInProgress()) {
+        return {ok: false, reason: 'install_in_progress'};
+    }
     const st = readInstallState();
     if (st?.version !== pending.version) {
         return {ok: true};
     }
-    if ((st.attempts || 0) >= MAX_STARTUP_INSTALL_ATTEMPTS) {
+    if ((st.startupAttempts || 0) >= MAX_STARTUP_INSTALL_ATTEMPTS) {
         return {ok: false, reason: 'max_attempts'};
     }
     const last = Date.parse(st.lastAttemptAt || 0);
@@ -91,23 +136,39 @@ function shouldRunStartupInstall(pending, currentVersion) {
 
 function recordInstallAttempt(pending, source) {
     const st = readInstallState();
-    const attempts = st?.version === pending.version ? (st.attempts || 0) + 1 : 1;
+    const sameVersion = st?.version === pending.version;
+    const attempts = sameVersion ? (st.attempts || 0) + 1 : 1;
+    const startupAttempts =
+        source === 'startup'
+            ? sameVersion
+                ? (st.startupAttempts || 0) + 1
+                : 1
+            : sameVersion
+              ? st.startupAttempts || 0
+              : 0;
     writeInstallState({
+        version: pending.version,
+        lastSource: source,
+        attempts,
+        startupAttempts,
+        lastAttemptAt: new Date().toISOString(),
+    });
+    logUpdate('install attempt recorded', {
         version: pending.version,
         source,
         attempts,
-        lastAttemptAt: new Date().toISOString(),
+        startupAttempts,
     });
-    logUpdate('install attempt recorded', {version: pending.version, source, attempts});
 }
 
 function abandonPendingInstall(reason, extra) {
-    logUpdate('abandoning pending install', {reason, ...extra});
-    clearPendingUpdate();
+    logUpdate('install retries paused — pending installer kept', {reason, ...extra});
     clearInstallState();
+    clearInstallLock();
 }
 
 function finalizeSuccessfulLaunch(installedVersion) {
+    clearInstallLock();
     const pending = readPendingUpdate();
     if (pending && pending.version === installedVersion) {
         clearPendingUpdate();
@@ -270,14 +331,29 @@ function coreIsNewerVersion(remote, current) {
     return false;
 }
 
+function artifactVersionFromName(name) {
+    const match = String(name || '').match(/^(\d+\.\d+\.\d+)-/);
+    return match ? match[1] : null;
+}
+
 function cleanupOldUpdates(keepVersion) {
+    const pending = readPendingUpdate();
+    const pendingPath = pending?.path ? path.resolve(pending.path) : null;
     const dir = updatesDir();
     for (const name of fs.readdirSync(dir)) {
+        const filePath = path.join(dir, name);
+        if (pendingPath && path.resolve(filePath) === pendingPath) {
+            continue;
+        }
+        const fileVersion = artifactVersionFromName(name);
+        if (fileVersion && keepVersion && coreIsNewerVersion(fileVersion, keepVersion)) {
+            continue;
+        }
         if (keepVersion && name.startsWith(`${keepVersion}-`)) {
             continue;
         }
         try {
-            fs.unlinkSync(path.join(dir, name));
+            fs.unlinkSync(filePath);
             logUpdate('removed old cached update', {file: name});
         } catch {
             /* ignore */
@@ -339,15 +415,22 @@ module.exports = {
     updateLogFile,
     pendingUpdateFile,
     installStateFile,
+    installLockFile,
     readInstallState,
     writeInstallState,
     clearInstallState,
+    readInstallLock,
+    writeInstallLock,
+    clearInstallLock,
+    isInstallInProgress,
     shouldRunStartupInstall,
     recordInstallAttempt,
     abandonPendingInstall,
     finalizeSuccessfulLaunch,
     MAX_STARTUP_INSTALL_ATTEMPTS,
     INSTALL_COOLDOWN_MS,
+    INSTALL_LOCK_MAX_AGE_MS,
+    artifactVersionFromName,
     logUpdate,
     readPendingUpdate,
     writePendingUpdate,

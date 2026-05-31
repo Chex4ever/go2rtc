@@ -18,7 +18,6 @@ function setRequestAppQuit(fn) {
 function initUpdaterCache() {
     if (app?.isReady?.()) {
         cache.setUserDataPath(() => app.getPath('userData'));
-        cache.cleanupAfterSuccessfulUpdate(app.getVersion());
     }
 }
 
@@ -197,9 +196,12 @@ function pendingReadyForInstall(currentVersion, info) {
     return pending;
 }
 
-async function applyDesktopPatchOneClick(info, localPath) {
+async function applyDesktopPatchOneClick(info, localPath, source = 'user') {
     if (!canApplyUpdates()) {
         throw new Error('Patch update works only in the installed Windows application.');
+    }
+    if (cache.isInstallInProgress()) {
+        throw new Error('An update is already installing. Please wait for the app to restart.');
     }
     const patchPath = localPath;
     if (!patchPath || !fs.existsSync(patchPath)) {
@@ -213,8 +215,9 @@ async function applyDesktopPatchOneClick(info, localPath) {
     cache.logUpdate('starting patch apply', {patchPath, installDir});
     cache.recordInstallAttempt(
         {version: info.version, path: patchPath},
-        'user',
+        source,
     );
+    cache.writeInstallLock({version: info.version, kind: 'patch', path: patchPath});
     notify.emitUpdateEvent({
         kind: 'installing',
         version: info.version,
@@ -231,9 +234,12 @@ async function applyDesktopPatchOneClick(info, localPath) {
     return {patchPath, installDir, logPath, helperPid};
 }
 
-async function applyDesktopUpdateOneClick(info, localPath) {
+async function applyDesktopUpdateOneClick(info, localPath, source = 'user') {
     if (!canApplyUpdates()) {
         throw new Error('One-click update works only in the installed Windows application.');
+    }
+    if (cache.isInstallInProgress()) {
+        throw new Error('An update is already installing. Please wait for the app to restart.');
     }
     const installerPath = localPath;
     if (!installerPath || !fs.existsSync(installerPath)) {
@@ -247,8 +253,9 @@ async function applyDesktopUpdateOneClick(info, localPath) {
     cache.logUpdate('starting full installer apply', {installerPath, installDir});
     cache.recordInstallAttempt(
         {version: info.version, path: installerPath},
-        'user',
+        source,
     );
+    cache.writeInstallLock({version: info.version, kind: 'full', path: installerPath});
     notify.emitUpdateEvent({
         kind: 'installing',
         version: info.version,
@@ -265,14 +272,14 @@ async function applyDesktopUpdateOneClick(info, localPath) {
     return {installerPath, installDir, logPath, helperPid};
 }
 
-async function applyDesktopUpdateSmart(info, localPath) {
+async function applyDesktopUpdateSmart(info, localPath, source = 'user') {
     if (info.updateKind === 'patch' && info.patchUrl) {
-        return applyDesktopPatchOneClick(info, localPath);
+        return applyDesktopPatchOneClick(info, localPath, source);
     }
-    return applyDesktopUpdateOneClick(info, localPath);
+    return applyDesktopUpdateOneClick(info, localPath, source);
 }
 
-async function installPendingUpdate(_parent, pending, info) {
+async function installPendingUpdate(_parent, pending, info, source = 'user') {
     const updateInfo = info || {
         version: pending.version,
         updateKind: pending.updateKind || pending.kind,
@@ -282,7 +289,7 @@ async function installPendingUpdate(_parent, pending, info) {
         sha256: pending.sha256,
     };
     try {
-        await applyDesktopUpdateSmart(updateInfo, pending.path);
+        await applyDesktopUpdateSmart(updateInfo, pending.path, source);
         return {status: 'installing'};
     } catch (e) {
         cache.logUpdate('install failed', {error: String(e?.message || e), pending});
@@ -361,6 +368,12 @@ async function trySilentStartupInstall() {
                 currentVersion,
                 log: cache.updateLogFile(),
             });
+            notify.emitUpdateEvent({
+                kind: 'error',
+                message:
+                    `Automatic install of version ${pending.version} did not complete. ` +
+                    `Use Restart to install from the menu, or run the Setup manually. Log: ${cache.updateLogFile()}`,
+            });
         } else {
             cache.logUpdate('startup silent install skipped', {
                 reason: gate.reason,
@@ -372,11 +385,11 @@ async function trySilentStartupInstall() {
     }
 
     cache.logUpdate('startup silent install', pending);
-    cache.recordInstallAttempt(pending, 'startup');
     try {
-        await installPendingUpdate(null, pending);
+        await installPendingUpdate(null, pending, null, 'startup');
         return true;
     } catch (e) {
+        cache.clearInstallLock();
         cache.logUpdate('startup silent install failed', {error: String(e?.message || e), pending});
         cache.writeInstallState({
             ...(cache.readInstallState() || {}),

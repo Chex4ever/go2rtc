@@ -29,7 +29,7 @@ streams:
         assert.match(sources.kitchen_sub[0], /admin:secret@/);
     });
 
-    it('buildPipeline marks 0-byte snapshot as failed', () => {
+    it('buildPipeline marks 0-byte snapshot as failed when video is not playing', () => {
         const pipeline = mod.buildPipeline({
             streams: {
                 playback: {
@@ -50,6 +50,42 @@ streams:
         });
         const step5 = pipeline.find((s) => s.step.startsWith('5.'));
         assert.equal(step5.ok, false);
-        assert.match(step5.detail, /0 bytes/);
+        assert.match(step5.detail, /HTTP 200/);
+    });
+
+    it('buildPipeline accepts onvif yaml sources', () => {
+        const pipeline = mod.buildPipeline({
+            streams: {
+                playback: {
+                    name: 'ipc55_sub',
+                    yamlUrls: ['onvif://admin:pass@192.168.1.55:80?subtype=media_profile2'],
+                    producerDetails: [],
+                },
+            },
+            connectTest: {ok: true},
+            probe: {ok: false, status: 500},
+            player: {
+                wsState: 'CLOSED',
+                pcConnected: true,
+                videoSrcObject: true,
+                video: {width: 352, height: 288},
+            },
+            urls: {wsDecoded: 'ipc55_sub'},
+        });
+        assert.equal(pipeline.find((s) => s.step.startsWith('2.')).ok, true);
+        assert.equal(pipeline.find((s) => s.step.startsWith('5.')).ok, true);
+        assert.equal(pipeline.find((s) => s.step.startsWith('6.')).ok, true);
+        assert.equal(pipeline.every((s) => s.ok), true);
+    });
+
+    it('cameraWebInterfaceUrl extracts http link from rtsp and onvif', () => {
+        assert.equal(
+            mod.cameraWebInterfaceUrl('rtsp://admin:pass@192.168.1.51:554/ISAPI/Streaming/Channels/102'),
+            'http://192.168.1.51',
+        );
+        assert.equal(
+            mod.cameraWebInterfaceUrl('onvif://admin:pass@192.168.1.55:80?subtype=media_profile2'),
+            'http://192.168.1.55',
+        );
     });
 });

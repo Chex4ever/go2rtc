@@ -178,6 +178,28 @@ function getTileCell(slotIndex) {
     return $('#wall-grid')?.querySelector(`.cell[data-slot="${slotIndex}"]`);
 }
 
+/** Grid position of a tile (stable after drag-and-drop swap moves DOM). */
+function slotIndexOfTile(tile) {
+    const cell = tile?.closest('.cell');
+    if (!cell?.dataset.slot) {
+        return -1;
+    }
+    return parseInt(cell.dataset.slot, 10);
+}
+
+function swapMapEntry(map, a, b) {
+    const va = map.get(a);
+    const vb = map.get(b);
+    map.delete(a);
+    map.delete(b);
+    if (va !== undefined) {
+        map.set(b, va);
+    }
+    if (vb !== undefined) {
+        map.set(a, vb);
+    }
+}
+
 function getTilePreviewStream(slotIndex) {
     const cell = getTileCell(slotIndex);
     return cell?.querySelector('viewer-stream:not(.stream-main)') || null;
@@ -188,8 +210,9 @@ function detachFocusMainStream(slotIndex) {
     const mainVs = cell?.querySelector('viewer-stream.stream-main');
     if (mainVs) {
         if (mainVs._focusMainReady) {
-            mainVs.removeEventListener('playing', mainVs._focusMainReady);
-            mainVs.removeEventListener('loadeddata', mainVs._focusMainReady);
+            for (const evt of ['playing', 'loadeddata', 'canplay']) {
+                mainVs.removeEventListener(evt, mainVs._focusMainReady);
+            }
             delete mainVs._focusMainReady;
         }
         mainVs.forceDisconnect?.();
@@ -232,21 +255,27 @@ function attachFocusMainStream(slotIndex, logicalName) {
     }
 
     const markPlaying = () => {
-        const video = mainVs.querySelector('video');
-        if (video && video.readyState >= 2) {
-            mainVs.classList.add('is-playing');
-        }
+        mainVs.classList.add('is-playing');
+        vp?.applyFit?.();
     };
     if (!mainVs._focusMainReady) {
         mainVs._focusMainReady = markPlaying;
-        mainVs.addEventListener('playing', markPlaying);
-        mainVs.addEventListener('loadeddata', markPlaying);
+        for (const evt of ['playing', 'loadeddata', 'canplay']) {
+            mainVs.addEventListener(evt, markPlaying);
+        }
     }
 
     const mainSrc = streamSrc(logicalName);
-    if (mainVs.src !== mainSrc && mainVs.getAttribute('src') !== mainSrc) {
-        scheduleStreamSrc(mainVs, mainSrc, 0);
-    } else {
+    const mainWs = mainVs.wsURL || '';
+    if (mainWs !== mainSrc) {
+        if (mainVs.ws || mainVs.pc) {
+            mainVs.forceDisconnect?.();
+        }
+        connectStreamSrc(mainVs, mainSrc);
+    }
+
+    const video = mainVs.querySelector('video');
+    if (video && (video.srcObject || video.readyState >= 2)) {
         markPlaying();
     }
 }
@@ -468,7 +497,7 @@ export function renderWall() {
     applyFocusLayout();
 }
 
-function createTileControls(viewport, streamName, slotIndex, previewSrc, previewVs, tile, previewPlayback) {
+function createTileControls(viewport, streamName, previewVs, tile, previewPlayback) {
     const bar = document.createElement('div');
     bar.className = 'tile-controls';
     bar.innerHTML = `
@@ -495,6 +524,7 @@ function createTileControls(viewport, streamName, slotIndex, previewSrc, preview
             return;
         }
         e.stopPropagation();
+        const slotIndex = slotIndexOfTile(tile);
         const inFocus = state.focusSlot === slotIndex;
         const channelLabel = inFocus ? 'main' : 'preview';
         const activeVs = viewport.activeStreamEl || previewVs;
@@ -599,7 +629,9 @@ function createTileControls(viewport, streamName, slotIndex, previewSrc, preview
                 });
                 break;
             case 'focus':
-                enterFocus(slotIndex);
+                if (slotIndex >= 0) {
+                    enterFocus(slotIndex);
+                }
                 break;
             case 'exit-focus':
                 exitFocus();
@@ -610,12 +642,19 @@ function createTileControls(viewport, streamName, slotIndex, previewSrc, preview
     return bar;
 }
 
+function connectStreamSrc(vs, src) {
+    if (!vs) {
+        return;
+    }
+    vs.src = src;
+}
+
 function scheduleStreamSrc(vs, src, connectIndex) {
     const apply = () => {
         if (!vs.isConnected) {
             return;
         }
-        vs.src = src;
+        connectStreamSrc(vs, src);
     };
     const delay = connectIndex * STREAM_CONNECT_STAGGER_MS;
     if (delay > 0) {
@@ -641,7 +680,7 @@ function createTile(logicalName, slotIndex, connectIndex = 0) {
         handle.draggable = true;
         handle.addEventListener('dragstart', (e) => {
             e.stopPropagation();
-            e.dataTransfer.setData('text/slot', String(slotIndex));
+            e.dataTransfer.setData('text/slot', String(slotIndexOfTile(tile)));
             e.dataTransfer.effectAllowed = 'move';
             tile.classList.add('dragging');
         });
@@ -655,7 +694,10 @@ function createTile(logicalName, slotIndex, connectIndex = 0) {
         expand.title = 'Full screen';
         expand.addEventListener('click', (e) => {
             e.stopPropagation();
-            enterFocus(slotIndex);
+            const si = slotIndexOfTile(tile);
+            if (si >= 0) {
+                enterFocus(si);
+            }
         });
         bar.appendChild(expand);
     }
@@ -672,21 +714,31 @@ function createTile(logicalName, slotIndex, connectIndex = 0) {
     viewport.mount(vs);
     scheduleStreamSrc(vs, src, connectIndex);
     viewport.fromJSON(loadTileSettings(slotIndex, false));
-    viewport.onChange = () => saveTileSettings(slotIndex, viewport, state.focusSlot === slotIndex);
+    viewport.onChange = () => {
+        const si = slotIndexOfTile(tile);
+        if (si < 0) {
+            return;
+        }
+        saveTileSettings(si, viewport, state.focusSlot === si);
+    };
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);
     body.appendChild(bar);
-    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, tile, playback));
+    body.appendChild(createTileControls(viewport, logicalName, vs, tile, playback));
 
     body.addEventListener('dblclick', (e) => {
         if (e.target.closest('.tile-controls, .tile-bar')) {
             return;
         }
-        if (state.focusSlot === slotIndex) {
+        const si = slotIndexOfTile(tile);
+        if (si < 0) {
+            return;
+        }
+        if (state.focusSlot === si) {
             exitFocus();
         } else if (state.focusSlot === null) {
-            enterFocus(slotIndex);
+            enterFocus(si);
         }
     });
 
@@ -708,10 +760,38 @@ function createTile(logicalName, slotIndex, connectIndex = 0) {
 }
 
 function swapSlots(a, b) {
+    if (a === b || Number.isNaN(a) || Number.isNaN(b)) {
+        return;
+    }
+
     const tmp = state.slots[a];
     state.slots[a] = state.slots[b];
     state.slots[b] = tmp;
-    renderWall();
+
+    const cellA = getTileCell(a);
+    const cellB = getTileCell(b);
+    if (cellA && cellB) {
+        const tileA = cellA.querySelector(':scope > .tile');
+        const tileB = cellB.querySelector(':scope > .tile');
+        if (tileA) {
+            cellA.removeChild(tileA);
+        }
+        if (tileB) {
+            cellB.removeChild(tileB);
+        }
+        if (tileB) {
+            cellA.appendChild(tileB);
+        }
+        if (tileA) {
+            cellB.appendChild(tileA);
+        }
+        cellA.classList.toggle('empty', !slotStream(state.slots[a]));
+        cellB.classList.toggle('empty', !slotStream(state.slots[b]));
+    }
+
+    swapMapEntry(state.tileViewports, a, b);
+    swapMapEntry(state.recorders, a, b);
+
     scheduleSave();
 }
 

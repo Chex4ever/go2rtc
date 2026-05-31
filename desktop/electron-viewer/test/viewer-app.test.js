@@ -96,11 +96,14 @@ describe('focus mode top chrome', () => {
         const css = fs.readFileSync(path.join(VIEWER_DIR, 'viewer.css'), 'utf8');
         assert.match(wall, /classList\.add\('focus-mode', 'chrome-hidden'\)/);
         assert.match(ui, /TOP_CHROME_ZONE_PX/);
+        assert.match(ui, /TOP_CHROME_FOCUS_ZONE_PX/);
+        assert.match(ui, /scheduleTopChromeHide/);
+        assert.match(ui, /CHROME_UI_SELECTOR/);
         assert.match(ui, /revealTopChromeOnPointer/);
         assert.match(css, /#electron-brand-bar/);
         assert.match(css, /#screen-wall\.chrome-hidden:not\(\.show-top-chrome\) \.wall-header/);
         assert.match(css, /#screen-wall\.focus-mode\.show-top-chrome \.tile-bar/);
-        assert.doesNotMatch(css, /#screen-wall\.focus-mode \.cell\.focused:hover \.tile-bar/);
+        assert.match(css, /#screen-wall\.focus-mode \.cell\.focused \.tile-bar:hover/);
     });
 
     it('swaps fullscreen control for back-to-grid in focus mode', () => {

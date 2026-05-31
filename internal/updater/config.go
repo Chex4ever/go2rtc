@@ -14,11 +14,13 @@ const updaterServiceName = "go2rtc-updater"
 
 // ServiceStatus reports Windows go2rtc-updater service installation state (API).
 type ServiceStatus struct {
-	Supported bool   `json:"supported"`
-	Installed bool   `json:"installed"`
-	Running   bool   `json:"running"`
-	Name      string `json:"name"`
-	Message   string `json:"message,omitempty"`
+	Supported       bool   `json:"supported"`
+	Installed       bool   `json:"installed"`
+	Running         bool   `json:"running"`
+	UpdaterExeFound bool   `json:"updater_exe_found"`
+	UpdaterExePath  string `json:"updater_exe_path,omitempty"`
+	Name            string `json:"name"`
+	Message         string `json:"message,omitempty"`
 }
 
 // Config drives automatic go2rtc binary updates (Windows service).

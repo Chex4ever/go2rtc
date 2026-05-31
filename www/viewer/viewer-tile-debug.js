@@ -116,6 +116,45 @@ function isStreamOption(url) {
     return /^mode:/i.test(u) || /^video:/i.test(u) || /^audio:/i.test(u);
 }
 
+/** Upstream source URL in yaml (not a go2rtc option like mode:webrtc). */
+function isDialableSourceUrl(url) {
+    if (!url || isStreamOption(url)) {
+        return false;
+    }
+    return /^(?:rtsp|onvif|http|https|ffmpeg|webrtc|udp|srt|hls|rtmp):/i.test(String(url).trim());
+}
+
+function dialableSourceUrls(producers, yamlUrls) {
+    const urls = [];
+    for (const u of yamlUrls || []) {
+        if (isDialableSourceUrl(u)) {
+            urls.push(u);
+        }
+    }
+    for (const p of dialableProducers(producers || [])) {
+        if (p.url && isDialableSourceUrl(p.url)) {
+            urls.push(p.url);
+        }
+    }
+    return [...new Set(urls)];
+}
+
+/** http://camera_ip from rtsp/onvif/http source URL. */
+export function cameraWebInterfaceUrl(sourceUrl) {
+    if (!sourceUrl) {
+        return '';
+    }
+    const m = String(sourceUrl).match(/^(?:rtsp|onvif|https?):\/\/(?:[^@/]+@)?([^:/?#]+)/i);
+    if (!m?.[1]) {
+        return '';
+    }
+    const host = m[1];
+    if (host === '127.0.0.1' || host === 'localhost') {
+        return '';
+    }
+    return `http://${host}`;
+}
+
 function dialableProducers(producerDetails) {
     return (producerDetails || []).filter((p) => p.url && !p.isOption);
 }
@@ -339,22 +378,29 @@ async function fetchAbout() {
 }
 
 function invalidConfigSources(report) {
-    return allProducerDetails(report).filter((p) => p.url && !p.isOption && !/^rtsp:|^http|^ffmpeg:|^onvif:|^webrtc:/i.test(p.url));
+    return allProducerDetails(report).filter((p) => p.url && !p.isOption && !isDialableSourceUrl(p.url));
 }
 
 export function buildPipeline(report) {
     const playback = report.streams?.playback;
     const player = report.player || {};
     const playbackProducers = playback?.producerDetails || [];
-    const rtspProducers = dialableProducers(playbackProducers).filter((p) => /^rtsp:/i.test(p.url));
-    const rtspLive = rtspProducers.some((p) => p.bytes_recv != null && p.bytes_recv > 0);
-    const hasVideo = Boolean(player.videoSrcObject) || (player.video?.width > 0);
+    const sourceUrls = dialableSourceUrls(playbackProducers, playback?.yamlUrls);
+    const liveProducers = dialableProducers(playbackProducers).filter(
+        (p) => p.bytes_recv != null && p.bytes_recv > 0,
+    );
+    const hasVideo = Boolean(player.videoSrcObject) || (player.video?.width > 0 && player.video?.height > 0);
     const connect = report.connectTest || {};
     const probeBytes = report.probe?.bytes ?? 0;
-    const yamlSources = (playback?.yamlUrls || playbackProducers)
-        .map((p) => (typeof p === 'string' ? p : p.isOption ? `${p.url} (option)` : p.url))
-        .filter(Boolean)
+    const streamHealthy = connect.ok === true && hasVideo;
+    const yamlSources = sourceUrls
+        .map((u) => (isStreamOption(u) ? `${u} (option)` : u))
         .join(' | ');
+    const transportOk =
+        player.wsState === 'OPEN' ||
+        player.pcConnected ||
+        player.pcConnectionState === 'connected' ||
+        streamHealthy;
 
     return [
         {
@@ -364,7 +410,7 @@ export function buildPipeline(report) {
         },
         {
             step: '2. YAML sources (playback stream)',
-            ok: rtspProducers.length > 0,
+            ok: sourceUrls.length > 0,
             detail: yamlSources || 'no dialable source URL',
         },
         {
@@ -375,25 +421,29 @@ export function buildPipeline(report) {
                 : connect.error || 'failed (see go2rtc log)',
         },
         {
-            step: '4. RTSP receiving bytes (bytes_recv > 0)',
-            ok: rtspLive,
-            detail: rtspProducers.length
-                ? rtspProducers.map((p) => `${p.url} → ${p.bytes_recv ?? 0} B`).join(' | ')
-                : 'no active RTSP session',
+            step: '4. Upstream receiving bytes (bytes_recv > 0)',
+            ok: liveProducers.length > 0 || streamHealthy,
+            detail: liveProducers.length
+                ? liveProducers.map((p) => `${p.url} → ${p.bytes_recv ?? 0} B`).join(' | ')
+                : streamHealthy
+                    ? 'live in browser (byte counter not available for this source type)'
+                    : 'no bytes from upstream yet',
         },
         {
-            step: '5. Snapshot /api/frame.jpeg',
-            ok: Boolean(report.probe?.ok && probeBytes > 0),
-            detail: report.probe?.ok
-                ? probeBytes > 0
-                    ? `HTTP ${report.probe.status}, ${probeBytes} bytes`
-                    : `HTTP ${report.probe.status}, 0 bytes — no image from camera`
-                : report.probe?.error || `HTTP ${report.probe?.status ?? 'failed'}`,
+            step: '5. Snapshot /api/frame.jpeg (optional)',
+            ok: (report.probe?.ok && probeBytes > 0) || streamHealthy,
+            detail: report.probe?.ok && probeBytes > 0
+                ? `HTTP ${report.probe.status}, ${probeBytes} bytes`
+                : streamHealthy
+                    ? `HTTP ${report.probe?.status ?? '—'} — skipped, live video OK`
+                    : report.probe?.error || `HTTP ${report.probe?.status ?? 'failed'}`,
         },
         {
-            step: '6. Browser WebSocket',
-            ok: player.wsState === 'OPEN',
-            detail: `${player.wsState || '?'} → ${report.urls?.wsDecoded || '—'}`,
+            step: '6. Browser transport (WebSocket / WebRTC / MSE)',
+            ok: transportOk,
+            detail: transportOk && player.wsState !== 'OPEN' && streamHealthy
+                ? `${player.wsState || '?'} — WebRTC/MSE active, video ${player.video?.width || 0}×${player.video?.height || 0}`
+                : `${player.wsState || '?'} → ${report.urls?.wsDecoded || '—'}`,
         },
         {
             step: '7. Browser video track',
@@ -409,6 +459,10 @@ function renderPipelineHtml(pipeline) {
     if (!pipeline?.length) {
         return '';
     }
+    const allOk = pipeline.every((s) => s.ok);
+    const title = allOk
+        ? 'Pipeline checklist'
+        : 'Where it breaks (first ✗ is the problem)';
     const rows = pipeline
         .map((s) => {
             const cls = s.ok ? 'tile-debug-ok' : 'tile-debug-warn';
@@ -416,7 +470,7 @@ function renderPipelineHtml(pipeline) {
             return `<li class="${cls}"><strong>${escapeHtml(mark)} ${escapeHtml(s.step)}</strong><br><code>${escapeHtml(s.detail)}</code></li>`;
         })
         .join('');
-    return `<section class="tile-debug-section"><h3>Where it breaks (first ✗ is the problem)</h3><ul class="tile-debug-events tile-debug-pipeline">${rows}</ul></section>`;
+    return `<section class="tile-debug-section"><h3>${escapeHtml(title)}</h3><ul class="tile-debug-events tile-debug-pipeline">${rows}</ul></section>`;
 }
 
 function buildDiagnosis(report) {
@@ -424,7 +478,17 @@ function buildDiagnosis(report) {
     const playback = report.streams?.playback;
     const player = report.player || {};
     const pipeline = report.pipeline || buildPipeline(report);
-    const failedStep = pipeline.find((s) => !s.ok);
+    const hasVideo = Boolean(player.videoSrcObject) || (player.video?.width > 0 && player.video?.height > 0);
+    const streamHealthy = report.connectTest?.ok === true && hasVideo;
+    const failedStep = pipeline.find((s) => {
+        if (s.ok) {
+            return false;
+        }
+        if (streamHealthy && (s.step.startsWith('5.') || s.step.startsWith('6.'))) {
+            return false;
+        }
+        return true;
+    });
     const connectErr = report.connectTest?.error || '';
 
     const wsErrors = (player.events || [])
@@ -456,7 +520,7 @@ function buildDiagnosis(report) {
         );
     }
 
-    if (failedStep?.step.startsWith('5.')) {
+    if (failedStep?.step.startsWith('5.') && !streamHealthy) {
         hints.push(`Snapshot empty or failed — open ${report.urls?.probe} in a browser tab.`);
     }
 
@@ -500,19 +564,29 @@ function formatEventTime(eventMs, reportGeneratedAt) {
     }
 }
 
-function firstRtspUrl(report) {
+function firstSourceUrl(report) {
     for (const key of ['playback', 'preview', 'main']) {
         const s = report.streams?.[key];
-        if (!s?.producerDetails?.length) {
+        if (!s) {
             continue;
         }
-        for (const p of s.producerDetails) {
-            if (p.url && /^rtsp:/i.test(p.url) && !isStreamOption(p.url) && !/:\*\*\*/.test(p.url)) {
+        for (const u of s.yamlUrls || []) {
+            if (isDialableSourceUrl(u) && !/:\*\*\*/.test(u)) {
+                return u;
+            }
+        }
+        for (const p of s.producerDetails || []) {
+            if (p.url && isDialableSourceUrl(p.url) && !p.isOption && !/:\*\*\*/.test(p.url)) {
                 return p.url;
             }
         }
     }
     return '';
+}
+
+function firstRtspUrl(report) {
+    const url = firstSourceUrl(report);
+    return /^rtsp:/i.test(url) ? url : '';
 }
 
 function videoSnapshot(video) {
@@ -614,6 +688,13 @@ export async function buildTileDebugReport(ctx) {
 
     const probeUrl = apiUrl(`/api/frame.jpeg?src=${encodeURIComponent(ctx.playbackName)}&width=320&height=180`);
     const probe = await probeFrame(probeUrl);
+    const sourceUrl = firstSourceUrl({
+        streams: {
+            main: mainSummaryDetailed,
+            preview: previewSummary,
+            playback: playbackSummary,
+        },
+    });
 
     const report = {
         generatedAt: new Date().toISOString(),
@@ -635,6 +716,8 @@ export async function buildTileDebugReport(ctx) {
             wsDecoded: decodeWsStreamName(ctx.src),
             apiStream: apiUrl(`/api/streams?src=${encodeURIComponent(ctx.playbackName)}`),
             probe: probeUrl,
+            cameraWeb: cameraWebInterfaceUrl(sourceUrl),
+            sourceUrl,
         },
         streams: {
             main: mainSummaryDetailed,
@@ -682,6 +765,13 @@ function renderReportHtml(report) {
 
     parts.push(renderPipelineHtml(report.pipeline));
 
+    if (report.urls?.cameraWeb) {
+        const web = report.urls.cameraWeb;
+        parts.push(
+            `<section class="tile-debug-section"><h3>Camera web UI</h3><p><a href="${escapeHtml(web)}" target="_blank" rel="noopener noreferrer">${escapeHtml(web)}</a></p></section>`,
+        );
+    }
+
     if (report.diagnosis?.length) {
         const list = report.diagnosis.map((h) => `<li>${escapeHtml(h).replace(/\n/g, '<br>')}</li>`).join('');
         parts.push(`<section class="tile-debug-section"><h3>What to fix</h3><ul class="tile-debug-events">${list}</ul></section>`);
@@ -700,6 +790,8 @@ function renderReportHtml(report) {
         renderSection('WebSocket / player', [
             ['WS URL', report.urls.ws],
             ['Stream name', report.urls.wsDecoded],
+            ['Source URL', report.urls.sourceUrl || '—'],
+            ['Camera web', report.urls.cameraWeb || '—'],
             ['Mode', report.player.mode],
             ['WebSocket', report.player.wsState],
             ['WebRTC peer', report.player.pcConnectionState || (report.player.pcConnected ? 'connected' : 'not connected')],

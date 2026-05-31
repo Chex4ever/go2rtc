@@ -30,6 +30,7 @@ describe('viewer-wall focus streams', () => {
         assert.match(wallJs, /attachFocusMainStream/);
         assert.match(wallJs, /stream-main/);
         assert.match(wallJs, /is-playing/);
+        assert.match(wallJs, /connectStreamSrc/);
         assert.match(wallJs, /FOCUS_ANIM_MS = 500/);
         assert.match(wallJs, /flipFocusCell/);
         assert.match(wallCss, /viewer-stream\.stream-main/);
@@ -37,6 +38,13 @@ describe('viewer-wall focus streams', () => {
     });
 
     it('double-click exits focus on main channel', () => {
-        assert.match(wallJs, /state\.focusSlot === slotIndex[\s\S]*exitFocus\(\)/);
+        assert.match(wallJs, /state\.focusSlot === si[\s\S]*exitFocus\(\)/);
+    });
+
+    it('swaps tiles in place without renderWall reconnect', () => {
+        const body = wallJs.match(/function swapSlots\(a, b\) \{([\s\S]*?)\n\}/)?.[1] || '';
+        assert.doesNotMatch(body, /renderWall\(\)/);
+        assert.match(body, /swapMapEntry/);
+        assert.match(wallJs, /slotIndexOfTile/);
     });
 });

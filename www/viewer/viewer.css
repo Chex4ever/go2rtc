@@ -377,7 +377,9 @@ button.link-btn:hover {
     transition: opacity 0.5s ease;
 }
 
-#screen-wall.focus-mode.show-top-chrome .tile-bar {
+#screen-wall.focus-mode.show-top-chrome .tile-bar,
+#screen-wall.focus-mode .cell.focused .tile-bar:hover,
+#screen-wall.focus-mode .cell.focused .tile-bar:focus-within {
     opacity: 1;
     pointer-events: auto;
 }
