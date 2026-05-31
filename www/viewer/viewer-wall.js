@@ -1,4 +1,4 @@
-import {GRID_PRESETS, tilesFromSlots} from './grids.js';
+import {GRID_PRESETS, tilesFromSlots, slotStream, slotView, setSlotView} from './grids.js';
 import {TileViewport, toggleStreamAudio, refreshStream} from './tile-viewport.js';
 import {wallLayoutMode, isTouchDevice, tabletGrid, allowTileDrag} from './device.js';
 import {takeSnapshot, TileRecorder} from './capture.js';
@@ -73,20 +73,13 @@ function setActiveTile(tile) {
     }
 }
 
-function settingsKey(slot) {
-    return `viewer:${state.currentLayoutId}:${slot}`;
-}
-
 function loadTileSettings(slot) {
-    try {
-        return JSON.parse(sessionStorage.getItem(settingsKey(slot)) || 'null');
-    } catch {
-        return null;
-    }
+    return slotView(state.slots[slot]) || null;
 }
 
 function saveTileSettings(slot, viewport) {
-    sessionStorage.setItem(settingsKey(slot), JSON.stringify(viewport.toJSON()));
+    setSlotView(state.slots, slot, viewport.toJSON());
+    scheduleSave();
 }
 
 function escapeHtml(s) {
@@ -131,7 +124,7 @@ export function exitFocus() {
 }
 
 export function enterFocus(slotIndex) {
-    if (!state.slots[slotIndex]) {
+    if (!slotStream(state.slots[slotIndex])) {
         return;
     }
     state.focusSlot = slotIndex;
@@ -190,7 +183,7 @@ export function renderWall() {
         if (focusSlot !== null && focusSlot !== i) {
             continue;
         }
-        const stream = state.slots[i];
+        const stream = slotStream(state.slots[i]);
         if (wallLayoutMode() === 'mobile' && focusSlot === null && !stream) {
             continue;
         }
@@ -236,6 +229,8 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
     bar.className = 'tile-controls';
     bar.innerHTML = `
         <button type="button" data-act="fit" title="Aspect ratio">◫</button>
+        <button type="button" data-act="width-dec" title="Narrower width">◁</button>
+        <button type="button" data-act="width-inc" title="Wider width">▷</button>
         <button type="button" data-act="zoom-out" title="Zoom out">−</button>
         <button type="button" data-act="zoom-in" title="Zoom in">+</button>
         <button type="button" data-act="reset" title="Reset view">⟲</button>
@@ -257,20 +252,26 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
             case 'fit': {
                 const fit = viewport.cycleFit();
                 btn.title = `Aspect: ${fit}`;
-                saveTileSettings(slotIndex, viewport);
+                break;
+            }
+            case 'width-dec': {
+                const mul = viewport.adjustWidthScale(-0.05);
+                btn.title = `Width x${mul.toFixed(2)}`;
+                break;
+            }
+            case 'width-inc': {
+                const mul = viewport.adjustWidthScale(0.05);
+                btn.title = `Width x${mul.toFixed(2)}`;
                 break;
             }
             case 'zoom-in':
                 viewport.zoom(0.2);
-                saveTileSettings(slotIndex, viewport);
                 break;
             case 'zoom-out':
                 viewport.zoom(-0.2);
-                saveTileSettings(slotIndex, viewport);
                 break;
             case 'reset':
                 viewport.reset();
-                saveTileSettings(slotIndex, viewport);
                 break;
             case 'audio': {
                 const on = toggleStreamAudio(vs, src);
@@ -418,6 +419,7 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
     viewport.mount(vs);
     scheduleStreamSrc(vs, src, connectIndex);
     viewport.fromJSON(loadTileSettings(slotIndex));
+    viewport.onChange = () => saveTileSettings(slotIndex, viewport);
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);

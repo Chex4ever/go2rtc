@@ -14,12 +14,21 @@ import (
 // Grid presets supported by the viewer UI.
 var ValidGrids = []int{6, 7, 25, 36}
 
+type TileView struct {
+	Fit        string  `json:"fit,omitempty" yaml:"fit,omitempty"`
+	Scale      float64 `json:"scale,omitempty" yaml:"scale,omitempty"`
+	Tx         float64 `json:"tx,omitempty" yaml:"tx,omitempty"`
+	Ty         float64 `json:"ty,omitempty" yaml:"ty,omitempty"`
+	WidthScale float64 `json:"widthScale,omitempty" yaml:"widthScale,omitempty"`
+}
+
 type Tile struct {
-	Stream string `json:"stream" yaml:"stream"`
-	X      int    `json:"x" yaml:"x"`
-	Y      int    `json:"y" yaml:"y"`
-	W      int    `json:"w" yaml:"w"`
-	H      int    `json:"h" yaml:"h"`
+	Stream string    `json:"stream" yaml:"stream"`
+	X      int       `json:"x" yaml:"x"`
+	Y      int       `json:"y" yaml:"y"`
+	W      int       `json:"w" yaml:"w"`
+	H      int       `json:"h" yaml:"h"`
+	View   *TileView `json:"view,omitempty" yaml:"view,omitempty"`
 }
 
 type User struct {

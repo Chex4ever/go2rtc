@@ -1,3 +1,5 @@
+import {slotStream} from './grids.js';
+
 export const state = {
     user: null,
     layouts: [],
@@ -16,7 +18,7 @@ export const state = {
 export function stopAllRecordings() {
     for (const [slot, rec] of state.recorders) {
         if (rec.recording) {
-            const name = state.slots[slot] || 'recording';
+            const name = slotStream(state.slots[slot]) || 'recording';
             rec.stop(name).catch(() => {});
         }
     }

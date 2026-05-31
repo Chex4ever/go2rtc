@@ -9,6 +9,8 @@ export class TileViewport {
         this.ty = 0;
         this.fitModes = ['contain', 'cover', 'fill'];
         this.fitIndex = 0;
+        this.widthScale = 1;
+        this.onChange = null;
         this._panning = false;
         this._panStart = null;
         this._onWheel = this._onWheel.bind(this);
@@ -55,6 +57,7 @@ export class TileViewport {
     cycleFit() {
         this.fitIndex = (this.fitIndex + 1) % this.fitModes.length;
         this.applyFit();
+        this._notifyChange();
         return this.fitModes[this.fitIndex];
     }
 
@@ -67,7 +70,22 @@ export class TileViewport {
     }
 
     applyTransform() {
-        this.inner.style.transform = `translate(${this.tx}px, ${this.ty}px) scale(${this.scale})`;
+        const sx = this.scale * this.widthScale;
+        this.inner.style.transform = `translate(${this.tx}px, ${this.ty}px) scale(${sx}, ${this.scale})`;
+    }
+
+    adjustWidthScale(delta) {
+        const next = Math.min(2, Math.max(0.5, Math.round((this.widthScale + delta) * 100) / 100));
+        this.widthScale = next;
+        this.applyTransform();
+        this._notifyChange();
+        return this.widthScale;
+    }
+
+    _notifyChange() {
+        if (typeof this.onChange === 'function') {
+            this.onChange();
+        }
     }
 
     zoom(delta) {
@@ -78,6 +96,7 @@ export class TileViewport {
             this.ty = 0;
         }
         this.applyTransform();
+        this._notifyChange();
     }
 
     reset() {
@@ -85,8 +104,10 @@ export class TileViewport {
         this.tx = 0;
         this.ty = 0;
         this.fitIndex = 0;
+        this.widthScale = 1;
         this.applyFit();
         this.applyTransform();
+        this._notifyChange();
     }
 
     _onWheel(e) {
@@ -157,6 +178,8 @@ export class TileViewport {
     }
 
     _onPointerUp(e) {
+        const wasPanning = this._panning;
+        const hadPinch = this._pinchStart !== null;
         this._pointers.delete(e.pointerId);
         if (this._pointers.size < 2) {
             this._pinchStart = null;
@@ -169,6 +192,9 @@ export class TileViewport {
         window.removeEventListener('pointermove', this._onPointerMove);
         window.removeEventListener('pointerup', this._onPointerUp);
         window.removeEventListener('pointercancel', this._onPointerUp);
+        if (wasPanning || hadPinch) {
+            this._notifyChange();
+        }
     }
 
     toJSON() {
@@ -177,6 +203,7 @@ export class TileViewport {
             scale: this.scale,
             tx: this.tx,
             ty: this.ty,
+            widthScale: this.widthScale,
         };
     }
 
@@ -190,6 +217,7 @@ export class TileViewport {
         this.scale = data.scale || 1;
         this.tx = data.tx || 0;
         this.ty = data.ty || 0;
+        this.widthScale = data.widthScale || 1;
         this.applyTransform();
     }
 }

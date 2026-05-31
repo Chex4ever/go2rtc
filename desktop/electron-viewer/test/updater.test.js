@@ -8,14 +8,15 @@ describe('updater module wiring', () => {
         const updater = require('../updater');
         assert.equal(typeof updater.checkForUpdates, 'function');
         assert.equal(typeof updater.runUpdateFlow, 'function');
+        assert.equal(typeof updater.runStartupUpdateCheck, 'function');
         assert.equal(typeof updater.downloadInstaller, 'function');
+        assert.equal(typeof updater.pendingReadyForInstall, 'function');
     });
 
-    it('main.js references updater', () => {
+    it('main.js uses startup update check and hard exit for apply', () => {
         const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-        assert.match(main, /require\('\.\/updater'\)/);
-        assert.match(main, /Check for updates/);
-        assert.match(main, /scheduleUpdateCheck/);
+        assert.match(main, /runStartupUpdateCheck/);
+        assert.match(main, /app\.exit\(0\)/);
     });
 
     it('recreates main window before destroying the old one', () => {

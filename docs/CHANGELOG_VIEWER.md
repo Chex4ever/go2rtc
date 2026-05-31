@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.17 (2026-05-27)
+
+- **Fix:** Tile zoom, aspect ratio, pan, and custom width multiplier are saved in the layout (per user, per tile) instead of session-only storage.
+- **Feature:** Tile controls add ◁ / ▷ buttons to narrow or widen video width independently of zoom.
+- **Fix:** Camera Wall desktop auto-update — downloads cached under `%APPDATA%` until install succeeds; startup/manual flow shows download + ready-to-install prompts; persistent log at `logs/camera-wall-update.log`; app uses hard exit so the Windows update helper can replace files.
+
 ## 1.2.16 (2026-05-27)
 
 - **Fix:** Tile title bars overlay the video (like bottom controls) so auto-hide no longer leaves a dark strip or resizes/zooms the stream.

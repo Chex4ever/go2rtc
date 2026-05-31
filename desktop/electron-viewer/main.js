@@ -11,7 +11,7 @@ updater.setRequestAppQuit(() => {
             w.destroy();
         }
     }
-    app.quit();
+    setTimeout(() => app.exit(0), 500);
 });
 const brandingAssets = require('./branding-assets');
 
@@ -644,11 +644,15 @@ function scheduleUpdateCheck() {
     }
     setTimeout(() => {
         updater
-            .runAllUpdateFlows(mainWindow, {serverUrl: config.serverUrl, silent: true})
-            .then(({desktop}) => {
+            .runStartupUpdateCheck(mainWindow, {serverUrl: config.serverUrl})
+            .then((desktop) => {
                 maybeShowViewerUpdateNotice(desktop);
             })
-            .catch(() => {});
+            .catch((err) => {
+                require('./updater-cache').logUpdate('startup update check failed', {
+                    error: String(err?.message || err),
+                });
+            });
     }, 8000);
 }
 
@@ -848,6 +852,7 @@ app.whenReady().then(() => {
     buildMenu();
     registerShortcuts();
     createMainWindow();
+    updater.initUpdaterCache();
     scheduleUpdateCheck();
 
     app.on('activate', () => {

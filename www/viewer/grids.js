@@ -11,6 +11,33 @@ export function gridSize(grid) {
     return p ? p.cols * p.rows : 0;
 }
 
+/** @returns {string|null} */
+export function slotStream(slot) {
+    if (!slot) {
+        return null;
+    }
+    if (typeof slot === 'string') {
+        return slot;
+    }
+    return slot.stream || null;
+}
+
+/** @returns {object|null} */
+export function slotView(slot) {
+    if (!slot || typeof slot === 'string') {
+        return null;
+    }
+    return slot.view || null;
+}
+
+export function setSlotView(slots, index, view) {
+    const stream = slotStream(slots[index]);
+    if (!stream) {
+        return;
+    }
+    slots[index] = view ? {stream, view} : stream;
+}
+
 export function slotsFromLayout(layout) {
     const grid = Number(layout?.grid);
     const preset = GRID_PRESETS[grid];
@@ -24,7 +51,11 @@ export function slotsFromLayout(layout) {
         for (const t of layout.tiles) {
             const i = t.y * preset.cols + t.x;
             if (i >= 0 && i < total) {
-                slots[i] = t.stream;
+                if (t.view && typeof t.view === 'object') {
+                    slots[i] = {stream: t.stream, view: t.view};
+                } else {
+                    slots[i] = t.stream;
+                }
             }
         }
         return slots;
@@ -43,16 +74,22 @@ export function slotsFromLayout(layout) {
 export function tilesFromSlots(slots, cols) {
     const tiles = [];
     for (let i = 0; i < slots.length; i++) {
-        if (!slots[i]) {
+        const stream = slotStream(slots[i]);
+        if (!stream) {
             continue;
         }
-        tiles.push({
-            stream: slots[i],
+        const tile = {
+            stream,
             x: i % cols,
             y: Math.floor(i / cols),
             w: 1,
             h: 1,
-        });
+        };
+        const view = slotView(slots[i]);
+        if (view) {
+            tile.view = view;
+        }
+        tiles.push(tile);
     }
     return tiles;
 }

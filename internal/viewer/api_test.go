@@ -89,7 +89,7 @@ func TestAPI_layoutTiles(t *testing.T) {
 
 	token, _ := sessions.Create("alice")
 	req := httptest.NewRequest(http.MethodPut, "/api/viewer/layouts/wall/tiles", bytes.NewBufferString(
-		`{"tiles":[{"stream":"cam1","x":0,"y":0,"w":1,"h":1}]}`,
+		`{"tiles":[{"stream":"cam1","x":0,"y":0,"w":1,"h":1,"view":{"fit":"cover","scale":1.2,"widthScale":1.1}}]}`,
 	))
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: token})
 	req.URL.Path = "/api/viewer/layouts/wall/tiles"
@@ -101,6 +101,10 @@ func TestAPI_layoutTiles(t *testing.T) {
 	st := store.LayoutState("alice", "wall")
 	require.Len(t, st.Tiles, 1)
 	require.Equal(t, "cam1", st.Tiles[0].Stream)
+	require.NotNil(t, st.Tiles[0].View)
+	require.Equal(t, "cover", st.Tiles[0].View.Fit)
+	require.InDelta(t, 1.2, st.Tiles[0].View.Scale, 0.001)
+	require.InDelta(t, 1.1, st.Tiles[0].View.WidthScale, 0.001)
 }
 
 func TestAPI_adminRequiresHeader(t *testing.T) {
