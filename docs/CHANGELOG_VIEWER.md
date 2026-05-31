@@ -1,5 +1,9 @@
 # Camera wall & desktop changelog
 
+## 1.2.24 (2026-05-31)
+
+- **Fix:** **electron-brand-bar** and **wall-header** auto-hide on the camera wall (grid and focus) — move the pointer to the top edge (~56px) to reveal them; tile controls still show on hover.
+
 ## 1.2.23 (2026-05-31)
 
 - **Fix:** Custom organization logo in the camera wall — embed as data URL instead of `file://` (broken image on server-loaded viewer pages).

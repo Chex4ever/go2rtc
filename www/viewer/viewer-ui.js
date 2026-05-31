@@ -1,6 +1,23 @@
 import {$, CHROME_HIDE_MS} from './viewer-dom.js';
 import {state} from './viewer-state.js';
 
+/** Pointer within this many px from top reveals wall-header + electron-brand-bar. */
+export const TOP_CHROME_ZONE_PX = 56;
+
+function syncTopChrome(wall, visible) {
+    wall.classList.toggle('show-top-chrome', visible);
+    $('#app')?.classList.toggle('show-top-chrome', visible);
+}
+
+function revealTopChromeOnPointer(wall, atTop) {
+    wall.classList.add('chrome-hidden');
+    syncTopChrome(wall, atTop);
+    clearTimeout(state.chromeTimer);
+    if (!atTop) {
+        state.chromeTimer = setTimeout(() => syncTopChrome(wall, false), CHROME_HIDE_MS);
+    }
+}
+
 export function showFatalError(title, message, hint) {
     if (typeof window.__viewerShowError === 'function') {
         window.__viewerShowError(title, message, hint);
@@ -43,6 +60,7 @@ export function startChromeHide() {
         return;
     }
     wall.classList.remove('chrome-hidden', 'show-top-chrome');
+    $('#app')?.classList.remove('show-top-chrome');
     state.chromeTimer = setTimeout(() => {
         wall.classList.add('chrome-hidden');
     }, CHROME_HIDE_MS);
@@ -50,20 +68,19 @@ export function startChromeHide() {
 
 export function stopChromeHide() {
     clearTimeout(state.chromeTimer);
-    $('#screen-wall')?.classList.remove('chrome-hidden', 'show-top-chrome');
+    const wall = $('#screen-wall');
+    wall?.classList.remove('chrome-hidden', 'show-top-chrome');
+    $('#app')?.classList.remove('show-top-chrome');
 }
 
+/** Keep tile chrome on hover/active; top bars stay edge-revealed only. */
 export function bumpChrome() {
     const wall = $('#screen-wall');
-    if (!wall || wall.classList.contains('hidden')) {
+    if (!wall || wall.classList.contains('hidden') || state.focusSlot !== null) {
         return;
     }
-    if (state.focusSlot !== null) {
-        return;
-    }
-    wall.classList.remove('chrome-hidden');
-    clearTimeout(state.chromeTimer);
-    state.chromeTimer = setTimeout(() => wall.classList.add('chrome-hidden'), CHROME_HIDE_MS);
+    wall.classList.add('chrome-hidden');
+    syncTopChrome(wall, false);
 }
 
 export function onWallMouseMove(e) {
@@ -71,19 +88,7 @@ export function onWallMouseMove(e) {
     if (!wall || wall.classList.contains('hidden')) {
         return;
     }
-
-    if (state.focusSlot !== null) {
-        const atTop = e.clientY < 56;
-        wall.classList.toggle('show-top-chrome', atTop);
-        wall.classList.add('chrome-hidden');
-        clearTimeout(state.chromeTimer);
-        if (!atTop) {
-            state.chromeTimer = setTimeout(() => wall.classList.remove('show-top-chrome'), CHROME_HIDE_MS);
-        }
-        return;
-    }
-
-    bumpChrome();
+    revealTopChromeOnPointer(wall, e.clientY < TOP_CHROME_ZONE_PX);
 }
 
 export function onWallTouch(e) {
@@ -91,18 +96,8 @@ export function onWallTouch(e) {
     if (!wall || wall.classList.contains('hidden')) {
         return;
     }
-    if (state.focusSlot !== null) {
-        const y = e.touches?.[0]?.clientY ?? 0;
-        const atTop = y < 56;
-        wall.classList.toggle('show-top-chrome', atTop);
-        wall.classList.add('chrome-hidden');
-        clearTimeout(state.chromeTimer);
-        if (!atTop) {
-            state.chromeTimer = setTimeout(() => wall.classList.remove('show-top-chrome'), CHROME_HIDE_MS);
-        }
-        return;
-    }
-    bumpChrome();
+    const y = e.touches?.[0]?.clientY ?? 0;
+    revealTopChromeOnPointer(wall, y < TOP_CHROME_ZONE_PX);
 }
 
 let noticeTimer = null;

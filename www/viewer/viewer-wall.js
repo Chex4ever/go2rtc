@@ -6,7 +6,7 @@ import {openTileDebugModal} from './viewer-tile-debug.js';
 import {api, apiUrl} from './viewer-api.js';
 import {$, CHROME_HIDE_MS} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
-import {bumpChrome} from './viewer-ui.js';
+import {bumpChrome, startChromeHide} from './viewer-ui.js';
 
 /** Stagger tile connects so Electron/go2rtc are not hit with N WebSockets at once. */
 const STREAM_CONNECT_STAGGER_MS = 150;
@@ -124,7 +124,7 @@ export function exitFocus() {
     wall?.classList.remove('focus-mode', 'chrome-hidden', 'show-top-chrome');
     $('#btn-exit-focus')?.classList.add('hidden');
     renderWall();
-    bumpChrome();
+    startChromeHide();
 }
 
 export function enterFocus(slotIndex) {

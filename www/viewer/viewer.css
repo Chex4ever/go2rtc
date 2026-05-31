@@ -268,19 +268,55 @@ button.link-btn:hover {
     min-height: 0;
 }
 
-/* —— Phase 3: chrome auto-hide —— */
-#screen-wall.chrome-hidden:not(.focus-mode) .wall-chrome-item {
+/* —— Top chrome auto-hide (electron brand bar + wall header) —— */
+#electron-brand-bar {
+    flex-shrink: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+#app:has(#screen-wall:not(.hidden).chrome-hidden:not(.show-top-chrome)) #electron-brand-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    transform: translateY(-100%);
     opacity: 0;
     pointer-events: none;
 }
 
-#screen-wall.chrome-hidden:not(.focus-mode) .wall-header {
-    padding: 0;
-    min-height: 0;
-    border: none;
-    overflow: hidden;
+#app:has(#screen-wall:not(.hidden).show-top-chrome) #electron-brand-bar {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
+#screen-wall.chrome-hidden:not(.show-top-chrome) .wall-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    padding: 10px 14px;
+    min-height: auto;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+}
+
+#app:has(#electron-brand-bar) #screen-wall.show-top-chrome .wall-header {
+    top: var(--electron-brand-bar-height, 42px);
+}
+
+#screen-wall.show-top-chrome .wall-header {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* —— Tile chrome auto-hide (grid) —— */
 #screen-wall.chrome-hidden:not(.focus-mode) .tile-bar,
 #screen-wall.chrome-hidden:not(.focus-mode) .tile-controls {
     opacity: 0;
@@ -320,18 +356,9 @@ button.link-btn:hover {
 
 #screen-wall.focus-mode .wall-header {
     position: fixed;
-    top: 0;
     left: 0;
     right: 0;
-    transform: translateY(-100%);
-    opacity: 0;
-    pointer-events: none;
-}
-
-#screen-wall.focus-mode.show-top-chrome .wall-header {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
+    z-index: 20;
 }
 
 #screen-wall.focus-mode .tile-bar {
