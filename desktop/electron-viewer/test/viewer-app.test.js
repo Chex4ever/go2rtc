@@ -98,8 +98,14 @@ describe('focus mode top chrome', () => {
         assert.match(ui, /TOP_CHROME_ZONE_PX = 5/);
         assert.match(ui, /TOP_CHROME_FOCUS_ZONE_PX = 5/);
         assert.match(ui, /TOP_CHROME_AUTO_HIDE_MS/);
+        assert.match(ui, /TILE_CHROME_FADE_MS/);
+        assert.match(ui, /bindTileChromeHover/);
+        assert.match(ui, /tile-chrome-passthrough/);
+        assert.match(css, /tile\.tile-active\.tile-chrome-passthrough/);
         assert.match(ui, /scheduleTopChromeHide/);
-        assert.match(ui, /CHROME_UI_SELECTOR/);
+        assert.match(ui, /TOP_WALL_CHROME_SELECTOR/);
+        assert.match(ui, /const TILE_CHROME_SELECTOR = '\.tile-bar, \.tile-controls'/);
+        assert.match(ui, /target\?\.closest\?\.\(TILE_CHROME_SELECTOR\)/);
         assert.match(ui, /revealTopChromeOnPointer/);
         assert.match(ui, /state\.wallChromeHidden/);
         assert.match(css, /#electron-brand-bar/);

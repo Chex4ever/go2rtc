@@ -31,6 +31,11 @@ describe('electron-builder packaging', () => {
         assert.match(nsh, /install-state\.json/);
     });
 
+    it('installer does not overwrite existing config.json', () => {
+        const nsh = fs.readFileSync(path.join(__dirname, '..', 'build', 'installer.nsh'), 'utf8');
+        assert.match(nsh, /IfFileExists "\$APPDATA\\go2rtc-viewer\\config\.json"/);
+    });
+
     it('includes all main-process runtime modules in build.files', () => {
         const pkg = JSON.parse(
             fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),

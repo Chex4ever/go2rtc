@@ -70,12 +70,15 @@ function isInstallInProgress(maxAgeMs = INSTALL_LOCK_MAX_AGE_MS) {
     if (!lock?.startedAt) {
         return false;
     }
+    if (lock.helperPid && isProcessRunning(lock.helperPid)) {
+        return true;
+    }
     const age = Date.now() - Date.parse(lock.startedAt);
     if (!Number.isFinite(age) || age > maxAgeMs) {
         clearInstallLock();
         return false;
     }
-    return true;
+    return age < 15000;
 }
 
 function readInstallState() {
@@ -163,31 +166,88 @@ function abandonPendingInstall(reason, extra) {
     clearInstallLock();
 }
 
+function isProcessRunning(pid) {
+    const n = Number(pid);
+    if (!Number.isFinite(n) || n <= 0) {
+        return false;
+    }
+    try {
+        process.kill(n, 0);
+        return true;
+    } catch (e) {
+        return e && e.code === 'EPERM';
+    }
+}
+
+function readLogTail(logPath, maxLines = 12) {
+    if (!logPath) {
+        return '';
+    }
+    try {
+        const text = fs.readFileSync(logPath, 'utf8');
+        return text
+            .split(/\r?\n/)
+            .filter(Boolean)
+            .slice(-maxLines)
+            .join('\n');
+    } catch {
+        return '';
+    }
+}
+
+function buildInstallFailMessage(logTail, logPath) {
+    const tail = String(logTail || '').trim();
+    const hint = logPath ? ` Log: ${logPath}` : '';
+    if (!tail) {
+        return `Automatic install did not complete.${hint} Try Restart to install again, or run the Setup manually.`;
+    }
+    return `Automatic install did not complete.${hint}\n${tail}`;
+}
+
 /**
- * Clear a stale install lock after the app has restarted (helper finished or failed).
- * @param {string} installedVersion
+ * @returns {{status: 'none'|'running'|'failed'|'cleared', message?: string, logPath?: string, logTail?: string}}
  */
 function reconcileInstallLockOnStartup(installedVersion) {
     const lock = readInstallLock();
     if (!lock?.startedAt) {
-        return null;
+        return {status: 'none'};
     }
+
     const age = Date.now() - Date.parse(lock.startedAt);
-    if (!Number.isFinite(age) || age < 8000) {
-        return null;
+    if (!Number.isFinite(age)) {
+        clearInstallLock();
+        return {status: 'cleared'};
     }
+
+    if (lock.helperPid && isProcessRunning(lock.helperPid)) {
+        logUpdate('install helper still running', {
+            helperPid: lock.helperPid,
+            logPath: lock.logPath,
+            ageMs: age,
+        });
+        return {status: 'running', logPath: lock.logPath};
+    }
+
+    if (age < 12000) {
+        return {status: 'running', logPath: lock.logPath};
+    }
+
+    const logTail = readLogTail(lock.logPath);
     clearInstallLock();
     const pending = readPendingUpdate();
     const stillPending =
         pending?.version && installedVersion && coreIsNewerVersion(pending.version, installedVersion);
     if (stillPending) {
-        logUpdate('install lock cleared on startup — update still pending', {
+        const message = buildInstallFailMessage(logTail, lock.logPath);
+        logUpdate('install helper finished but version unchanged', {
             pendingVersion: pending.version,
             installedVersion,
-            lockAgeMs: age,
+            logTail,
+            logPath: lock.logPath,
         });
+        return {status: 'failed', message, logPath: lock.logPath, logTail};
     }
-    return lock;
+    return {status: 'cleared', logTail};
 }
 
 function finalizeSuccessfulLaunch(installedVersion) {
@@ -450,6 +510,9 @@ module.exports = {
     recordInstallAttempt,
     abandonPendingInstall,
     reconcileInstallLockOnStartup,
+    isProcessRunning,
+    readLogTail,
+    buildInstallFailMessage,
     finalizeSuccessfulLaunch,
     MAX_STARTUP_INSTALL_ATTEMPTS,
     INSTALL_COOLDOWN_MS,

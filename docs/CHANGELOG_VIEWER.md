@@ -1,5 +1,13 @@
 # Camera wall & desktop changelog
 
+## 1.2.33 (2026-05-27)
+
+- **Fix:** Desktop autoupdate — kill all Camera Wall processes before silent NSIS; helper relaunches app and clears install lock; block startup while helper runs; show helper log on failed install; skip NSIS wizard page in silent mode.
+- **UX:** Update card — **Run installer…** (manual Setup, no re-download) and **Show download** (`%APPDATA%\go2rtc-viewer\updates\`).
+- **Fix:** Manual/interactive Setup no longer overwrites existing `config.json` (server URL and other settings preserved).
+- **Fix:** Tile bar/controls fade with pointer pass-through during hide (double-click focus works); auto-hide 1s after leaving tile chrome.
+- **Fix:** Wall header / brand bar no longer opens when hovering a tile’s bar — only the top-edge strip reveals them.
+
 ## 1.2.32 (2026-05-31)
 
 - **Fix:** “Update ready” card auto-hides after 10 seconds (pending install stays available in the menu).

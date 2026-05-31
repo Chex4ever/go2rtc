@@ -14,6 +14,8 @@ export const state = {
     wallLayoutMode: 'desktop',
     wallChromeHidden: false,
     activeTile: null,
+    tileChromeHideTimer: null,
+    tileChromeFadeTimer: null,
     recorders: new Map(),
 };
 

@@ -1,13 +1,15 @@
-import {$, CHROME_HIDE_MS, TOP_CHROME_AUTO_HIDE_MS} from './viewer-dom.js';
+import {$, CHROME_HIDE_MS, TOP_CHROME_AUTO_HIDE_MS, TILE_CHROME_FADE_MS, TILE_CHROME_HIDE_DELAY_MS} from './viewer-dom.js';
 import {state} from './viewer-state.js';
+import {isTouchDevice} from './device.js';
 
 /** Pointer within this many px from top reveals wall-header + electron-brand-bar. */
 export const TOP_CHROME_ZONE_PX = 5;
 /** Focus mode: thin strip at top edge for tile back bar + wall header. */
 export const TOP_CHROME_FOCUS_ZONE_PX = 5;
 
-const CHROME_UI_SELECTOR =
-    '.wall-header, #electron-brand-bar, .tile-bar, .tile-focus-btn-back, #btn-exit-focus, .wall-header button, .wall-header select';
+const TOP_WALL_CHROME_SELECTOR =
+    '.wall-header, #electron-brand-bar, .tile-focus-btn-back, #btn-exit-focus, .wall-header button, .wall-header select';
+const TILE_CHROME_SELECTOR = '.tile-bar, .tile-controls';
 
 function syncTopChrome(wall, visible) {
     wall.classList.toggle('show-top-chrome', visible);
@@ -101,12 +103,118 @@ export function bumpChrome() {
     syncTopChrome(wall, false);
 }
 
+function clearTileChromeTimers() {
+    clearTimeout(state.tileChromeHideTimer);
+    clearTimeout(state.tileChromeFadeTimer);
+    state.tileChromeHideTimer = null;
+    state.tileChromeFadeTimer = null;
+}
+
+function clearTileChromeClasses(tile) {
+    tile?.classList.remove('tile-active', 'tile-chrome-passthrough');
+}
+
+/** Hide tile bar + controls with fade; pointer-events pass through during fade. */
+export function deactivateTileChrome(tile = state.activeTile) {
+    if (!tile?.classList.contains('tile-active')) {
+        return;
+    }
+    clearTileChromeTimers();
+    tile.classList.add('tile-chrome-passthrough');
+    tile.classList.remove('tile-active');
+    state.tileChromeFadeTimer = setTimeout(() => {
+        clearTileChromeClasses(tile);
+        if (state.activeTile === tile) {
+            state.activeTile = null;
+        }
+        state.tileChromeFadeTimer = null;
+    }, TILE_CHROME_FADE_MS);
+}
+
+/** Show tile bar + controls after tile click (chrome-hidden grid mode). */
+export function activateTileChrome(tile) {
+    if (!tile || state.focusSlot !== null) {
+        return;
+    }
+    const wall = $('#screen-wall');
+    if (!wall?.classList.contains('chrome-hidden') || wall.classList.contains('focus-mode')) {
+        return;
+    }
+
+    if (state.activeTile && state.activeTile !== tile) {
+        clearTileChromeTimers();
+        clearTileChromeClasses(state.activeTile);
+        state.activeTile = null;
+    }
+
+    clearTileChromeTimers();
+    state.activeTile = tile;
+    tile.classList.add('tile-active', 'tile-chrome-passthrough');
+    state.tileChromeFadeTimer = setTimeout(() => {
+        if (state.activeTile === tile) {
+            tile.classList.remove('tile-chrome-passthrough');
+        }
+        state.tileChromeFadeTimer = null;
+    }, TILE_CHROME_FADE_MS);
+}
+
+export function scheduleTileChromeHide(tile) {
+    if (!tile || state.activeTile !== tile) {
+        return;
+    }
+    clearTimeout(state.tileChromeHideTimer);
+    state.tileChromeHideTimer = setTimeout(() => {
+        state.tileChromeHideTimer = null;
+        if (state.activeTile === tile) {
+            deactivateTileChrome(tile);
+        }
+    }, TILE_CHROME_HIDE_DELAY_MS);
+}
+
+export function cancelTileChromeHide() {
+    clearTimeout(state.tileChromeHideTimer);
+    state.tileChromeHideTimer = null;
+}
+
+function isWithinSameTileChrome(related, tile) {
+    return related?.closest?.('.tile-bar, .tile-controls') && tile.contains(related);
+}
+
+/** Auto-hide tile chrome 1s after pointer leaves bar/controls (desktop). */
+export function bindTileChromeHover(tile) {
+    if (!tile || isTouchDevice()) {
+        return;
+    }
+    for (const el of tile.querySelectorAll('.tile-bar, .tile-controls')) {
+        el.addEventListener('mouseenter', () => {
+            if (state.activeTile === tile) {
+                cancelTileChromeHide();
+            }
+        });
+        el.addEventListener('mouseleave', (e) => {
+            if (state.activeTile !== tile) {
+                return;
+            }
+            if (isWithinSameTileChrome(e.relatedTarget, tile)) {
+                return;
+            }
+            scheduleTileChromeHide(tile);
+        });
+    }
+}
+
 export function onWallMouseMove(e) {
     const wall = $('#screen-wall');
     if (!wall || wall.classList.contains('hidden')) {
         return;
     }
-    if (e.target?.closest?.(CHROME_UI_SELECTOR)) {
+    const target = e.target;
+    if (target?.closest?.(TILE_CHROME_SELECTOR)) {
+        wall.classList.add('chrome-hidden');
+        revealTopChromeOnPointer(wall, false);
+        return;
+    }
+    if (target?.closest?.(TOP_WALL_CHROME_SELECTOR)) {
         wall.classList.add('chrome-hidden');
         clearTimeout(state.chromeTimer);
         syncTopChrome(wall, true);
@@ -122,7 +230,13 @@ export function onWallTouch(e) {
         return;
     }
     const touch = e.touches?.[0];
-    if (touch?.target?.closest?.(CHROME_UI_SELECTOR)) {
+    const target = touch?.target;
+    if (target?.closest?.(TILE_CHROME_SELECTOR)) {
+        wall.classList.add('chrome-hidden');
+        revealTopChromeOnPointer(wall, false);
+        return;
+    }
+    if (target?.closest?.(TOP_WALL_CHROME_SELECTOR)) {
         wall.classList.add('chrome-hidden');
         clearTimeout(state.chromeTimer);
         syncTopChrome(wall, true);

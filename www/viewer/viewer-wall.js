@@ -6,7 +6,7 @@ import {openTileDebugModal} from './viewer-tile-debug.js';
 import {api, apiUrl} from './viewer-api.js';
 import {$, CHROME_HIDE_MS} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
-import {bumpChrome, startChromeHide} from './viewer-ui.js';
+import {bumpChrome, startChromeHide, activateTileChrome, deactivateTileChrome, bindTileChromeHover} from './viewer-ui.js';
 
 /** Stagger tile connects so Electron/go2rtc are not hit with N WebSockets at once. */
 const STREAM_CONNECT_STAGGER_MS = 150;
@@ -64,13 +64,11 @@ function configureWallGrid(grid, preset, focusSlot) {
 }
 
 function setActiveTile(tile) {
-    if (state.activeTile) {
-        state.activeTile.classList.remove('tile-active');
+    if (!tile) {
+        deactivateTileChrome();
+        return;
     }
-    state.activeTile = tile;
-    if (tile) {
-        tile.classList.add('tile-active');
-    }
+    activateTileChrome(tile);
 }
 
 function tileViewMode(inFocus) {
@@ -749,6 +747,7 @@ function createTile(logicalName, slotIndex, connectIndex = 0) {
     body.appendChild(viewportWrap);
     body.appendChild(bar);
     body.appendChild(createTileControls(viewport, logicalName, vs, tile, playback));
+    bindTileChromeHover(tile);
 
     body.addEventListener('dblclick', (e) => {
         if (e.target.closest('.tile-controls, .tile-bar')) {

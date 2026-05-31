@@ -126,9 +126,11 @@ export function handleUpdateEvent(event) {
             <div class="desktop-update-icon ready">${iconFor(kind)}</div>
             <div class="desktop-update-body">
                 <div class="desktop-update-title">${escapeHtml(title)}</div>
-                <p class="desktop-update-text">Version${escapeHtml(version)} has been downloaded. Restart to install.</p>
+                <p class="desktop-update-text">Version${escapeHtml(version)} has been downloaded. Restart for silent install, or run the installer manually if that fails.</p>
                 <div class="desktop-update-actions">
                     <button type="button" class="primary" data-act="install">Restart now</button>
+                    <button type="button" class="ghost" data-act="manual">Run installer…</button>
+                    <button type="button" class="ghost" data-act="folder">Show download</button>
                     <button type="button" class="ghost" data-act="later">Later</button>
                 </div>
             </div>
@@ -140,6 +142,18 @@ export function handleUpdateEvent(event) {
                 '[data-act="install"]',
                 () => {
                     window.go2rtcDesktop?.installPendingUpdate?.();
+                },
+            ],
+            [
+                '[data-act="manual"]',
+                () => {
+                    window.go2rtcDesktop?.runPendingInstallerManual?.();
+                },
+            ],
+            [
+                '[data-act="folder"]',
+                () => {
+                    window.go2rtcDesktop?.showPendingInstaller?.();
                 },
             ],
             [
@@ -204,20 +218,45 @@ export function handleUpdateEvent(event) {
     }
 
     if (kind === 'error') {
-        showCard(
+        const hasInstaller = !!(event.installerPath || event.updatesDir);
+        const card = showCard(
             'desktop-update-active',
             `
             <div class="desktop-update-icon error">${iconFor(kind)}</div>
             <div class="desktop-update-body">
                 <div class="desktop-update-title">${escapeHtml(title)}</div>
                 <p class="desktop-update-text">${escapeHtml(event.message || 'Something went wrong.')}</p>
+                ${
+                    hasInstaller
+                        ? `<div class="desktop-update-actions">
+                    <button type="button" class="primary" data-act="manual">Run installer…</button>
+                    <button type="button" class="ghost" data-act="folder">Show download</button>
+                </div>`
+                        : ''
+                }
             </div>
             <button type="button" class="desktop-update-close" data-act="dismiss" aria-label="Dismiss">×</button>
             `,
             15000,
         );
-        const card = document.getElementById('desktop-update-active');
-        bindActions(card, [['[data-act="dismiss"]', () => removeCard('desktop-update-active')]]);
+        const actions = [['[data-act="dismiss"]', () => removeCard('desktop-update-active')]];
+        if (hasInstaller) {
+            actions.push(
+                [
+                    '[data-act="manual"]',
+                    () => {
+                        window.go2rtcDesktop?.runPendingInstallerManual?.();
+                    },
+                ],
+                [
+                    '[data-act="folder"]',
+                    () => {
+                        window.go2rtcDesktop?.showPendingInstaller?.();
+                    },
+                ],
+            );
+        }
+        bindActions(card, actions);
     }
 }
 

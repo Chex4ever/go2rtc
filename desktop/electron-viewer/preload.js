@@ -20,5 +20,7 @@ contextBridge.exposeInMainWorld('go2rtcDesktop', {
     },
     getUpdateState: () => ipcRenderer.invoke('desktop:update-state'),
     installPendingUpdate: () => ipcRenderer.invoke('desktop:install-pending-update'),
+    runPendingInstallerManual: () => ipcRenderer.invoke('desktop:run-pending-installer-manual'),
+    showPendingInstaller: () => ipcRenderer.invoke('desktop:show-pending-installer'),
     dismissUpdateReady: () => ipcRenderer.invoke('desktop:dismiss-update-ready'),
 });

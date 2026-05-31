@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const {app, dialog} = require('electron');
+const {app, dialog, shell} = require('electron');
 const core = require('./updater-core');
 const cache = require('./updater-cache');
 const notify = require('./update-notify');
-const {launchSilentInstallerAndRelaunch, resolveInstallDir} = require('./installer-launch');
+const {launchSilentInstallerAndRelaunch, launchInteractiveInstaller, resolveInstallDir} = require('./installer-launch');
 const {launchPatchApplyAndRelaunch} = require('./patch-apply');
 
 /** Set by main.js — allows app.quit() during one-click update. */
@@ -217,7 +217,6 @@ async function applyDesktopPatchOneClick(info, localPath, source = 'user') {
         {version: info.version, path: patchPath},
         source,
     );
-    cache.writeInstallLock({version: info.version, kind: 'patch', path: patchPath});
     notify.emitUpdateEvent({
         kind: 'installing',
         version: info.version,
@@ -228,6 +227,13 @@ async function applyDesktopPatchOneClick(info, localPath, source = 'user') {
         process.execPath,
         installDir,
     );
+    cache.writeInstallLock({
+        version: info.version,
+        kind: 'patch',
+        path: patchPath,
+        helperPid,
+        logPath,
+    });
     cache.logUpdate('patch helper started', {helperPid, logPath});
     app.quittingForUpdate = true;
     requestAppQuit();
@@ -240,7 +246,9 @@ async function applyDesktopUpdateOneClick(info, localPath, source = 'user') {
     }
     cache.reconcileInstallLockOnStartup(app.getVersion());
     if (cache.isInstallInProgress()) {
-        throw new Error('An update is already installing. Please wait for the app to restart.');
+        const lock = cache.readInstallLock();
+        const logHint = lock?.logPath ? ` Log: ${lock.logPath}` : '';
+        throw new Error(`An update is already installing. Please wait for the app to restart.${logHint}`);
     }
     const installerPath = localPath;
     if (!installerPath || !fs.existsSync(installerPath)) {
@@ -256,7 +264,6 @@ async function applyDesktopUpdateOneClick(info, localPath, source = 'user') {
         {version: info.version, path: installerPath},
         source,
     );
-    cache.writeInstallLock({version: info.version, kind: 'full', path: installerPath});
     notify.emitUpdateEvent({
         kind: 'installing',
         version: info.version,
@@ -266,7 +273,16 @@ async function applyDesktopUpdateOneClick(info, localPath, source = 'user') {
         installerPath,
         process.execPath,
         installDir,
+        process.pid,
+        cache.installLockFile(),
     );
+    cache.writeInstallLock({
+        version: info.version,
+        kind: 'full',
+        path: installerPath,
+        helperPid,
+        logPath,
+    });
     cache.logUpdate('installer helper started', {helperPid, logPath});
     app.quittingForUpdate = true;
     requestAppQuit();
@@ -356,7 +372,6 @@ async function trySilentStartupInstall() {
     }
     initUpdaterCache();
     const currentVersion = app.getVersion();
-    cache.reconcileInstallLockOnStartup(currentVersion);
     const pending = pendingReadyForInstall(currentVersion);
     if (!pending) {
         return false;
@@ -407,15 +422,89 @@ function finalizeSuccessfulLaunch(installedVersion) {
     return cache.finalizeSuccessfulLaunch(installedVersion || app.getVersion());
 }
 
+/**
+ * Block startup while update helper is running; surface failed install log on next launch.
+ * @returns {{action: 'exit'|'continue', installError?: string, logPath?: string}}
+ */
+function guardStartupDuringInstall(installedVersion) {
+    initUpdaterCache();
+    const installed = installedVersion || app.getVersion();
+    const state = cache.reconcileInstallLockOnStartup(installed);
+    if (state.status === 'running') {
+        cache.logUpdate('startup blocked while update helper runs', {
+            installedVersion: installed,
+            logPath: state.logPath,
+        });
+        return {action: 'exit', logPath: state.logPath};
+    }
+    if (state.status === 'failed' && state.message) {
+        return {action: 'continue', installError: state.message, logPath: state.logPath};
+    }
+    return {action: 'continue'};
+}
+
 function getUpdateDiagnostics() {
     initUpdaterCache();
     const appLog = require('./app-log');
+    const pending = cache.readPendingUpdate();
     return {
         update_log: cache.updateLogFile(),
         app_log: appLog.appLogFile(),
         pending_update: cache.pendingUpdateFile(),
         install_state: cache.installStateFile(),
         updates_dir: cache.updatesDir(),
+        pending_installer: pending?.path || null,
+    };
+}
+
+/**
+ * Open Explorer on the cached installer, or the updates folder if the file is missing.
+ * @param {string} [currentVersion]
+ */
+function showPendingInstallerInFolder(currentVersion) {
+    initUpdaterCache();
+    const pending = pendingReadyForInstall(currentVersion || app.getVersion());
+    const updatesDir = cache.updatesDir();
+    const target =
+        pending?.path && fs.existsSync(pending.path) ? pending.path : updatesDir;
+    shell.showItemInFolder(target);
+    cache.logUpdate('show pending installer in folder', {target});
+    return {path: target, updatesDir};
+}
+
+/**
+ * Run the downloaded Setup.exe with normal UI (fallback when silent install fails).
+ * @param {string} [currentVersion]
+ */
+async function runPendingInstallerManual(currentVersion) {
+    if (!canApplyUpdates()) {
+        throw new Error('Manual installer is only available in the installed Windows app.');
+    }
+    initUpdaterCache();
+    cache.reconcileInstallLockOnStartup(currentVersion || app.getVersion());
+    cache.clearInstallLock();
+
+    const pending = pendingReadyForInstall(currentVersion || app.getVersion());
+    if (!pending?.path) {
+        throw new Error(
+            `No downloaded installer found. Check ${cache.updatesDir()} or download again from Settings.`,
+        );
+    }
+    if (!fs.existsSync(pending.path)) {
+        throw new Error(`Installer file missing: ${pending.path}`);
+    }
+    if (pending.kind === 'patch') {
+        throw new Error('This update is a patch — use Restart now, or download the full Setup from GitHub.');
+    }
+
+    cache.logUpdate('starting manual installer', {path: pending.path, version: pending.version});
+    const pid = await launchInteractiveInstaller(pending.path);
+    return {
+        ok: true,
+        path: pending.path,
+        version: pending.version,
+        updatesDir: cache.updatesDir(),
+        pid,
     };
 }
 
@@ -676,8 +765,11 @@ module.exports = {
     applyDesktopUpdateSmart,
     installPendingUpdate,
     trySilentStartupInstall,
+    guardStartupDuringInstall,
     finalizeSuccessfulLaunch,
     getUpdateDiagnostics,
+    showPendingInstallerInFolder,
+    runPendingInstallerManual,
     runBackgroundUpdateCheck,
     runManualDesktopUpdateCheck,
     runUpdateFlow,

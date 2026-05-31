@@ -11,7 +11,9 @@ Var ViewerModeAutostart
 Var ViewerModeKiosk
 
 !macro customPageAfterChangeDir
-  Page custom ViewerModePageCreate ViewerModePageLeave
+  ${IfNot} ${Silent}
+    Page custom ViewerModePageCreate ViewerModePageLeave
+  ${EndIf}
 !macroend
 
 Function ViewerModePageCreate
@@ -57,12 +59,7 @@ FunctionEnd
   ${ifNot} ${isUpdated}
     Call WriteViewerInstallConfig
   ${endIf}
-  ; Silent in-place update: helper waits for app exit; relaunch here after files replaced.
-  ${If} ${Silent}
-    ${If} ${isUpdated}
-      Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}"'
-    ${EndIf}
-  ${EndIf}
+  ; Silent in-place update: helper relaunches the app after NSIS /S completes.
 !macroend
 
 ; Interactive installs — runAfterFinish in electron-builder handles the finish page.
@@ -79,6 +76,11 @@ FunctionEnd
 Function WriteViewerInstallConfig
   CreateDirectory "$APPDATA\go2rtc-viewer"
 
+  ; Keep server URL and other user settings — only seed defaults on first install.
+  IfFileExists "$APPDATA\go2rtc-viewer\config.json" 0 write_config
+  Return
+
+write_config:
   ${If} $ElectronViewerMode == "kiosk"
     FileOpen $0 "$APPDATA\go2rtc-viewer\config.json" w
     FileWrite $0 "{$\r$\n"

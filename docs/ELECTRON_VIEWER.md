@@ -141,7 +141,7 @@ During install, after choosing the folder, you get a **radio page**:
 | **Autostart** | Normal window; starts at Windows sign-in |
 | **Kiosk** | Fullscreen wall + starts at Windows sign-in |
 
-The installer writes `%APPDATA%\go2rtc-viewer\config.json` (default server `http://127.0.0.1:1984`). Change server URL later via **Ctrl+Shift+S**. Upgrades do **not** overwrite an existing config.
+The installer writes `%APPDATA%\go2rtc-viewer\config.json` on **first install only** (default server `http://127.0.0.1:1984`). Change server URL later via **Ctrl+Shift+S** (Settings). Manual Setup, silent autoupdate, and upgrades **do not** overwrite an existing `config.json` — settings live in `%APPDATA%`, separate from the program in `%LOCALAPPDATA%\Programs\`.
 
 Portable target was removed from the default build so every user gets this wizard; use `npm run pack` for an unpacked folder without installer.
 
@@ -183,11 +183,13 @@ If Camera Wall flashes and closes after **Restart now**, or update loops fail:
 | **Update log** (download, install, pending) | `%APPDATA%\go2rtc-viewer\logs\camera-wall-update.log` |
 | **App log** (startup, crashes) | `%APPDATA%\go2rtc-viewer\logs\camera-wall.log` |
 | **Pending update** | `%APPDATA%\go2rtc-viewer\pending-update.json` |
+| **App settings** (server URL, kiosk, window position, branding refs) | `%APPDATA%\go2rtc-viewer\config.json` |
+| **Downloaded installers** (reused until install succeeds) | `%APPDATA%\go2rtc-viewer\updates\` |
 | **Install helper** (one run) | `%TEMP%\go2rtc-viewer-update-{PID}.log` |
 
 In the desktop app: **About** → section **Logs (desktop)** (or app menu **About Camera Wall…**).
 
-**Recovery:** delete `pending-update.json` and `install-state.json` in `%APPDATA%\go2rtc-viewer\`, then reinstall from the latest Setup `.exe` from GitHub Releases. Running Setup also clears those files automatically (v1.2.27+).
+**Recovery:** use **Run installer…** on the update card (opens the cached Setup from `updates\` without re-downloading), or open that folder via **Show download**. You can also delete `pending-update.json` and `install-state.json` in `%APPDATA%\go2rtc-viewer\`, then run the latest Setup `.exe` from GitHub Releases. Running Setup also clears those files automatically (v1.2.27+).
 
 ### Tile debug (black cameras)
 

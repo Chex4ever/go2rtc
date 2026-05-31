@@ -321,11 +321,29 @@ button.link-btn:hover {
 #screen-wall.chrome-hidden:not(.focus-mode) .tile-controls {
     opacity: 0;
     pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-controls {
+    opacity: 0;
+    pointer-events: none;
 }
 
 #screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-bar,
 #screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-controls {
     opacity: 1;
+}
+
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active.tile-chrome-passthrough .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active.tile-chrome-passthrough .tile-controls,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-chrome-passthrough:not(.tile-active) .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-chrome-passthrough:not(.tile-active) .tile-controls {
+    pointer-events: none;
+}
+
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active:not(.tile-chrome-passthrough) .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active:not(.tile-chrome-passthrough) .tile-controls {
     pointer-events: auto;
 }
 

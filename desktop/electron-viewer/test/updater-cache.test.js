@@ -145,7 +145,8 @@ describe('updater-cache', () => {
             ),
             'utf8',
         );
-        cache.reconcileInstallLockOnStartup('1.2.27');
+        const result = cache.reconcileInstallLockOnStartup('1.2.27');
+        assert.equal(result.status, 'failed');
         assert.equal(cache.readInstallLock(), null);
         assert.equal(cache.readPendingUpdate()?.version, '1.2.30');
     });

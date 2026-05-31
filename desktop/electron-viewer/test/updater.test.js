@@ -16,7 +16,8 @@ describe('updater module wiring', () => {
 
     it('main.js uses silent startup install and in-app update events', () => {
         const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-        assert.match(main, /trySilentStartupInstall/);
+        assert.match(main, /runPendingInstallerManual/);
+        assert.match(main, /guardStartupDuringInstall/);
         assert.match(main, /desktop:update-event/);
         assert.match(main, /runBackgroundUpdateCheck/);
         assert.match(main, /app\.exit\(0\)/);

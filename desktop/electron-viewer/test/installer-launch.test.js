@@ -31,13 +31,19 @@ describe('installer-launch', () => {
         assert.match(script, /'\/S'/);
         assert.match(script, /'\/D=C:\\Program Files\\App'/);
         assert.match(script, /Start-Sleep -Seconds 2/);
-        assert.match(script, /Stop-Process -Force/);
-        assert.match(script, /NSIS silent update relaunches/);
+        assert.match(script, /Stop-CameraWallProcesses/);
+        assert.match(script, /Clear-InstallLock/);
+        assert.match(script, /Relaunching/);
         assert.doesNotMatch(script, /Start-Process -LiteralPath.*go2rtc Camera Wall/);
     });
 
     it('quotes paths with spaces', () => {
         assert.equal(quoteCmdArg('C:\\Program Files\\a.exe'), '"C:\\Program Files\\a.exe"');
         assert.equal(psSingleQuote("C:\\a'b.exe"), "'C:\\a''b.exe'");
+    });
+
+    it('exports interactive installer launcher', () => {
+        const {launchInteractiveInstaller} = require('../installer-launch');
+        assert.equal(typeof launchInteractiveInstaller, 'function');
     });
 });

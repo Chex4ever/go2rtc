@@ -53,7 +53,13 @@ async function installPendingUpdateFromMenu() {
     try {
         await updater.installPendingUpdate(mainWindow, pending);
     } catch (e) {
-        updateNotify.emitUpdateEvent({kind: 'error', message: e?.message || String(e)});
+        const diag = updater.getUpdateDiagnostics();
+        updateNotify.emitUpdateEvent({
+            kind: 'error',
+            message: e?.message || String(e),
+            installerPath: pending?.path || diag.pending_installer || '',
+            updatesDir: diag.updates_dir,
+        });
     }
 }
 
@@ -961,6 +967,17 @@ ipcMain.handle('desktop:install-pending-update', async () => {
     return {ok: true};
 });
 
+ipcMain.handle('desktop:run-pending-installer-manual', async () => {
+    try {
+        return await updater.runPendingInstallerManual(app.getVersion());
+    } catch (e) {
+        updateNotify.emitUpdateEvent({kind: 'error', message: e?.message || String(e)});
+        return {ok: false, error: e?.message || String(e)};
+    }
+});
+
+ipcMain.handle('desktop:show-pending-installer', () => updater.showPendingInstallerInFolder(app.getVersion()));
+
 ipcMain.handle('desktop:dismiss-update-ready', () => {
     updateNotify.patchUpdateState({status: 'idle'});
     return true;
@@ -1021,6 +1038,12 @@ ipcMain.handle('settings:save', async (_event, payload) => {
 app.whenReady().then(async () => {
     applyCliOverrides();
     updater.initUpdaterCache();
+    const guard = updater.guardStartupDuringInstall(app.getVersion());
+    if (guard.action === 'exit') {
+        app.exit(0);
+        return;
+    }
+
     const config = getConfig();
     const upgraded = updateNotify.shouldNotifyVersionUpgrade(
         config.lastSeenAppVersion,
@@ -1039,7 +1062,18 @@ app.whenReady().then(async () => {
     updater.finalizeSuccessfulLaunch(app.getVersion());
     appLog.appendAppLog('app', 'Camera Wall started', {version: app.getVersion(), packaged: app.isPackaged});
 
-    if (upgraded) {
+    if (guard.installError) {
+        mainWindow?.webContents.once('did-finish-load', () => {
+            const pending = updater.pendingReadyForInstall(app.getVersion());
+            const diag = updater.getUpdateDiagnostics();
+            updateNotify.emitUpdateEvent({
+                kind: 'error',
+                message: guard.installError,
+                installerPath: pending?.path || diag.pending_installer || '',
+                updatesDir: diag.updates_dir,
+            });
+        });
+    } else if (upgraded) {
         const version = app.getVersion();
         mainWindow?.webContents.once('did-finish-load', () => {
             updateNotify.emitUpdateEvent({
