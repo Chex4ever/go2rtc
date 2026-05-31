@@ -76,6 +76,16 @@ describe('normalizeConfig', () => {
         const cfg = core.normalizeConfig({checkUpdatesOnStartup: false}, core.DEFAULT_BRANDING);
         assert.equal(cfg.checkUpdatesOnStartup, false);
     });
+
+    it('defaults autoDownloadUpdates to true', () => {
+        const cfg = core.normalizeConfig({}, core.DEFAULT_BRANDING);
+        assert.equal(cfg.autoDownloadUpdates, true);
+    });
+
+    it('allows disabling autoDownloadUpdates', () => {
+        const cfg = core.normalizeConfig({autoDownloadUpdates: false}, core.DEFAULT_BRANDING);
+        assert.equal(cfg.autoDownloadUpdates, false);
+    });
 });
 
 describe('mergeBrandingFromDirs', () => {

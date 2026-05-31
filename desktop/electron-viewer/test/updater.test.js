@@ -7,15 +7,18 @@ describe('updater module wiring', () => {
     it('exports update flow helpers', () => {
         const updater = require('../updater');
         assert.equal(typeof updater.checkForUpdates, 'function');
-        assert.equal(typeof updater.runUpdateFlow, 'function');
-        assert.equal(typeof updater.runStartupUpdateCheck, 'function');
+        assert.equal(typeof updater.runManualDesktopUpdateCheck, 'function');
+        assert.equal(typeof updater.runBackgroundUpdateCheck, 'function');
+        assert.equal(typeof updater.trySilentStartupInstall, 'function');
         assert.equal(typeof updater.downloadInstaller, 'function');
         assert.equal(typeof updater.pendingReadyForInstall, 'function');
     });
 
-    it('main.js uses startup update check and hard exit for apply', () => {
+    it('main.js uses silent startup install and in-app update events', () => {
         const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-        assert.match(main, /runStartupUpdateCheck/);
+        assert.match(main, /trySilentStartupInstall/);
+        assert.match(main, /desktop:update-event/);
+        assert.match(main, /runBackgroundUpdateCheck/);
         assert.match(main, /app\.exit\(0\)/);
     });
 

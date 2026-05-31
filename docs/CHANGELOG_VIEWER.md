@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.21 (2026-05-27)
+
+- **Feature:** In-app update notifications — no Windows toast dialogs. Cards in the camera wall show download progress, **Restart now / Later**, and post-upgrade “You are now running version …”.
+- **Feature:** **Download updates automatically** (on by default, Settings → Deployment). When disabled, startup check shows “update available” without downloading.
+- **Feature:** Pending Camera Wall updates install silently on the next app start (no prompts); menu **Restart to install …** applies immediately after a background download.
+
 ## 1.2.20 (2026-05-31)
 
 - **Fix:** Desktop autoupdate reuses cached installer in `%APPDATA%/go2rtc-viewer/updates/` until install succeeds (no re-download when URL changes).

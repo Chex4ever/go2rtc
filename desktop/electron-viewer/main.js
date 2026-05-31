@@ -4,6 +4,33 @@ const fs = require('fs');
 const cfg = require('./config');
 const {buildLoadErrorPage} = require('./load-error-page');
 const updater = require('./updater');
+const updateNotify = require('./update-notify');
+function sendUpdateEventToViewer(payload) {
+    const win = mainWindow;
+    if (!win || win.isDestroyed()) {
+        return;
+    }
+    win.webContents.send('desktop:update-event', payload);
+    if (payload?.kind === 'ready') {
+        buildMenu();
+    }
+}
+
+updateNotify.setUpdateEventSender(sendUpdateEventToViewer);
+
+async function installPendingUpdateFromMenu() {
+    const pending = updater.pendingReadyForInstall(app.getVersion());
+    if (!pending) {
+        updateNotify.emitUpdateEvent({kind: 'error', message: 'No downloaded update is ready to install.'});
+        return;
+    }
+    try {
+        await updater.installPendingUpdate(mainWindow, pending);
+    } catch (e) {
+        updateNotify.emitUpdateEvent({kind: 'error', message: e?.message || String(e)});
+    }
+}
+
 updater.setRequestAppQuit(() => {
     app.quittingForUpdate = true;
     for (const w of BrowserWindow.getAllWindows()) {
@@ -532,43 +559,56 @@ function buildMenu() {
     const b = config.branding;
     const appLabel = b.productName || 'Camera Wall';
 
+    const pending = app.isPackaged ? updater.pendingReadyForInstall(app.getVersion()) : null;
+    const appSubmenu = [
+        {
+            label: 'go2rtc home',
+            click: () => openServerUrl('/'),
+        },
+        {
+            label: 'go2rtc config (YAML)',
+            click: () => openServerUrl('/config.html'),
+        },
+        {
+            label: 'Viewer admin',
+            click: () => openServerUrl('/viewer/admin.html'),
+        },
+        {type: 'separator'},
+        {
+            label: 'Settings…',
+            accelerator: 'CmdOrCtrl+,',
+            click: () => openSettings(),
+        },
+        {
+            label: 'Check for updates…',
+            click: () => checkForUpdatesNow(),
+        },
+    ];
+    if (pending) {
+        appSubmenu.push({
+            label: `Restart to install ${pending.version}…`,
+            click: () => {
+                installPendingUpdateFromMenu().catch(() => {});
+            },
+        });
+    }
+    appSubmenu.push(
+        {
+            label: 'About Camera Wall…',
+            click: () => {
+                showAboutDialog().catch((e) => {
+                    dialog.showErrorBox('About', e.message || String(e));
+                });
+            },
+        },
+        {type: 'separator'},
+        {role: 'quit'},
+    );
+
     const template = [
         {
             label: appLabel,
-            submenu: [
-                {
-                    label: 'go2rtc home',
-                    click: () => openServerUrl('/'),
-                },
-                {
-                    label: 'go2rtc config (YAML)',
-                    click: () => openServerUrl('/config.html'),
-                },
-                {
-                    label: 'Viewer admin',
-                    click: () => openServerUrl('/viewer/admin.html'),
-                },
-                {type: 'separator'},
-                {
-                    label: 'Settings…',
-                    accelerator: 'CmdOrCtrl+,',
-                    click: () => openSettings(),
-                },
-                {
-                    label: 'Check for updates…',
-                    click: () => checkForUpdatesNow(),
-                },
-                {
-                    label: 'About Camera Wall…',
-                    click: () => {
-                        showAboutDialog().catch((e) => {
-                            dialog.showErrorBox('About', e.message || String(e));
-                        });
-                    },
-                },
-                {type: 'separator'},
-                {role: 'quit'},
-            ],
+            submenu: appSubmenu,
         },
         {
             label: 'View',
@@ -644,12 +684,15 @@ function scheduleUpdateCheck() {
     }
     setTimeout(() => {
         updater
-            .runStartupUpdateCheck(mainWindow, {serverUrl: config.serverUrl})
+            .runBackgroundUpdateCheck({
+                serverUrl: config.serverUrl,
+                autoDownloadUpdates: config.autoDownloadUpdates !== false,
+            })
             .then((desktop) => {
                 maybeShowViewerUpdateNotice(desktop);
             })
             .catch((err) => {
-                require('./updater-cache').logUpdate('startup update check failed', {
+                require('./updater-cache').logUpdate('background update check failed', {
                     error: String(err?.message || err),
                 });
             });
@@ -682,7 +725,11 @@ function showViewerNoticeToast(message) {
 
 async function checkForUpdatesNow() {
     const config = getConfig();
-    await updater.runAllUpdateFlows(mainWindow, {serverUrl: config.serverUrl, silent: false});
+    await updater.runManualDesktopUpdateCheck({
+        serverUrl: config.serverUrl,
+        autoDownloadUpdates: config.autoDownloadUpdates !== false,
+    });
+    await updater.runGo2rtcUpdateFlow(mainWindow, {serverUrl: config.serverUrl, silent: false});
 }
 
 function registerShortcuts() {
@@ -795,8 +842,24 @@ ipcMain.handle('settings:export-branding', async (_e, branding) => {
 
 ipcMain.handle('settings:check-updates', async (_event, serverUrl) => {
     const url = cfg.normalizeServerUrl(serverUrl || getConfig().serverUrl);
-    return updater.runAllUpdateFlows(settingsWindow || mainWindow, {serverUrl: url, silent: false});
+    const config = getConfig();
+    return updater.runManualDesktopUpdateCheck({
+        serverUrl: url,
+        autoDownloadUpdates: config.autoDownloadUpdates !== false,
+    });
 });
+
+ipcMain.handle('desktop:install-pending-update', async () => {
+    await installPendingUpdateFromMenu();
+    return {ok: true};
+});
+
+ipcMain.handle('desktop:dismiss-update-ready', () => {
+    updateNotify.patchUpdateState({status: 'idle'});
+    return true;
+});
+
+ipcMain.handle('desktop:update-state', () => updateNotify.getUpdateState());
 
 ipcMain.handle('settings:save', async (_event, payload) => {
     const prev = getConfig();
@@ -806,6 +869,7 @@ ipcMain.handle('settings:save', async (_event, payload) => {
         kiosk: !!payload?.kiosk,
         autoStart: !!payload?.autoStart,
         checkUpdatesOnStartup: payload?.checkUpdatesOnStartup !== false,
+        autoDownloadUpdates: payload?.autoDownloadUpdates !== false,
         autoOpenLayout: payload?.autoOpenLayout !== false,
         defaultLayoutId: String(payload?.defaultLayoutId || '').trim(),
         branding: payload?.branding || prev.branding,
@@ -845,14 +909,38 @@ ipcMain.handle('settings:save', async (_event, payload) => {
     return next;
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     applyCliOverrides();
+    updater.initUpdaterCache();
     const config = getConfig();
+    const upgraded = updateNotify.shouldNotifyVersionUpgrade(
+        config.lastSeenAppVersion,
+        app.getVersion(),
+    );
+
+    const quittingForInstall = await updater.trySilentStartupInstall();
+    if (quittingForInstall) {
+        return;
+    }
+
     applyAutoStart(config.autoStart);
     buildMenu();
     registerShortcuts();
     createMainWindow();
-    updater.initUpdaterCache();
+
+    if (upgraded) {
+        const version = app.getVersion();
+        mainWindow?.webContents.once('did-finish-load', () => {
+            updateNotify.emitUpdateEvent({
+                kind: 'installed',
+                version,
+                title: 'Camera Wall updated',
+                message: `You are now running version ${version}.`,
+            });
+        });
+    }
+    cfg.saveConfig({...getConfig(), lastSeenAppVersion: app.getVersion()});
+
     scheduleUpdateCheck();
 
     app.on('activate', () => {

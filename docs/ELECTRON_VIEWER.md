@@ -149,18 +149,28 @@ The desktop app checks the **configured go2rtc server** (`Settings → server UR
 
 ### On operator PCs
 
-1. **Automatic** — about 8 seconds after startup (disable in Settings → Deployment).
-2. **Manual** — **Check for updates…** checks both:
+1. **Automatic** — about 8 seconds after startup (disable in Settings → Deployment → **Check for updates on startup**).
+2. **Auto-download** — on by default (Settings → Deployment → **Download updates automatically**). When a new Camera Wall version is found, it downloads in the background and shows an **in-app card** (top-right of the wall) — not a Windows notification.
+3. **Manual** — app menu **Check for updates…** checks both:
    - **Camera Wall app** — installer from server (`viewer.desktop`) or `/viewer/desktop/update.json`
    - **go2rtc server** — latest release from GitHub (`viewer.go2rtc.github`) or local binary (`viewer.go2rtc.binary`)
 
-Camera Wall: **Update now** chooses the smallest path:
+#### Camera Wall update flow (v1.2.21+)
 
-- **Viewer-only** (`update_kind: none`) — no download; a 5s toast asks you to reload (Ctrl+R).
+| Step | What happens |
+|------|----------------|
+| Update found | In-app card: downloading (progress bar) or “update available” if auto-download is off |
+| Download finished | Card: **Restart now** / **Later**; menu adds **Restart to install {version}…** |
+| Next app start | Pending update installs **silently** (no dialog), app relaunches |
+| After upgrade | In-app card: “Camera Wall updated — You are now running version …” |
+
+Update kind (same as before):
+
+- **Viewer-only** (`update_kind: none`) — no download; in-app notice asks you to reload (Ctrl+R).
 - **Shell patch** — downloads only changed install files (~MB), applies in-place, restarts.
-- **Full installer** — same silent NSIS flow as before (~150 MB).
+- **Full installer** — silent NSIS flow (~150 MB).
 
-go2rtc: download new `go2rtc.exe` → stop service → replace binary → start service (configs unchanged).
+go2rtc: still uses a classic dialog from **Check for updates…** — download new `go2rtc.exe` → stop service → replace binary → start service (configs unchanged).
 
 ### Tile debug (black cameras)
 

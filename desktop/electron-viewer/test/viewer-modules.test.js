@@ -17,6 +17,7 @@ const MODULES = [
     'viewer-about.js',
     'layout-auto.js',
     'morning-start.js',
+    'desktop-update-ui.js',
     'viewer-session-boot.js',
     'admin.js',
     'admin-api.js',
@@ -48,5 +49,11 @@ describe('viewer-app morning-start wiring', () => {
         const src = fs.readFileSync(path.join(VIEWER_DIR, 'viewer-app.js'), 'utf8');
         assert.match(src, /import \{[^}]*shouldShowLoginScreen/);
         assert.match(src, /shouldShowLoginScreen\(sessionOk/);
+    });
+
+    it('initializes desktop update UI in Electron', () => {
+        const src = fs.readFileSync(path.join(VIEWER_DIR, 'viewer-app.js'), 'utf8');
+        assert.match(src, /import \{initDesktopUpdateUi/);
+        assert.match(src, /initDesktopUpdateUi\(\)/);
     });
 });

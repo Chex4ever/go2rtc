@@ -191,6 +191,11 @@
                 <input id="checkUpdates" type="checkbox" checked>
                 <span><strong>Check for updates on startup</strong> — uses the same go2rtc server URL as the camera wall.</span>
             </label>
+            <label class="check">
+                <input id="autoDownloadUpdates" type="checkbox" checked>
+                <span><strong>Download updates automatically</strong> — when a new Camera Wall version is found, download in the background and show an in-app notification (no Windows toast).</span>
+            </label>
+            <p class="hint">Pending updates install silently on the next app start. Use the in-app card or menu <strong>Restart to install …</strong> to apply immediately.</p>
             <p class="hint">Manual check: app menu → <strong>Check for updates…</strong></p>
             <button type="button" id="btn-check-updates">Check for updates now</button>
             <label class="check">
@@ -262,6 +267,7 @@
             $('kiosk').checked = !!cfg.kiosk;
             $('autoStart').checked = !!cfg.autoStart;
             $('checkUpdates').checked = cfg.checkUpdatesOnStartup !== false;
+            $('autoDownloadUpdates').checked = cfg.autoDownloadUpdates !== false;
             $('autoOpenLayout').checked = cfg.autoOpenLayout !== false;
             $('defaultLayoutId').value = cfg.defaultLayoutId || '';
             applyBrandingUi(cfg.branding || {});
@@ -323,6 +329,7 @@
                     kiosk: $('kiosk').checked,
                     autoStart: $('autoStart').checked,
                     checkUpdatesOnStartup: $('checkUpdates').checked,
+                    autoDownloadUpdates: $('autoDownloadUpdates').checked,
                     autoOpenLayout: $('autoOpenLayout').checked,
                     defaultLayoutId: $('defaultLayoutId').value.trim(),
                     branding: readBranding(),

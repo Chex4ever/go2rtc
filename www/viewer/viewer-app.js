@@ -7,7 +7,8 @@ import {api, apiUrl, serverHint, isFetchFailure} from './viewer-api.js';
 import {isSessionProbeFatalError, shouldShowLoginScreen} from './viewer-session-boot.js';
 import {$} from './viewer-dom.js';
 import {state, stopAllRecordings} from './viewer-state.js';
-import {showFatalError, showScreen, onWallMouseMove, onWallTouch, showViewerNotice} from './viewer-ui.js';
+import {showFatalError, showScreen, onWallMouseMove, onWallTouch} from './viewer-ui.js';
+import {initDesktopUpdateUi, showDesktopNotice} from './desktop-update-ui.js';
 import {renderWall, exitFocus, applyWallLayoutClasses} from './viewer-wall.js';
 import {openAboutModal} from './viewer-about.js';
 
@@ -166,13 +167,15 @@ async function init() {
     $('#btn-exit-focus').addEventListener('click', exitFocus);
     bindAboutButtons();
 
+    initDesktopUpdateUi();
+
     if (window.go2rtcDesktop?.onUpdateNotice) {
         window.go2rtcDesktop.onUpdateNotice((message) => {
-            showViewerNotice(message, 5000);
+            showDesktopNotice(message, 8000);
         });
     }
     if (new URLSearchParams(window.location.search).get('viewer_notice') === 'updated') {
-        showViewerNotice('Viewer updated on server — press Ctrl+R to reload.', 5000);
+        showDesktopNotice('Viewer updated on server — press Ctrl+R to reload.', 8000);
     }
 
     document.addEventListener('mousemove', onWallMouseMove);

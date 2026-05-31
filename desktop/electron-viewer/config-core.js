@@ -40,9 +40,11 @@ function normalizeConfig(raw, brandingFromFiles) {
         kiosk: !!raw?.kiosk,
         autoStart: !!raw?.autoStart,
         checkUpdatesOnStartup: raw?.checkUpdatesOnStartup !== false,
+        autoDownloadUpdates: raw?.autoDownloadUpdates !== false,
         autoOpenLayout: raw?.autoOpenLayout !== false,
         defaultLayoutId: String(raw?.defaultLayoutId || '').trim(),
         lastViewerNoticeVersion: String(raw?.lastViewerNoticeVersion || '').trim(),
+        lastSeenAppVersion: String(raw?.lastSeenAppVersion || '').trim(),
         branding: mergeBranding(brandingFromFiles, raw?.branding),
     };
     if (!/^#[0-9A-Fa-f]{6}$/.test(cfg.branding.accentColor)) {
@@ -142,6 +144,7 @@ function configToInstallerJson(cfg) {
             kiosk: cfg.kiosk,
             autoStart: cfg.autoStart,
             checkUpdatesOnStartup: cfg.checkUpdatesOnStartup !== false,
+            autoDownloadUpdates: cfg.autoDownloadUpdates !== false,
             autoOpenLayout: cfg.autoOpenLayout !== false,
             defaultLayoutId: cfg.defaultLayoutId || '',
         },

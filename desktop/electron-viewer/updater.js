@@ -1,9 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const {app, dialog, Notification} = require('electron');
+const {app, dialog} = require('electron');
 const core = require('./updater-core');
 const cache = require('./updater-cache');
+const notify = require('./update-notify');
 const {launchSilentInstallerAndRelaunch, resolveInstallDir} = require('./installer-launch');
 const {launchPatchApplyAndRelaunch} = require('./patch-apply');
 
@@ -21,23 +22,8 @@ function initUpdaterCache() {
     }
 }
 
-function showUpdateNotification(title, body) {
-    cache.logUpdate(`notify: ${title}`, {body});
-    if (Notification.isSupported()) {
-        try {
-            new Notification({title, body}).show();
-        } catch {
-            /* ignore */
-        }
-    }
-}
-
-async function showUpdateDialog(parent, opts) {
-    if (opts.silent) {
-        return opts.cancelId ?? 1;
-    }
-    const choice = await dialog.showMessageBox(parent || undefined, opts);
-    return choice.response;
+function canApplyUpdates() {
+    return app.isPackaged && process.platform === 'win32';
 }
 
 /**
@@ -108,22 +94,6 @@ async function checkForUpdates(opts) {
     };
 }
 
-function fileNameFromUrl(downloadUrl) {
-    try {
-        const name = path.basename(new URL(downloadUrl).pathname);
-        if (name && name !== '/') {
-            return name;
-        }
-    } catch {
-        /* ignore */
-    }
-    return 'go2rtc-viewer-update.exe';
-}
-
-/**
- * @param {{downloadUrl: string, sha256?: string}} info
- * @param {(pct: number) => void} [onProgress]
- */
 async function downloadInstaller(info, onProgress) {
     initUpdaterCache();
     const currentVersion = app.getVersion();
@@ -147,6 +117,9 @@ async function downloadInstaller(info, onProgress) {
         info.downloadUrl,
     );
     cache.logUpdate('download started', {url: info.downloadUrl, dest});
+    if (onProgress) {
+        onProgress(5);
+    }
     const buf = Buffer.from(await res.arrayBuffer());
     if (onProgress) {
         onProgress(100);
@@ -173,9 +146,6 @@ async function downloadInstaller(info, onProgress) {
     return dest;
 }
 
-/**
- * @param {{patchUrl: string, sha256?: string, patchSha256?: string}} info
- */
 async function downloadPatch(info) {
     const sha = info.patchSha256 || info.sha256;
     return downloadInstaller({
@@ -227,28 +197,25 @@ function pendingReadyForInstall(currentVersion, info) {
     return pending;
 }
 
-/**
- * Download patch zip and apply changed shell files in-place, then quit app.
- * @param {{version: string, patchUrl: string, patchSha256?: string}} info
- */
 async function applyDesktopPatchOneClick(info, localPath) {
-    if (!app.isPackaged) {
-        throw new Error('Patch update works only in the installed application (not npm start).');
-    }
-    if (process.platform !== 'win32') {
-        throw new Error('Automatic patch apply is supported on Windows only.');
+    if (!canApplyUpdates()) {
+        throw new Error('Patch update works only in the installed Windows application.');
     }
     const patchPath = localPath;
     if (!patchPath || !fs.existsSync(patchPath)) {
         throw new Error('Patch file missing');
     }
-
     const installDir = resolveInstallDir();
     if (!installDir) {
         throw new Error('Could not detect install folder');
     }
 
     cache.logUpdate('starting patch apply', {patchPath, installDir});
+    notify.emitUpdateEvent({
+        kind: 'installing',
+        version: info.version,
+        message: 'Installing update — the app will restart…',
+    });
     const {helperPid, logPath} = await launchPatchApplyAndRelaunch(
         patchPath,
         process.execPath,
@@ -260,18 +227,10 @@ async function applyDesktopPatchOneClick(info, localPath) {
     return {patchPath, installDir, logPath, helperPid};
 }
 
-/**
- * Download installer and run NSIS silent upgrade in-place, then quit app.
- * @param {{version: string, downloadUrl: string, sha256?: string}} info
- */
 async function applyDesktopUpdateOneClick(info, localPath) {
-    if (!app.isPackaged) {
-        throw new Error('One-click update works only in the installed application (not npm start).');
+    if (!canApplyUpdates()) {
+        throw new Error('One-click update works only in the installed Windows application.');
     }
-    if (process.platform !== 'win32') {
-        throw new Error('Automatic install is supported on Windows only.');
-    }
-
     const installerPath = localPath;
     if (!installerPath || !fs.existsSync(installerPath)) {
         throw new Error('Installer file missing');
@@ -282,6 +241,11 @@ async function applyDesktopUpdateOneClick(info, localPath) {
     }
 
     cache.logUpdate('starting full installer apply', {installerPath, installDir});
+    notify.emitUpdateEvent({
+        kind: 'installing',
+        version: info.version,
+        message: 'Installing update — the app will restart…',
+    });
     const {helperPid, logPath} = await launchSilentInstallerAndRelaunch(
         installerPath,
         process.execPath,
@@ -300,61 +264,7 @@ async function applyDesktopUpdateSmart(info, localPath) {
     return applyDesktopUpdateOneClick(info, localPath);
 }
 
-async function promptInstallReady(parent, pending, opts = {}) {
-    const detail = [
-        `Version ${pending.version} has been downloaded and is ready to install.`,
-        '',
-        'The app will close briefly while files are replaced, then restart automatically.',
-        '',
-        `Update log: ${cache.updateLogFile()}`,
-    ].join('\n');
-
-    showUpdateNotification('Camera Wall update ready', `Version ${pending.version} is ready to install.`);
-
-    const response = await showUpdateDialog(parent, {
-        type: 'info',
-        title: 'Update ready',
-        message: `Install Camera Wall ${pending.version}?`,
-        detail,
-        buttons: ['Install now', 'Later'],
-        defaultId: 0,
-        cancelId: 1,
-        silent: opts.silent,
-    });
-    return response === 0;
-}
-
-async function downloadUpdateWithNotice(parent, result, opts = {}) {
-    const isPatch = result.info.updateKind === 'patch' && !!result.info.patchUrl;
-    showUpdateNotification(
-        'Downloading Camera Wall update',
-        `Downloading version ${result.remoteVersion}…`,
-    );
-    if (!opts.silent) {
-        await dialog.showMessageBox(parent || undefined, {
-            type: 'info',
-            title: 'Downloading update',
-            message: `Downloading version ${result.remoteVersion}…`,
-            detail: isPatch
-                ? 'Small update package is downloading in the background.'
-                : 'Full installer is downloading. You can keep using the camera wall.',
-        });
-    }
-
-    cache.logUpdate('user accepted download', {
-        remoteVersion: result.remoteVersion,
-        updateKind: result.info.updateKind,
-    });
-
-    const localPath = await downloadUpdateArtifact(result.info);
-    showUpdateNotification(
-        'Camera Wall update downloaded',
-        `Version ${result.remoteVersion} is ready to install.`,
-    );
-    return localPath;
-}
-
-async function installPendingUpdate(parent, pending, info) {
+async function installPendingUpdate(_parent, pending, info) {
     const updateInfo = info || {
         version: pending.version,
         updateKind: pending.updateKind || pending.kind,
@@ -384,240 +294,175 @@ async function installPendingUpdate(parent, pending, info) {
                 e = fallbackErr;
             }
         }
+        notify.emitUpdateEvent({kind: 'error', message: e?.message || String(e)});
+        throw e;
+    }
+}
+
+async function downloadUpdateForVersion(result, opts = {}) {
+    const version = result.remoteVersion;
+    notify.emitUpdateEvent({
+        kind: 'downloading',
+        version,
+        progress: 0,
+        message: 'Downloading update…',
+    });
+    cache.logUpdate('download started (background)', {
+        remoteVersion: version,
+        updateKind: result.info.updateKind,
+        auto: !!opts.auto,
+    });
+
+    try {
+        await downloadUpdateArtifact(result.info, (pct) => {
+            notify.emitUpdateEvent({kind: 'downloading', version, progress: pct});
+        });
+        notify.emitUpdateEvent({
+            kind: 'ready',
+            version,
+            message: `Version ${version} is ready to install.`,
+        });
+        cache.logUpdate('download finished (background)', {version});
+        return cache.readPendingUpdate();
+    } catch (e) {
+        notify.emitUpdateEvent({kind: 'error', message: e?.message || String(e)});
         throw e;
     }
 }
 
 /**
- * @param {import('electron').BrowserWindow | null} parent
- * @param {{serverUrl: string, silent?: boolean}} opts
+ * On startup: apply a previously downloaded update without prompting.
+ * @returns {Promise<boolean>} true when the app is quitting to install
  */
-async function runUpdateFlow(parent, opts) {
+async function trySilentStartupInstall() {
+    if (!canApplyUpdates()) {
+        return false;
+    }
     initUpdaterCache();
-    const result = await checkForUpdates(opts);
-
-    if (result.status === 'unavailable') {
-        if (!opts.silent) {
-            await dialog.showMessageBox(parent || undefined, {
-                type: 'info',
-                title: 'Check for updates',
-                message: result.message,
-                detail:
-                    'Ask your administrator to publish an installer on the go2rtc server ' +
-                    '(viewer.desktop in go2rtc.yaml or viewer/desktop/update.json).',
-            });
-        }
-        return result;
+    const pending = pendingReadyForInstall(app.getVersion());
+    if (!pending) {
+        return false;
     }
-
-    if (result.status === 'current') {
-        if (!opts.silent) {
-            await dialog.showMessageBox(parent || undefined, {
-                type: 'info',
-                title: 'Check for updates',
-                message: `You have the latest version (${result.currentVersion}).`,
-                detail: `Update log: ${cache.updateLogFile()}`,
-            });
-        }
-        return result;
-    }
-
-    if (result.status === 'viewer_only') {
-        if (!opts.silent) {
-            await dialog.showMessageBox(parent || undefined, {
-                type: 'info',
-                title: 'Viewer updated on server',
-                message: 'The camera wall web UI was updated on the go2rtc server.',
-                detail: 'Press Ctrl+R to reload. No desktop download is required.',
-            });
-        }
-        return result;
-    }
-
-    const pending = pendingReadyForInstall(result.currentVersion, result.info);
-    if (pending && pending.version === result.remoteVersion) {
-        const install = await promptInstallReady(parent, pending, opts);
-        if (!install) {
-            return {...result, status: 'ready', pending};
-        }
-        try {
-            await installPendingUpdate(parent, pending, result.info);
-            return {...result, status: 'installing', pending};
-        } catch (e) {
-            await dialog.showMessageBox(parent || undefined, {
-                type: 'error',
-                title: 'Update failed',
-                message: e?.message || String(e),
-                detail: [
-                    'The installer could not run. Check the update log for details.',
-                    '',
-                    `Log: ${cache.updateLogFile()}`,
-                    `Helper log: ${path.join(require('os').tmpdir(), `go2rtc-viewer-update-${process.pid}.log`)}`,
-                ].join('\n'),
-            });
-            return {...result, error: e, pending};
-        }
-    }
-
-    const isPatch = result.info.updateKind === 'patch' && !!result.info.patchUrl;
-    const detail = [
-        result.info.notes || '',
-        '',
-        `Installed: ${result.currentVersion}`,
-        `Available: ${result.remoteVersion}`,
-        '',
-        isPatch
-            ? 'Small update: download changed shell files only, then restart the app.'
-            : 'Full update: download installer, replace files, and restart the app (Windows installed build).',
-        '',
-        `Update log: ${cache.updateLogFile()}`,
-    ]
-        .filter(Boolean)
-        .join('\n');
-
-    const canOneClick = app.isPackaged && process.platform === 'win32';
-    const response = await showUpdateDialog(parent, {
-        type: 'info',
-        title: 'Update available',
-        message: isPatch
-            ? `Small update ${result.remoteVersion} is available`
-            : `Version ${result.remoteVersion} is available`,
-        detail,
-        buttons: canOneClick ? ['Download update', 'Later'] : ['OK'],
-        defaultId: 0,
-        cancelId: canOneClick ? 1 : 0,
-        silent: opts.silent,
-    });
-
-    if (!canOneClick || response !== 0) {
-        return result;
-    }
-
+    cache.logUpdate('startup silent install', pending);
     try {
-        const localPath = await downloadUpdateWithNotice(parent, result, opts);
-        const readyPending = cache.readPendingUpdate();
-        const install = await promptInstallReady(
-            parent,
-            readyPending || {version: result.remoteVersion, path: localPath},
-            opts,
-        );
-        if (!install) {
-            return {...result, status: 'ready', localPath, pending: readyPending};
-        }
-        await installPendingUpdate(
-            parent,
-            readyPending || {version: result.remoteVersion, path: localPath},
-            result.info,
-        );
-        return {...result, status: 'installing', localPath};
+        await installPendingUpdate(null, pending);
+        return true;
     } catch (e) {
-        cache.logUpdate('download/install failed', {error: String(e?.message || e)});
-        await dialog.showMessageBox(parent || undefined, {
-            type: 'error',
-            title: 'Update failed',
-            message: e?.message || String(e),
-            detail: `See log: ${cache.updateLogFile()}`,
-        });
-        return {...result, error: e};
+        cache.logUpdate('startup silent install failed', {error: String(e?.message || e)});
+        return false;
     }
 }
 
-async function runStartupUpdateCheck(parent, opts) {
+/**
+ * Background update check after the wall is open.
+ * @param {{serverUrl: string, autoDownloadUpdates?: boolean}} opts
+ */
+async function runBackgroundUpdateCheck(opts) {
     initUpdaterCache();
     const currentVersion = app.getVersion();
-    cache.logUpdate('startup update check', {currentVersion});
-
-    const pending = pendingReadyForInstall(currentVersion);
-    if (pending) {
-        cache.logUpdate('found cached pending update', pending);
-        const install = await promptInstallReady(parent, pending, {silent: false});
-        if (install) {
-            try {
-                await installPendingUpdate(parent, pending);
-                return {status: 'installing', pending};
-            } catch (e) {
-                cache.logUpdate('startup install failed', {error: String(e?.message || e)});
-                await dialog.showMessageBox(parent || undefined, {
-                    type: 'error',
-                    title: 'Update failed',
-                    message: e?.message || String(e),
-                    detail: `See log: ${cache.updateLogFile()}`,
-                });
-                return {status: 'error', error: e, pending};
-            }
-        }
-        return {status: 'ready', pending};
-    }
+    cache.logUpdate('background update check', {currentVersion});
 
     const result = await checkForUpdates({...opts, silent: true});
     if (result.status === 'viewer_only') {
+        return result;
+    }
+    if (result.status === 'current' || result.status === 'unavailable') {
+        notify.patchUpdateState({status: 'idle'});
         return result;
     }
     if (result.status !== 'available') {
         return result;
     }
 
-    const cached = cache.resolveLocalArtifact(result.info, currentVersion);
-    if (cached?.path) {
-        cache.rememberPendingUpdate(result.info, cached.path);
-        const ready = cache.readPendingUpdate();
-        const install = await promptInstallReady(parent, ready, {silent: false});
-        if (install) {
-            try {
-                await installPendingUpdate(parent, ready, result.info);
-                return {status: 'installing', pending: ready};
-            } catch (e) {
-                cache.logUpdate('startup cached install failed', {error: String(e?.message || e)});
-            }
-        }
-        return {...result, status: 'ready', pending: ready};
+    const pending = pendingReadyForInstall(currentVersion, result.info);
+    if (pending && pending.version === result.remoteVersion) {
+        notify.emitUpdateEvent({
+            kind: 'ready',
+            version: pending.version,
+            message: `Version ${pending.version} is ready to install.`,
+        });
+        return {...result, status: 'ready', pending};
     }
 
-    const response = await showUpdateDialog(parent, {
-        type: 'info',
-        title: 'Update available',
-        message: `Camera Wall ${result.remoteVersion} is available`,
-        detail: [
-            `Installed: ${result.currentVersion}`,
-            'Download now and install when ready.',
-            '',
-            `Update log: ${cache.updateLogFile()}`,
-        ].join('\n'),
-        buttons: ['Download update', 'Later'],
-        defaultId: 0,
-        cancelId: 1,
-        silent: false,
+    const autoDownload = opts.autoDownloadUpdates !== false;
+    if (autoDownload) {
+        await downloadUpdateForVersion(result, {auto: true});
+        return {...result, status: 'ready'};
+    }
+
+    notify.emitUpdateEvent({
+        kind: 'available',
+        version: result.remoteVersion,
+        message: `Version ${result.remoteVersion} is available.`,
     });
-    if (response !== 0) {
-        return result;
-    }
-
-    try {
-        const localPath = await downloadUpdateWithNotice(parent, result, {silent: false});
-        const readyPending = cache.readPendingUpdate();
-        const install = await promptInstallReady(
-            parent,
-            readyPending || {version: result.remoteVersion, path: localPath},
-            {silent: false},
-        );
-        if (install) {
-            await installPendingUpdate(
-                parent,
-                readyPending || {version: result.remoteVersion, path: localPath},
-                result.info,
-            );
-            return {...result, status: 'installing', localPath};
-        }
-        return {...result, status: 'ready', localPath, pending: readyPending};
-    } catch (e) {
-        cache.logUpdate('startup download failed', {error: String(e?.message || e)});
-        return {...result, error: e};
-    }
+    return result;
 }
 
 /**
- * @param {{serverUrl: string}} opts
+ * Menu / settings: check, optionally download, surface in-app notifications.
  */
+async function runManualDesktopUpdateCheck(opts) {
+    initUpdaterCache();
+    const currentVersion = app.getVersion();
+    const result = await checkForUpdates(opts);
+
+    if (result.status === 'unavailable') {
+        notify.emitUpdateEvent({
+            kind: 'error',
+            message: result.message || 'No desktop update published on this server.',
+        });
+        return result;
+    }
+    if (result.status === 'current') {
+        notify.emitUpdateEvent({
+            kind: 'installed',
+            title: 'Up to date',
+            message: `Camera Wall ${currentVersion} is the latest version offered by your server.`,
+        });
+        return result;
+    }
+    if (result.status === 'viewer_only') {
+        notify.emitUpdateEvent({
+            kind: 'installed',
+            title: 'Viewer updated on server',
+            message: 'Press Ctrl+R to reload the camera wall. No desktop download is required.',
+        });
+        return result;
+    }
+
+    const pending = pendingReadyForInstall(currentVersion, result.info);
+    if (pending && pending.version === result.remoteVersion) {
+        notify.emitUpdateEvent({
+            kind: 'ready',
+            version: pending.version,
+            message: `Version ${pending.version} is ready to install.`,
+        });
+        return {...result, status: 'ready', pending};
+    }
+
+    if (!canApplyUpdates()) {
+        notify.emitUpdateEvent({
+            kind: 'available',
+            version: result.remoteVersion,
+            message: 'Updates apply automatically only in the installed Windows build.',
+        });
+        return result;
+    }
+
+    await downloadUpdateForVersion(result, {auto: false});
+    return {...result, status: 'ready'};
+}
+
+/** @deprecated use runManualDesktopUpdateCheck */
+async function runUpdateFlow(parent, opts) {
+    return runManualDesktopUpdateCheck(opts);
+}
+
+/** @deprecated use runBackgroundUpdateCheck + trySilentStartupInstall */
+async function runStartupUpdateCheck(parent, opts) {
+    return runBackgroundUpdateCheck(opts);
+}
+
 async function fetchGo2rtcUpdateInfo(opts) {
     const serverBase = require('./config-core').normalizeServerUrl(opts.serverUrl);
     const platform = process.platform;
@@ -667,10 +512,6 @@ async function checkGo2rtcUpdates(opts) {
     };
 }
 
-/**
- * @param {import('electron').BrowserWindow | null} parent
- * @param {{serverUrl: string, silent?: boolean}} opts
- */
 async function runGo2rtcUpdateFlow(parent, opts) {
     const result = await checkGo2rtcUpdates(opts);
 
@@ -749,55 +590,11 @@ async function runGo2rtcUpdateFlow(parent, opts) {
     }
 }
 
-/**
- * Check desktop app then go2rtc server updates (non-silent shows dialogs in sequence).
- */
 async function runAllUpdateFlows(parent, opts) {
     initUpdaterCache();
-    const desktop = await runUpdateFlow(parent, opts);
-    const go2rtc = await runGo2rtcUpdateFlow(parent, {...opts, silent: true});
-
-    if (opts.silent) {
-        return {desktop, go2rtc};
-    }
-
-    if (desktop.status !== 'current' && desktop.status !== 'unavailable') {
-        return {desktop, go2rtc};
-    }
-
-    const lines = [];
-    if (go2rtc.status === 'available') {
-        lines.push(`go2rtc server: ${go2rtc.remoteVersion} available (running ${go2rtc.runningVersion}).`);
-    } else if (go2rtc.status === 'current') {
-        lines.push(`go2rtc server: up to date (${go2rtc.runningVersion}).`);
-    } else {
-        lines.push(`go2rtc server: ${go2rtc.message || go2rtc.status}.`);
-    }
-    lines.push('', `Update log: ${cache.updateLogFile()}`);
-
-    if (go2rtc.status === 'available') {
-        const choice = await dialog.showMessageBox(parent || undefined, {
-            type: 'info',
-            title: 'Check for updates',
-            message: 'go2rtc update available',
-            detail: lines.join('\n'),
-            buttons: ['Update go2rtc', 'Close'],
-            defaultId: 0,
-            cancelId: 1,
-        });
-        if (choice.response === 0) {
-            await runGo2rtcUpdateFlow(parent, opts);
-        }
-    } else {
-        await dialog.showMessageBox(parent || undefined, {
-            type: 'info',
-            title: 'Check for updates',
-            message: lines[0],
-            detail: lines.slice(1).join('\n'),
-        });
-    }
-
-    return {desktop, go2rtc};
+    const desktop = await runManualDesktopUpdateCheck(opts);
+    await runGo2rtcUpdateFlow(parent, {...opts, silent: true});
+    return {desktop};
 }
 
 module.exports = {
@@ -812,6 +609,9 @@ module.exports = {
     applyDesktopUpdateOneClick,
     applyDesktopUpdateSmart,
     installPendingUpdate,
+    trySilentStartupInstall,
+    runBackgroundUpdateCheck,
+    runManualDesktopUpdateCheck,
     runUpdateFlow,
     runStartupUpdateCheck,
     runGo2rtcUpdateFlow,

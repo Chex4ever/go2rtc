@@ -12,4 +12,13 @@ contextBridge.exposeInMainWorld('go2rtcDesktop', {
         }
         ipcRenderer.on('viewer:update-notice', (_event, message) => callback(message));
     },
+    onUpdateEvent: (callback) => {
+        if (typeof callback !== 'function') {
+            return;
+        }
+        ipcRenderer.on('desktop:update-event', (_event, payload) => callback(payload));
+    },
+    getUpdateState: () => ipcRenderer.invoke('desktop:update-state'),
+    installPendingUpdate: () => ipcRenderer.invoke('desktop:install-pending-update'),
+    dismissUpdateReady: () => ipcRenderer.invoke('desktop:dismiss-update-ready'),
 });
