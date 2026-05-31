@@ -75,6 +75,10 @@ export function startChromeHide() {
     }
     wall.classList.remove('chrome-hidden', 'show-top-chrome');
     $('#app')?.classList.remove('show-top-chrome');
+    if (state.wallChromeHidden) {
+        wall.classList.add('chrome-hidden');
+        return;
+    }
     state.chromeTimer = setTimeout(() => {
         wall.classList.add('chrome-hidden');
     }, CHROME_HIDE_MS);

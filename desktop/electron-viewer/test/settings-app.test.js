@@ -24,6 +24,8 @@ describe('settings-app.js', () => {
         assert.match(code, /refreshUpdaterStatus/);
         assert.match(code, /api\/updater\?action=install-updater/);
         assert.match(code, /api\/updater\?action=uninstall-updater/);
+        assert.match(code, /api\/updater\?action=check-now/);
+        assert.match(code, /api\/updater\?action=apply-now/);
         assert.doesNotMatch(code, /pollUpdaterInstallJob/);
         assert.match(code, /UAC prompt \(same as go2rtc service\)/);
     });

@@ -843,6 +843,15 @@ function setUpdaterActionStatus(msg, isError = false) {
     el.className = 'settings-status' + (isError ? ' err' : msg ? ' ok' : '');
 }
 
+function setGo2rtcUpdateStatus(msg, isError = false) {
+    const el = $('#go2rtc-update-status');
+    if (!el) {
+        return;
+    }
+    el.textContent = msg || '';
+    el.className = 'settings-status' + (isError ? ' err' : msg ? ' ok' : '');
+}
+
 function formatUpdaterLastStatus(st) {
     if (!st || typeof st !== 'object') {
         return '';
@@ -851,7 +860,9 @@ function formatUpdaterLastStatus(st) {
     if (st.state) {
         parts.push(String(st.state));
     }
-    if (st.version_current && st.version_latest) {
+    if (st.running_version && st.available_version) {
+        parts.push(`${st.running_version} → ${st.available_version}`);
+    } else if (st.version_current && st.version_latest) {
         parts.push(`${st.version_current} → ${st.version_latest}`);
     }
     if (st.message) {
@@ -1226,6 +1237,58 @@ function wireSettings() {
         } finally {
             state.updaterBusy = false;
             await refreshUpdaterStatus();
+        }
+    });
+
+    $('#btn-check-go2rtc-update')?.addEventListener('click', async () => {
+        if (state.updaterBusy) {
+            return;
+        }
+        state.updaterBusy = true;
+        setGo2rtcUpdateStatus('Checking…');
+        const checkUrl = apiUrl('api/updater?action=check-now');
+        try {
+            const r = await apiFetch(checkUrl, {method: 'POST'});
+            if (!r.ok) {
+                throw new Error(await r.text() || r.statusText);
+            }
+            const info = await r.json();
+            const msg = info.message || `${info.running_version} → ${info.available_version}`;
+            setGo2rtcUpdateStatus(msg, !info.needs_update && info.state === 'error');
+            await refreshUpdaterStatus();
+        } catch (e) {
+            const msg = formatFetchError(e, checkUrl);
+            setGo2rtcUpdateStatus(msg, true);
+            alert(msg);
+        } finally {
+            state.updaterBusy = false;
+        }
+    });
+
+    $('#btn-apply-go2rtc-update')?.addEventListener('click', async () => {
+        if (state.updaterBusy) {
+            return;
+        }
+        if (!confirm('Install the latest go2rtc.exe now? The service will stop briefly. Approve UAC if prompted.')) {
+            return;
+        }
+        state.updaterBusy = true;
+        setGo2rtcUpdateStatus('Installing… go2rtc will restart. Approve UAC if prompted.');
+        const applyUrl = apiUrl('api/updater?action=apply-now');
+        try {
+            const r = await apiFetch(applyUrl, {method: 'POST'});
+            if (!r.ok) {
+                throw new Error(await r.text() || r.statusText);
+            }
+            const info = await r.json();
+            setGo2rtcUpdateStatus(info.message || 'Update started.');
+            await refreshUpdaterStatus();
+        } catch (e) {
+            const msg = formatFetchError(e, applyUrl);
+            setGo2rtcUpdateStatus(msg, true);
+            alert(msg);
+        } finally {
+            state.updaterBusy = false;
         }
     });
 

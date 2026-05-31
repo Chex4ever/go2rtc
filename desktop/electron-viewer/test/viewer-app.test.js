@@ -100,8 +100,10 @@ describe('focus mode top chrome', () => {
         assert.match(ui, /scheduleTopChromeHide/);
         assert.match(ui, /CHROME_UI_SELECTOR/);
         assert.match(ui, /revealTopChromeOnPointer/);
+        assert.match(ui, /state\.wallChromeHidden/);
         assert.match(css, /#electron-brand-bar/);
         assert.match(css, /#screen-wall\.chrome-hidden:not\(\.show-top-chrome\) \.wall-header/);
+        assert.match(css, /tile\.tile-active \.tile-bar/);
         assert.match(css, /#screen-wall\.focus-mode \.cell\.focused \.tile-bar/);
         assert.match(css, /z-index: 25/);
     });

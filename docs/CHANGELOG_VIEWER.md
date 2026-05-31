@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## 1.2.31 (2026-05-27)
+
+- **Fix:** Autostart / kiosk — Camera Wall opens fullscreen (F11) with wall chrome hidden until top edge or tile click.
+- **Feature:** go2rtc Settings — **Check for go2rtc update** and **Install go2rtc update now** (uses `go2rtc-updater.exe`, UAC for apply).
+
 ## 1.2.30 (2026-05-27)
 
 - **Fix:** Settings **Install updater service** — synchronous install with UAC elevation (same as **Run go2rtc as a Windows service**), not async polling.

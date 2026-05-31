@@ -323,13 +323,13 @@ button.link-btn:hover {
     pointer-events: none;
 }
 
-#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-bar,
-#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-controls {
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-bar,
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-controls {
     opacity: 1;
     pointer-events: auto;
 }
 
-#screen-wall.chrome-hidden:not(.focus-mode) .tile:hover .tile-bar {
+#screen-wall.chrome-hidden:not(.focus-mode) .tile.tile-active .tile-bar {
     z-index: 25;
 }
 

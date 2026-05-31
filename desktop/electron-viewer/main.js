@@ -474,8 +474,8 @@ function createMainWindow(existingBounds) {
         minWidth: config.kiosk ? undefined : 800,
         minHeight: config.kiosk ? undefined : 600,
         title: config.branding.windowTitle || 'Camera Wall',
-        autoHideMenuBar: config.kiosk,
-        fullscreen: config.kiosk,
+        autoHideMenuBar: config.kiosk || config.startFullscreen,
+        fullscreen: config.kiosk || config.startFullscreen,
         kiosk: config.kiosk,
         frame: !config.kiosk,
         webPreferences: {
@@ -499,6 +499,9 @@ function createMainWindow(existingBounds) {
     attachMainWindowBoundsPersistence(mainWindow);
     attachViewerLoadHandlers(mainWindow, config);
     mainWindow.once('ready-to-show', () => {
+        if (!config.kiosk && config.startFullscreen) {
+            mainWindow?.setFullScreen(true);
+        }
         mainWindow?.show();
         mainWindow?.focus();
     });
@@ -539,9 +542,10 @@ function recreateMainWindow() {
 
 async function applyMainWindowAfterSettings(prev, next) {
     const kioskChanged = prev.kiosk !== next.kiosk;
+    const fullscreenChanged = prev.startFullscreen !== next.startFullscreen;
     const serverChanged = prev.serverUrl !== next.serverUrl;
 
-    if (kioskChanged) {
+    if (kioskChanged || fullscreenChanged) {
         recreateMainWindow();
         return;
     }
@@ -862,6 +866,10 @@ ipcMain.handle('viewer:client-info', () => {
         arch: process.arch,
         server_url: cfg.normalizeServerUrl(config.serverUrl),
         packaged: app.isPackaged,
+        kiosk: !!config.kiosk,
+        auto_start: !!config.autoStart,
+        start_fullscreen: !!(config.kiosk || config.startFullscreen),
+        wall_chrome_hidden: !!(config.kiosk || config.wallChromeHidden),
         ...updater.getUpdateDiagnostics(),
     };
 });
@@ -967,6 +975,8 @@ ipcMain.handle('settings:save', async (_event, payload) => {
         allowInsecureHttps: !!payload?.allowInsecureHttps,
         kiosk: !!payload?.kiosk,
         autoStart: !!payload?.autoStart,
+        startFullscreen: !!payload?.startFullscreen,
+        wallChromeHidden: !!payload?.wallChromeHidden,
         checkUpdatesOnStartup: payload?.checkUpdatesOnStartup !== false,
         autoDownloadUpdates: payload?.autoDownloadUpdates !== false,
         autoOpenLayout: payload?.autoOpenLayout !== false,

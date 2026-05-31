@@ -753,6 +753,21 @@ function createTile(logicalName, slotIndex, connectIndex = 0) {
             setActiveTile(tile);
             bumpChrome();
         });
+    } else {
+        tile.addEventListener('click', (e) => {
+            if (e.target.closest('.tile-controls button, .tile-focus-btn')) {
+                return;
+            }
+            if (state.focusSlot !== null) {
+                return;
+            }
+            const wall = $('#screen-wall');
+            if (!wall?.classList.contains('chrome-hidden')) {
+                return;
+            }
+            setActiveTile(tile);
+            bumpChrome();
+        });
     }
 
     tile.appendChild(body);

@@ -186,6 +186,14 @@
                 <input id="autoStart" type="checkbox">
                 <span><strong>Start at Windows login</strong></span>
             </label>
+            <label class="check">
+                <input id="startFullscreen" type="checkbox">
+                <span><strong>Start fullscreen (F11)</strong> — edge-to-edge on launch; use View menu or F11 to exit.</span>
+            </label>
+            <label class="check">
+                <input id="wallChromeHidden" type="checkbox">
+                <span><strong>Hide wall controls on start</strong> — top bar and tile buttons appear only at the top edge or when you click a tile.</span>
+            </label>
             <p id="autostart-note" class="hint hidden"></p>
             <label class="check">
                 <input id="checkUpdates" type="checkbox" checked>
@@ -266,6 +274,8 @@
             $('insecure').checked = !!cfg.allowInsecureHttps;
             $('kiosk').checked = !!cfg.kiosk;
             $('autoStart').checked = !!cfg.autoStart;
+            $('startFullscreen').checked = !!cfg.startFullscreen;
+            $('wallChromeHidden').checked = !!cfg.wallChromeHidden;
             $('checkUpdates').checked = cfg.checkUpdatesOnStartup !== false;
             $('autoDownloadUpdates').checked = cfg.autoDownloadUpdates !== false;
             $('autoOpenLayout').checked = cfg.autoOpenLayout !== false;
@@ -328,6 +338,8 @@
                     allowInsecureHttps: $('insecure').checked,
                     kiosk: $('kiosk').checked,
                     autoStart: $('autoStart').checked,
+                    startFullscreen: $('startFullscreen').checked,
+                    wallChromeHidden: $('wallChromeHidden').checked,
                     checkUpdatesOnStartup: $('checkUpdates').checked,
                     autoDownloadUpdates: $('autoDownloadUpdates').checked,
                     autoOpenLayout: $('autoOpenLayout').checked,

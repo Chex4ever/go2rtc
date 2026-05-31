@@ -86,6 +86,8 @@ Function WriteViewerInstallConfig
     FileWrite $0 '  "allowInsecureHttps": false,$\r$\n'
     FileWrite $0 '  "kiosk": true,$\r$\n'
     FileWrite $0 '  "autoStart": true,$\r$\n'
+    FileWrite $0 '  "startFullscreen": true,$\r$\n'
+    FileWrite $0 '  "wallChromeHidden": true,$\r$\n'
     FileWrite $0 '  "autoOpenLayout": true$\r$\n'
     FileWrite $0 "}$\r$\n"
     FileClose $0
@@ -99,6 +101,8 @@ Function WriteViewerInstallConfig
     FileWrite $0 '  "allowInsecureHttps": false,$\r$\n'
     FileWrite $0 '  "kiosk": false,$\r$\n'
     FileWrite $0 '  "autoStart": true,$\r$\n'
+    FileWrite $0 '  "startFullscreen": true,$\r$\n'
+    FileWrite $0 '  "wallChromeHidden": true,$\r$\n'
     FileWrite $0 '  "autoOpenLayout": true$\r$\n'
     FileWrite $0 "}$\r$\n"
     FileClose $0

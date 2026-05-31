@@ -12,6 +12,7 @@ export const state = {
     tileViewports: new Map(),
     chromeTimer: null,
     wallLayoutMode: 'desktop',
+    wallChromeHidden: false,
     activeTile: null,
     recorders: new Map(),
 };

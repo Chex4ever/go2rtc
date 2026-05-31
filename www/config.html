@@ -97,7 +97,13 @@
             <span id="updater-actions-status" class="settings-status"></span>
         </div>
         <p id="updater-last-status" class="settings-note"></p>
-        <p class="settings-note">Fully automatic updates require <code>go2rtc-updater.exe</code> next to <code>go2rtc.exe</code>, then installing the updater service (UAC prompt, or elevated: <code>go2rtc-updater install-service -config go2rtc.yaml</code>).</p>
+        <div class="settings-actions">
+            <button type="button" id="btn-check-go2rtc-update">Check for go2rtc update</button>
+            <button type="button" id="btn-apply-go2rtc-update" class="primary">Install go2rtc update now</button>
+            <span id="go2rtc-update-status" class="settings-status"></span>
+        </div>
+        <p class="settings-note">Manual update uses <code>go2rtc-updater.exe</code> next to <code>go2rtc.exe</code>. Install stops the go2rtc service, replaces the binary, and restarts (UAC may appear). Configure <code>updater.github</code> in YAML.</p>
+        <p class="settings-note">Fully automatic updates require installing the updater service (UAC prompt, or elevated: <code>go2rtc-updater install-service -config go2rtc.yaml</code>).</p>
 
         <h2>Web API</h2>
         <div class="settings-grid">

@@ -171,6 +171,17 @@ async function init() {
 
     initDesktopUpdateUi();
 
+    if (window.go2rtcDesktop?.getClientInfo) {
+        try {
+            const client = await window.go2rtcDesktop.getClientInfo();
+            if (client?.wall_chrome_hidden) {
+                state.wallChromeHidden = true;
+            }
+        } catch {
+            /* ignore */
+        }
+    }
+
     if (window.go2rtcDesktop?.onUpdateNotice) {
         window.go2rtcDesktop.onUpdateNotice((message) => {
             showDesktopNotice(message, 8000);

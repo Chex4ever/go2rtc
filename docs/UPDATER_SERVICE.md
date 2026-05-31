@@ -62,6 +62,15 @@ go2rtc-updater install-service -config C:\go2rtc\go2rtc.yaml
 
 This registers service **`go2rtc-updater`** with `start=auto`.
 
+### Manual check / apply (Settings)
+
+In go2rtc **Settings → Auto-update**:
+
+- **Check for go2rtc update** — `POST /api/updater?action=check-now` (reads `updater.github` or local `version`/`binary`)
+- **Install go2rtc update now** — `POST /api/updater?action=apply-now` (runs `go2rtc-updater run-once`; UAC; go2rtc restarts)
+
+Requires `go2rtc-updater.exe` next to `go2rtc.exe`. Does not require the updater Windows service.
+
 ## Commands
 
 ```text

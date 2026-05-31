@@ -13,6 +13,8 @@ describe('configFromInstallMode', () => {
         const c = core.configFromInstallMode('autostart');
         assert.equal(c.kiosk, false);
         assert.equal(c.autoStart, true);
+        assert.equal(c.startFullscreen, true);
+        assert.equal(c.wallChromeHidden, true);
         assert.equal(c.autoOpenLayout, true);
     });
 
@@ -20,6 +22,8 @@ describe('configFromInstallMode', () => {
         const c = core.configFromInstallMode('kiosk');
         assert.equal(c.kiosk, true);
         assert.equal(c.autoStart, true);
+        assert.equal(c.startFullscreen, true);
+        assert.equal(c.wallChromeHidden, true);
     });
 
     it('matches installer JSON shape', () => {
