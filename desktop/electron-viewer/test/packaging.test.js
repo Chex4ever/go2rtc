@@ -24,6 +24,13 @@ const RUNTIME_MODULES = [
 ];
 
 describe('electron-builder packaging', () => {
+    it('installer clears pending autoupdate state on Setup run', () => {
+        const nsh = fs.readFileSync(path.join(__dirname, '..', 'build', 'installer.nsh'), 'utf8');
+        assert.match(nsh, /ClearViewerUpdateState/);
+        assert.match(nsh, /pending-update\.json/);
+        assert.match(nsh, /install-state\.json/);
+    });
+
     it('includes all main-process runtime modules in build.files', () => {
         const pkg = JSON.parse(
             fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),

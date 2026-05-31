@@ -187,7 +187,7 @@ If Camera Wall flashes and closes after **Restart now**, or update loops fail:
 
 In the desktop app: **About** → section **Logs (desktop)** (or app menu **About Camera Wall…**).
 
-**Recovery:** delete `pending-update.json` and `install-state.json` in `%APPDATA%\go2rtc-viewer\`, then reinstall from the latest Setup `.exe` from GitHub Releases.
+**Recovery:** delete `pending-update.json` and `install-state.json` in `%APPDATA%\go2rtc-viewer\`, then reinstall from the latest Setup `.exe` from GitHub Releases. Running Setup also clears those files automatically (v1.2.27+).
 
 ### Tile debug (black cameras)
 

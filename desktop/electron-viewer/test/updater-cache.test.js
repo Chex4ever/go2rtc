@@ -111,4 +111,23 @@ describe('updater-cache', () => {
         });
         assert.equal(cache.shouldRunStartupInstall(pending, '1.2.25').reason, 'max_attempts');
     });
+
+    it('clears stale pending when app is already at pending version', () => {
+        cache.writePendingUpdate({version: '1.2.26', kind: 'full', path: 'C:\\Temp\\setup.exe'});
+        cache.writeInstallState({version: '1.2.26', attempts: 1});
+        const pending = cache.readPendingUpdate();
+        const gate = cache.shouldRunStartupInstall(pending, '1.2.26');
+        assert.equal(gate.ok, false);
+        assert.equal(gate.reason, 'already_installed');
+        assert.equal(cache.readPendingUpdate(), null);
+        assert.equal(cache.readInstallState(), null);
+    });
+
+    it('clears older pending after manual install to a newer version', () => {
+        cache.writePendingUpdate({version: '1.2.25', kind: 'full', path: 'C:\\Temp\\old.exe'});
+        const pending = cache.readPendingUpdate();
+        const gate = cache.shouldRunStartupInstall(pending, '1.2.26');
+        assert.equal(gate.reason, 'already_installed');
+        assert.equal(cache.readPendingUpdate(), null);
+    });
 });

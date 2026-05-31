@@ -350,6 +350,11 @@ button.link-btn:hover {
     border: none;
 }
 
+#screen-wall.focus-mode .cell.focused.focus-animating {
+    z-index: 15;
+    will-change: transform;
+}
+
 #screen-wall.focus-mode .cell.focused .tile {
     background: #000;
 }
@@ -361,10 +366,15 @@ button.link-btn:hover {
     z-index: 20;
 }
 
+.cell.focus-animating {
+    z-index: 12;
+    will-change: transform;
+}
+
 #screen-wall.focus-mode .tile-bar {
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.5s ease;
 }
 
 #screen-wall.focus-mode.show-top-chrome .tile-bar {
@@ -391,11 +401,30 @@ button.link-btn:hover {
 }
 
 .viewport-inner {
+    position: relative;
     width: 100%;
     height: 100%;
     transform-origin: center center;
     will-change: transform;
     touch-action: none;
+}
+
+.viewport-inner viewer-stream.stream-preview,
+.viewport-inner viewer-stream.stream-main {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.viewport-inner viewer-stream.stream-main {
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.viewport-inner viewer-stream.stream-main.is-playing {
+    opacity: 1;
 }
 
 .viewport-inner viewer-stream,

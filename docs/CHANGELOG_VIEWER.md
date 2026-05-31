@@ -1,5 +1,14 @@
 # Camera wall & desktop changelog
 
+## 1.2.27 (2026-05-31)
+
+- **Feature:** Camera wall — preview sub-streams stay connected in the grid while a camera is in main-channel focus; returning to the layout shows video immediately (no full reconnect).
+- **Feature:** Main channel — preview stream stays visible until the main feed is playing (no black square while loading).
+- **Feature:** 0.5s grow/shrink animation when opening or closing main-channel focus; double-click main channel to return to the grid.
+- **Fix:** NSIS Setup clears `pending-update.json` and `install-state.json` on manual install (recovery from stuck autoupdate).
+- **Fix:** `go2rtc-updater.exe` — Windows version metadata in CI; release ships `.sha256`; Defender false-positive notes in docs.
+- **CI:** Fork builds skip GHCR push; GitHub Actions use Node.js 24 (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
+
 ## 1.2.26 (2026-05-31)
 
 - **Fix:** Autoupdate no longer loops quit-on-start when install is in progress or failed — install cooldown, max 2 startup attempts, then pending update is cleared so the app can open.

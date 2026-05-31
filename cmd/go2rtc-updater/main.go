@@ -11,9 +11,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Set at link time: -X main.version=1.2.26
+var version = "dev"
+
 func main() {
 	flag.Usage = func() {
-		fmt.Print(`go2rtc-updater — automatic go2rtc.exe updates (Windows service)
+		fmt.Printf(`go2rtc-updater %s — automatic go2rtc.exe updates (Windows service)
 
 Usage:
   go2rtc-updater run-service          Run check loop (for Windows service)
@@ -24,7 +27,7 @@ Usage:
   go2rtc-updater status
 
 Config: same go2rtc.yaml with top-level updater: section.
-`)
+`, version)
 	}
 
 	configPath := flag.String("config", "", "path to go2rtc.yaml")

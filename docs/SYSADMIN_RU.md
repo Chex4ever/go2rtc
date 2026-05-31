@@ -198,6 +198,8 @@ updater:
 
 См. [UPDATER_SERVICE.md](UPDATER_SERVICE.md). В UI: **`/config.html` → Settings → Install updater service**.
 
+> **Windows Defender:** `go2rtc-updater.exe` может помечаться как `Trojan:Win32/Wacatac.C!ml` (ложное срабатывание). Сверьте SHA256 с GitHub Releases; см. [UPDATER_SERVICE.md — Windows Defender](UPDATER_SERVICE.md#windows-defender-trojanwin32wacatacml).
+
 ### 3. Добавить потоки камер
 
 ```yaml

@@ -66,6 +66,13 @@ function shouldRunStartupInstall(pending, currentVersion) {
         return {ok: false, reason: 'no_pending'};
     }
     if (!coreIsNewerVersion(pending.version, currentVersion)) {
+        clearPendingUpdate();
+        clearInstallState();
+        cleanupOldUpdates(currentVersion);
+        logUpdate('startup install not needed — already at or past pending version', {
+            pendingVersion: pending.version,
+            currentVersion,
+        });
         return {ok: false, reason: 'already_installed'};
     }
     const st = readInstallState();

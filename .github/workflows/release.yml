@@ -88,13 +88,47 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Embed Windows version resource
+        shell: pwsh
+        run: |
+          ./scripts/patch-updater-versioninfo.ps1 -Version "${{ steps.ver.outputs.version }}"
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.4.1
+          Push-Location cmd/go2rtc-updater
+          goversioninfo -64 -manifest goversioninfo.exe.manifest -o resource.syso
+          Pop-Location
+
       - name: Build go2rtc-updater.exe
-        run: go build -ldflags "-s -w" -trimpath -o go2rtc-updater.exe ./cmd/go2rtc-updater
+        shell: bash
+        run: |
+          go build \
+            -ldflags "-X main.version=${{ steps.ver.outputs.version }}" \
+            -trimpath \
+            -o go2rtc-updater.exe \
+            ./cmd/go2rtc-updater
+
+      - name: SHA256
+        shell: bash
+        run: sha256sum go2rtc-updater.exe | tee go2rtc-updater.exe.sha256
 
       - uses: actions/upload-artifact@v4
         with:
           name: go2rtc-updater-win64
-          path: go2rtc-updater.exe
+          path: |
+            go2rtc-updater.exe
+            go2rtc-updater.exe.sha256
 
   build-desktop:
     name: Build Camera Wall installer (Windows)

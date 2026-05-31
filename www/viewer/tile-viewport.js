@@ -43,7 +43,20 @@ export class TileViewport {
     }
 
     get video() {
+        const main = this.focusMainEl;
+        const mainVideo = main?.querySelector('video');
+        if (main?.classList.contains('is-playing') && mainVideo) {
+            return mainVideo;
+        }
         return this.streamEl?.querySelector('video') || null;
+    }
+
+    /** Active viewer-stream for reconnect / debug (main in focus when present). */
+    get activeStreamEl() {
+        if (this.focusMainEl && this.focusMainEl.isConnected) {
+            return this.focusMainEl;
+        }
+        return this.streamEl;
     }
 
     applyFit() {

@@ -1,0 +1,38 @@
+{
+    "FixedFileInfo":  {
+                          "FileVersion":  {
+                                              "Major":  1,
+                                              "Minor":  2,
+                                              "Patch":  26,
+                                              "Build":  0
+                                          },
+                          "ProductVersion":  {
+                                                 "Major":  1,
+                                                 "Minor":  2,
+                                                 "Patch":  26,
+                                                 "Build":  0
+                                             },
+                          "FileFlagsMask":  "3f",
+                          "FileFlags ":  "00",
+                          "FileOS":  "040004",
+                          "FileType":  "01",
+                          "FileSubType":  "00"
+                      },
+    "StringFileInfo":  {
+                           "Comments":  "Automatic go2rtc server binary updater (Windows service)",
+                           "CompanyName":  "Tesla LLC",
+                           "FileDescription":  "go2rtc Updater Service",
+                           "FileVersion":  "1.2.26.0",
+                           "InternalName":  "go2rtc-updater",
+                           "LegalCopyright":  "Copyright (C) Tesla LLC",
+                           "OriginalFilename":  "go2rtc-updater.exe",
+                           "ProductName":  "go2rtc",
+                           "ProductVersion":  "1.2.26.0"
+                       },
+    "VarFileInfo":  {
+                        "Translation":  {
+                                            "LangID":  "0409",
+                                            "CharsetID":  "04B0"
+                                        }
+                    }
+}

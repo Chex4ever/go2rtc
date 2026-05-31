@@ -10,7 +10,7 @@ import (
 )
 
 // ViewerUIVersion is the embedded camera wall web UI bundle version (www/viewer).
-const ViewerUIVersion = "1.2.26"
+const ViewerUIVersion = "1.2.27"
 
 type updateSourceSummary struct {
 	Source  string `json:"source"`

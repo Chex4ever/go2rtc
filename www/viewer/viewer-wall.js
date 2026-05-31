@@ -114,31 +114,277 @@ function tileLabel(logicalName, inFocus) {
     return logicalName;
 }
 
+/** Grow/shrink animation when entering or leaving main-channel focus. */
+const FOCUS_ANIM_MS = 500;
+
+function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function clearFocusAnimStyles(cell) {
+    if (!cell) {
+        return;
+    }
+    cell.classList.remove('focus-animating');
+    cell.style.transform = '';
+    cell.style.transformOrigin = '';
+    cell.style.transition = '';
+}
+
+/**
+ * FLIP: capture rect → mutate layout → animate from old visual to new.
+ * @param {Element | null} cell
+ * @param {() => void} mutateLayout
+ */
+function flipFocusCell(cell, mutateLayout) {
+    if (!cell || prefersReducedMotion()) {
+        mutateLayout();
+        return Promise.resolve();
+    }
+
+    const first = cell.getBoundingClientRect();
+    mutateLayout();
+    const last = cell.getBoundingClientRect();
+
+    if (!first.width || !first.height || !last.width || !last.height) {
+        return Promise.resolve();
+    }
+
+    const dx = first.left - last.left;
+    const dy = first.top - last.top;
+    const sx = first.width / last.width;
+    const sy = first.height / last.height;
+
+    cell.classList.add('focus-animating');
+    cell.style.transformOrigin = '0 0';
+    cell.style.transition = 'none';
+    cell.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                cell.style.transition = `transform ${FOCUS_ANIM_MS}ms ease`;
+                cell.style.transform = '';
+            });
+        });
+        window.setTimeout(() => {
+            clearFocusAnimStyles(cell);
+            resolve();
+        }, FOCUS_ANIM_MS);
+    });
+}
+
+function getTileCell(slotIndex) {
+    return $('#wall-grid')?.querySelector(`.cell[data-slot="${slotIndex}"]`);
+}
+
+function getTilePreviewStream(slotIndex) {
+    const cell = getTileCell(slotIndex);
+    return cell?.querySelector('viewer-stream:not(.stream-main)') || null;
+}
+
+function detachFocusMainStream(slotIndex) {
+    const cell = getTileCell(slotIndex);
+    const mainVs = cell?.querySelector('viewer-stream.stream-main');
+    if (mainVs) {
+        if (mainVs._focusMainReady) {
+            mainVs.removeEventListener('playing', mainVs._focusMainReady);
+            mainVs.removeEventListener('loadeddata', mainVs._focusMainReady);
+            delete mainVs._focusMainReady;
+        }
+        mainVs.forceDisconnect?.();
+        mainVs.remove();
+    }
+    const previewVs = cell?.querySelector('viewer-stream.stream-preview');
+    previewVs?.classList.remove('stream-preview');
+    const vp = state.tileViewports.get(slotIndex);
+    if (vp) {
+        vp.focusMainEl = null;
+    }
+}
+
+function attachFocusMainStream(slotIndex, logicalName) {
+    const previewName = state.layoutDetail?.preview?.[logicalName];
+    if (!previewName) {
+        return;
+    }
+    const previewVs = getTilePreviewStream(slotIndex);
+    if (!previewVs) {
+        return;
+    }
+    const inner = previewVs.parentElement;
+    if (!inner) {
+        return;
+    }
+
+    let mainVs = inner.querySelector('viewer-stream.stream-main');
+    if (!mainVs) {
+        mainVs = document.createElement('viewer-stream');
+        mainVs.className = 'stream-main';
+        previewVs.classList.add('stream-preview');
+        inner.appendChild(mainVs);
+    }
+
+    mainVs.classList.remove('is-playing');
+    const vp = state.tileViewports.get(slotIndex);
+    if (vp) {
+        vp.focusMainEl = mainVs;
+    }
+
+    const markPlaying = () => {
+        const video = mainVs.querySelector('video');
+        if (video && video.readyState >= 2) {
+            mainVs.classList.add('is-playing');
+        }
+    };
+    if (!mainVs._focusMainReady) {
+        mainVs._focusMainReady = markPlaying;
+        mainVs.addEventListener('playing', markPlaying);
+        mainVs.addEventListener('loadeddata', markPlaying);
+    }
+
+    const mainSrc = streamSrc(logicalName);
+    if (mainVs.src !== mainSrc && mainVs.getAttribute('src') !== mainSrc) {
+        scheduleStreamSrc(mainVs, mainSrc, 0);
+    } else {
+        markPlaying();
+    }
+}
+
+function setTileFocusChrome(slotIndex, inFocus) {
+    const cell = getTileCell(slotIndex);
+    const tile = cell?.querySelector('.tile');
+    if (!tile) {
+        return;
+    }
+    const logicalName = tile.dataset.logicalStream || '';
+    const nameEl = tile.querySelector('.tile-bar .name');
+    if (nameEl) {
+        nameEl.textContent = tileLabel(logicalName, inFocus);
+    }
+    tile.classList.toggle('tile-in-focus', inFocus);
+
+    const bar = tile.querySelector('.tile-bar');
+    if (!bar) {
+        return;
+    }
+    let backBtn = bar.querySelector('.tile-focus-btn-back');
+    let expandBtn = bar.querySelector('.tile-focus-btn-expand');
+    if (inFocus) {
+        expandBtn?.classList.add('hidden');
+        if (!backBtn) {
+            backBtn = document.createElement('button');
+            backBtn.type = 'button';
+            backBtn.className = 'tile-focus-btn tile-focus-btn-back';
+            backBtn.textContent = '←';
+            backBtn.title = 'Back to grid (Esc)';
+            backBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                exitFocus();
+            });
+            bar.appendChild(backBtn);
+        }
+        backBtn.classList.remove('hidden');
+    } else {
+        backBtn?.classList.add('hidden');
+        expandBtn?.classList.remove('hidden');
+    }
+
+    const ctrlFocus = tile.querySelector('.tile-controls button[data-act="focus"]');
+    const ctrlExit = tile.querySelector('.tile-controls button[data-act="exit-focus"]');
+    ctrlFocus?.classList.toggle('hidden', inFocus);
+    ctrlExit?.classList.toggle('hidden', !inFocus);
+}
+
+function applyFocusLayout() {
+    const focusSlot = state.focusSlot;
+    const detail = state.layoutDetail;
+    if (!detail) {
+        return;
+    }
+    const preset = GRID_PRESETS[Number(detail.grid)];
+    if (!preset) {
+        return;
+    }
+
+    const wallGrid = $('#wall-grid');
+    configureWallGrid(wallGrid, preset, focusSlot);
+
+    const wall = $('#screen-wall');
+    if (focusSlot !== null) {
+        wall?.classList.add('focus-mode');
+        $('#btn-exit-focus')?.classList.remove('hidden');
+    } else {
+        wall?.classList.remove('focus-mode');
+        $('#btn-exit-focus')?.classList.add('hidden');
+    }
+
+    for (let i = 0; i < state.slots.length; i++) {
+        const cell = getTileCell(i);
+        if (!cell || cell.classList.contains('empty')) {
+            continue;
+        }
+        cell.classList.toggle('focused', focusSlot === i);
+        if (focusSlot === i) {
+            const logicalName = slotStream(state.slots[i]);
+            if (logicalName) {
+                attachFocusMainStream(i, logicalName);
+            }
+            const vp = state.tileViewports.get(i);
+            vp?.fromJSON(loadTileSettings(i, true));
+            setTileFocusChrome(i, true);
+        } else {
+            detachFocusMainStream(i);
+            const vp = state.tileViewports.get(i);
+            vp?.fromJSON(loadTileSettings(i, false));
+            setTileFocusChrome(i, false);
+        }
+    }
+}
+
 export function exitFocus() {
-    if (state.focusSlot === null) {
+    if (state.focusSlot === null || state.focusAnimating) {
         return;
     }
     stopAllRecordings();
-    state.focusSlot = null;
-    const wall = $('#screen-wall');
-    wall?.classList.remove('focus-mode', 'chrome-hidden', 'show-top-chrome');
-    $('#btn-exit-focus')?.classList.add('hidden');
-    renderWall();
-    startChromeHide();
+    const slotIndex = state.focusSlot;
+    const cell = getTileCell(slotIndex);
+
+    state.focusAnimating = true;
+    flipFocusCell(cell, () => {
+        state.focusSlot = null;
+        applyFocusLayout();
+        const wall = $('#screen-wall');
+        wall?.classList.remove('chrome-hidden', 'show-top-chrome');
+        startChromeHide();
+    }).finally(() => {
+        state.focusAnimating = false;
+    });
 }
 
 export function enterFocus(slotIndex) {
-    if (!slotStream(state.slots[slotIndex])) {
+    if (!slotStream(state.slots[slotIndex]) || state.focusAnimating) {
         return;
     }
-    state.focusSlot = slotIndex;
-    renderWall();
-    const wall = $('#screen-wall');
-    wall.classList.add('focus-mode', 'chrome-hidden');
-    wall.classList.remove('show-top-chrome');
-    $('#btn-exit-focus')?.classList.remove('hidden');
-    clearTimeout(state.chromeTimer);
-    state.chromeTimer = null;
+    if (state.focusSlot === slotIndex) {
+        return;
+    }
+    stopAllRecordings();
+    const cell = getTileCell(slotIndex);
+
+    state.focusAnimating = true;
+    flipFocusCell(cell, () => {
+        state.focusSlot = slotIndex;
+        applyFocusLayout();
+        const wall = $('#screen-wall');
+        wall?.classList.add('focus-mode', 'chrome-hidden');
+        wall?.classList.remove('show-top-chrome');
+        $('#btn-exit-focus')?.classList.remove('hidden');
+        clearTimeout(state.chromeTimer);
+        state.chromeTimer = null;
+    }).finally(() => {
+        state.focusAnimating = false;
+    });
 }
 
 export function renderWall() {
@@ -184,9 +430,6 @@ export function renderWall() {
     let connectSeq = 0;
 
     for (let i = 0; i < state.slots.length; i++) {
-        if (focusSlot !== null && focusSlot !== i) {
-            continue;
-        }
         const stream = slotStream(state.slots[i]);
         if (wallLayoutMode() === 'mobile' && focusSlot === null && !stream) {
             continue;
@@ -217,23 +460,19 @@ export function renderWall() {
         }
 
         if (stream) {
-            cell.appendChild(createTile(stream, i, focusSlot === i, connectSeq++));
+            cell.appendChild(createTile(stream, i, connectSeq++));
         }
         wallGrid.appendChild(cell);
     }
 
-    if (focusSlot !== null) {
-        $('#screen-wall').classList.add('focus-mode');
-        $('#btn-exit-focus')?.classList.remove('hidden');
-    }
+    applyFocusLayout();
 }
 
-function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, tile, playbackName) {
-    const channelLabel = inFocus ? 'main' : 'preview';
+function createTileControls(viewport, streamName, slotIndex, previewSrc, previewVs, tile, previewPlayback) {
     const bar = document.createElement('div');
     bar.className = 'tile-controls';
     bar.innerHTML = `
-        <button type="button" data-act="fit" title="Aspect ratio (${channelLabel})">◫</button>
+        <button type="button" data-act="fit" title="Aspect ratio (preview)">◫</button>
         <button type="button" data-act="width-dec" title="Narrower width">◁</button>
         <button type="button" data-act="width-inc" title="Wider width">▷</button>
         <button type="button" data-act="zoom-out" title="Zoom out">−</button>
@@ -244,8 +483,11 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
         <button type="button" data-act="record" title="Record">⏺</button>
         <button type="button" data-act="refresh" title="Refresh stream">↻</button>
         <button type="button" data-act="debug" title="Debug this camera">🐞</button>
-        ${inFocus ? '<button type="button" data-act="exit-focus" title="Back to grid (Esc)">←</button>' : '<button type="button" data-act="focus" title="Full screen">⛶</button>'}
+        <button type="button" data-act="focus" class="tile-focus-btn-expand" title="Full screen">⛶</button>
+        <button type="button" data-act="exit-focus" class="hidden" title="Back to grid (Esc)">←</button>
     `;
+
+    const fitBtn = bar.querySelector('[data-act="fit"]');
 
     bar.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-act]');
@@ -253,10 +495,15 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
             return;
         }
         e.stopPropagation();
+        const inFocus = state.focusSlot === slotIndex;
+        const channelLabel = inFocus ? 'main' : 'preview';
+        const activeVs = viewport.activeStreamEl || previewVs;
+        const activePlayback = inFocus ? streamName : previewPlayback;
+        const activeSrc = streamSrc(activePlayback);
         switch (btn.dataset.act) {
             case 'fit': {
                 const fit = viewport.cycleFit();
-                btn.title = `Aspect (${channelLabel}): ${fit}`;
+                fitBtn.title = `Aspect (${channelLabel}): ${fit}`;
                 break;
             }
             case 'width-dec': {
@@ -279,7 +526,7 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
                 viewport.reset();
                 break;
             case 'audio': {
-                const on = toggleStreamAudio(vs, src);
+                const on = toggleStreamAudio(activeVs, activeSrc);
                 btn.textContent = on ? '🔊' : '🔇';
                 btn.title = on ? 'Mute' : 'Unmute';
                 break;
@@ -337,14 +584,14 @@ function createTileControls(viewport, streamName, slotIndex, src, vs, inFocus, t
                 break;
             }
             case 'refresh':
-                refreshStream(vs, src);
+                refreshStream(activeVs, activeSrc);
                 break;
             case 'debug':
                 openTileDebugModal({
                     logicalName: streamName,
-                    playbackName,
-                    src,
-                    vs,
+                    playbackName: activePlayback,
+                    src: activeSrc,
+                    vs: activeVs,
                     slotIndex,
                     inFocus,
                 }).catch((err) => {
@@ -378,8 +625,8 @@ function scheduleStreamSrc(vs, src, connectIndex) {
     }
 }
 
-function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
-    const playback = playbackStream(logicalName, inFocus);
+function createTile(logicalName, slotIndex, connectIndex = 0) {
+    const playback = playbackStream(logicalName, false);
     const src = streamSrc(playback);
     const tile = document.createElement('div');
     tile.className = 'tile';
@@ -387,21 +634,9 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
 
     const bar = document.createElement('div');
     bar.className = 'tile-bar';
-    bar.innerHTML = `<span class="name">${escapeHtml(tileLabel(logicalName, inFocus))}</span><span class="drag-handle" title="Drag to swap">⠿</span>`;
+    bar.innerHTML = `<span class="name">${escapeHtml(tileLabel(logicalName, false))}</span><span class="drag-handle" title="Drag to swap">⠿</span>`;
 
-    if (inFocus) {
-        bar.querySelector('.drag-handle')?.remove();
-        const back = document.createElement('button');
-        back.type = 'button';
-        back.className = 'tile-focus-btn';
-        back.textContent = '←';
-        back.title = 'Back to grid (Esc)';
-        back.addEventListener('click', (e) => {
-            e.stopPropagation();
-            exitFocus();
-        });
-        bar.appendChild(back);
-    } else if (allowTileDrag()) {
+    if (allowTileDrag()) {
         const handle = bar.querySelector('.drag-handle');
         handle.draggable = true;
         handle.addEventListener('dragstart', (e) => {
@@ -415,7 +650,7 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
         bar.querySelector('.drag-handle')?.remove();
         const expand = document.createElement('button');
         expand.type = 'button';
-        expand.className = 'tile-focus-btn';
+        expand.className = 'tile-focus-btn tile-focus-btn-expand';
         expand.textContent = '⛶';
         expand.title = 'Full screen';
         expand.addEventListener('click', (e) => {
@@ -436,26 +671,31 @@ function createTile(logicalName, slotIndex, inFocus, connectIndex = 0) {
     const viewport = new TileViewport(viewportWrap);
     viewport.mount(vs);
     scheduleStreamSrc(vs, src, connectIndex);
-    viewport.fromJSON(loadTileSettings(slotIndex, inFocus));
-    viewport.onChange = () => saveTileSettings(slotIndex, viewport, inFocus);
+    viewport.fromJSON(loadTileSettings(slotIndex, false));
+    viewport.onChange = () => saveTileSettings(slotIndex, viewport, state.focusSlot === slotIndex);
     state.tileViewports.set(slotIndex, viewport);
 
     body.appendChild(viewportWrap);
     body.appendChild(bar);
-    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, inFocus, tile, playback));
+    body.appendChild(createTileControls(viewport, logicalName, slotIndex, src, vs, tile, playback));
 
     body.addEventListener('dblclick', (e) => {
         if (e.target.closest('.tile-controls, .tile-bar')) {
             return;
         }
-        if (!inFocus) {
+        if (state.focusSlot === slotIndex) {
+            exitFocus();
+        } else if (state.focusSlot === null) {
             enterFocus(slotIndex);
         }
     });
 
-    if (isTouchDevice() && !inFocus) {
+    if (isTouchDevice()) {
         tile.addEventListener('click', (e) => {
             if (e.target.closest('.tile-controls button, .tile-focus-btn')) {
+                return;
+            }
+            if (state.focusSlot !== null) {
                 return;
             }
             setActiveTile(tile);

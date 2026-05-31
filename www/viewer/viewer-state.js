@@ -8,6 +8,7 @@ export const state = {
     slots: [],
     saveTimer: null,
     focusSlot: null,
+    focusAnimating: false,
     tileViewports: new Map(),
     chromeTimer: null,
     wallLayoutMode: 'desktop',

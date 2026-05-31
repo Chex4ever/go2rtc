@@ -53,6 +53,7 @@ Function ViewerModePageLeave
 FunctionEnd
 
 !macro customInstall
+  Call ClearViewerUpdateState
   ${ifNot} ${isUpdated}
     Call WriteViewerInstallConfig
   ${endIf}
@@ -67,6 +68,13 @@ FunctionEnd
 ; Interactive installs — runAfterFinish in electron-builder handles the finish page.
 !macro customFinish
 !macroend
+
+Function ClearViewerUpdateState
+  ; Setup (manual or silent) replaces the app — clear in-app autoupdate state so the next
+  ; launch does not re-run a cached installer or loop quit-on-start.
+  Delete "$APPDATA\go2rtc-viewer\pending-update.json"
+  Delete "$APPDATA\go2rtc-viewer\install-state.json"
+FunctionEnd
 
 Function WriteViewerInstallConfig
   CreateDirectory "$APPDATA\go2rtc-viewer"

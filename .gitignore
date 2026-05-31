@@ -12,6 +12,8 @@ go2rtc_win*
 /go2rtc
 /go2rtc.exe
 /go2rtc-updater.exe
+cmd/go2rtc-updater/resource.syso
+cmd/go2rtc-updater/rsrc_windows_*.syso
 
 0_test.go
 
