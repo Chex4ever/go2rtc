@@ -8,6 +8,9 @@ on:
 #  merge_group:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-test:
     strategy:
