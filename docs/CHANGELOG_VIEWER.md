@@ -1,5 +1,11 @@
 # Camera wall & desktop changelog
 
+## 1.2.25 (2026-05-31)
+
+- **Fix:** **About** on the login screen opens a modal (no longer replaces the page on error); shows credits and version info.
+- **Feature:** About dialog — «Разработано Евгений Чехович, ООО «Тесла»», MIT / open source, go2rtc upstream link.
+- **Docs:** `NOTICE` file — Tesla viewer copyright + go2rtc (Alexey Khit) MIT attribution.
+
 ## 1.2.24 (2026-05-31)
 
 - **Fix:** **electron-brand-bar** and **wall-header** auto-hide on the camera wall (grid and focus) — move the pointer to the top edge (~56px) to reveal them; tile controls still show on hover.

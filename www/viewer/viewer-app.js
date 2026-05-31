@@ -16,9 +16,11 @@ function bindAboutButtons() {
     for (const id of ['btn-about-login', 'btn-about-layouts', 'btn-about-wall']) {
         const el = $(id);
         if (el) {
-            el.addEventListener('click', () => {
-                openAboutModal().catch((e) => {
-                    showFatalError('About', e?.message || String(e));
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openAboutModal().catch((err) => {
+                    console.error('About dialog failed', err);
                 });
             });
         }

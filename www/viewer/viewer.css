@@ -554,6 +554,20 @@ viewer-stream {
     max-width: min(640px, 96vw);
     background: transparent;
     color: var(--text);
+    z-index: 10000;
+}
+
+.viewer-about-dialog .viewer-about-credits {
+    margin-bottom: 12px;
+}
+
+.viewer-about-dialog .viewer-about-lead {
+    font-size: 1rem;
+    margin: 0 0 8px;
+}
+
+.viewer-about-dialog a {
+    color: var(--accent);
 }
 
 .tile-debug-dialog::backdrop {

@@ -16,9 +16,11 @@ describe('viewer-about.js', () => {
         });
     });
 
-    it('exports openAboutModal', () => {
+    it('exports openAboutModal and credits block', () => {
         const code = fs.readFileSync(ABOUT, 'utf8');
         assert.match(code, /export async function openAboutModal/);
+        assert.match(code, /export function renderCreditsHtml/);
+        assert.match(code, /Евгений Чехович/);
         assert.match(code, /\/api\/viewer\/about/);
     });
 });
@@ -27,7 +29,9 @@ describe('viewer-app about wiring', () => {
     it('binds About buttons', () => {
         const src = fs.readFileSync(APP, 'utf8');
         assert.match(src, /import \{openAboutModal\}/);
+        assert.match(src, /btn-about-login/);
         assert.match(src, /btn-about-wall/);
+        assert.doesNotMatch(src, /showFatalError\('About'/);
     });
 });
 

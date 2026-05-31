@@ -1,0 +1,10 @@
+go2rtc Camera Wall (viewer UI, admin UI, desktop Electron client)
+Copyright (c) 2024-2026 Evgeny Chekhovich / Tesla LLC (ООО «Тесла»)
+
+This product includes go2rtc
+  https://github.com/AlexxIT/go2rtc
+  Copyright (c) 2022 Alexey Khit
+
+Both components are licensed under the MIT License. See the LICENSE file for the
+full license text. The above copyright notices and this permission notice shall be
+included in all copies or substantial portions of the Software.
