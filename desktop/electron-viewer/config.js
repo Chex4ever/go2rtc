@@ -78,6 +78,10 @@ function logoFileUrl(branding) {
     return core.logoFileUrl(branding, brandingSearchDirs(), (p) => fs.existsSync(p));
 }
 
+function logoDataUrl(branding) {
+    return core.logoDataUrl(branding, brandingSearchDirs(), (p) => fs.existsSync(p), (p) => fs.readFileSync(p));
+}
+
 module.exports = {
     CONFIG_FILE,
     ...core,
@@ -90,4 +94,5 @@ module.exports = {
     normalizeConfig,
     resolveLogoPath,
     logoFileUrl,
+    logoDataUrl,
 };

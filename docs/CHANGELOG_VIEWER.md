@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## 1.2.23 (2026-05-31)
+
+- **Fix:** Custom organization logo in the camera wall — embed as data URL instead of `file://` (broken image on server-loaded viewer pages).
+- **Fix:** **Restart now** on a downloaded update no longer deletes the pending installer before install (cache cleanup skipped while a newer version is waiting).
+
 ## 1.2.22 (2026-05-27)
 
 - **Fix:** Focus mode — tile title bars stay hidden until the pointer is at the top edge (no longer pop in on any hover over the video).

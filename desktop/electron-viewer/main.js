@@ -19,6 +19,7 @@ function sendUpdateEventToViewer(payload) {
 updateNotify.setUpdateEventSender(sendUpdateEventToViewer);
 
 async function installPendingUpdateFromMenu() {
+    updater.initUpdaterCache();
     const pending = updater.pendingReadyForInstall(app.getVersion());
     if (!pending) {
         updateNotify.emitUpdateEvent({kind: 'error', message: 'No downloaded update is ready to install.'});
@@ -178,7 +179,7 @@ function applyCliOverrides() {
 
 async function injectViewerBranding(win, config) {
     const b = config.branding;
-    const logoUrl = cfg.logoFileUrl(b);
+    const logoUrl = cfg.logoDataUrl(b) || cfg.logoFileUrl(b) || '';
     const accent = b.accentColor || '#1565c0';
     const css = `
       :root { --viewer-accent: ${accent}; }
@@ -217,6 +218,9 @@ async function injectViewerBranding(win, config) {
               const logo = ${JSON.stringify(logoUrl || '')};
               const org = ${JSON.stringify(b.orgName || '')};
               if (logo) {
+                document.querySelectorAll('img.brand-logo').forEach(function(img) {
+                  img.src = logo;
+                });
                 const img = document.createElement('img');
                 img.src = logo;
                 img.alt = 'logo';
@@ -246,7 +250,11 @@ async function injectViewerBranding(win, config) {
     }
 }
 
-function brandingLogoDataUrl() {
+function brandingLogoDataUrl(config) {
+    const fromBranding = cfg.logoDataUrl(config?.branding || getConfig().branding);
+    if (fromBranding) {
+        return fromBranding;
+    }
     const candidates = [
         path.join(__dirname, 'branding', 'logo.png'),
         path.join(__dirname, 'build', 'icon-128.png'),
@@ -294,7 +302,7 @@ function showViewerLoadError(win, config, details) {
         serverUrl,
         viewerUrl: viewerUrlForConfig(config),
         branding: config.branding,
-        logoDataUrl: brandingLogoDataUrl(),
+        logoDataUrl: brandingLogoDataUrl(config),
         ...details,
     });
     wireLoadErrorPageActions(win);
@@ -837,7 +845,7 @@ ipcMain.handle('settings:get', () => {
     return {
         ...config,
         brandingDirs: cfg.brandingSearchDirs(),
-        logoPreviewUrl: cfg.logoFileUrl(config.branding),
+        logoPreviewUrl: cfg.logoDataUrl(config.branding) || cfg.logoFileUrl(config.branding),
         autoStartSupported: process.platform === 'win32' || process.platform === 'darwin',
         isPackaged: app.isPackaged,
     };
@@ -858,9 +866,13 @@ ipcMain.handle('settings:pick-logo', async () => {
         const branding = {...getConfig().branding, logoFile: generated.logoFile};
         applyWindowIcon(mainWindow);
         applyWindowIcon(settingsWindow);
+        const merged = {...getConfig(), branding};
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            injectViewerBranding(mainWindow, merged).catch(() => {});
+        }
         return {
             logoFile: generated.logoFile,
-            logoPreviewUrl: cfg.logoFileUrl(branding),
+            logoPreviewUrl: cfg.logoDataUrl(branding) || cfg.logoFileUrl(branding),
             generatedCount: generated.files.length,
             message: `Created logo.png and ${generated.files.length} icon files in branding folder.`,
         };

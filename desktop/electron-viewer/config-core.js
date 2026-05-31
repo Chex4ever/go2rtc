@@ -80,6 +80,30 @@ function logoFileUrl(branding, searchDirs, exists) {
     return `file:///${p.replace(/\\/g, '/')}`;
 }
 
+const LOGO_MIME = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+    '.bmp': 'image/bmp',
+    '.ico': 'image/x-icon',
+};
+
+function logoDataUrl(branding, searchDirs, exists, readBinary) {
+    const p = resolveLogoPath(branding, searchDirs, exists);
+    if (!p) {
+        return null;
+    }
+    const ext = path.extname(p).toLowerCase();
+    const mime = LOGO_MIME[ext] || 'image/png';
+    const buf = readBinary(p);
+    if (!buf || !buf.length) {
+        return null;
+    }
+    return `data:${mime};base64,${buf.toString('base64')}`;
+}
+
 function isLocalhostServer(url) {
     try {
         const host = new URL(normalizeServerUrl(url)).hostname.toLowerCase();
@@ -163,6 +187,7 @@ module.exports = {
     normalizeConfig,
     resolveLogoPath,
     logoFileUrl,
+    logoDataUrl,
     normalizeServerUrl,
     isLocalhostServer,
     viewerUrl,

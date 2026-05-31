@@ -42,6 +42,20 @@ describe('updater-cache', () => {
         assert.equal(found.path, dest);
     });
 
+    it('does not delete a newer cached installer while upgrade is pending', () => {
+        const dir = cache.updatesDir();
+        const oldFile = path.join(dir, '1.2.22-full-old.exe');
+        const newFile = path.join(dir, '1.2.23-full-new.exe');
+        fs.writeFileSync(oldFile, 'old');
+        fs.writeFileSync(newFile, 'new');
+        cache.writePendingUpdate({version: '1.2.23', kind: 'full', path: newFile});
+
+        cache.cleanupAfterSuccessfulUpdate('1.2.22');
+
+        assert.equal(fs.existsSync(newFile), true);
+        assert.equal(cache.readPendingUpdate()?.version, '1.2.23');
+    });
+
     it('cleans old cached files after successful update', () => {
         const dir = cache.updatesDir();
         fs.writeFileSync(path.join(dir, '1.2.16-full-old.exe'), 'old');

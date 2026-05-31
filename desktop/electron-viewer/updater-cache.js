@@ -192,12 +192,26 @@ function cleanupOldUpdates(keepVersion) {
 }
 
 /**
- * Remove pending update and cache after a successful install.
+ * Remove pending update and obsolete cache after a successful install.
+ * Does not delete a downloaded newer version waiting to be applied.
  * @param {string} installedVersion
  */
 function cleanupAfterSuccessfulUpdate(installedVersion) {
     const pending = readPendingUpdate();
     if (pending && pending.version === installedVersion) {
+        clearPendingUpdate();
+        cleanupOldUpdates(installedVersion);
+        logUpdate('cleanup after successful update', {installedVersion});
+        return;
+    }
+    if (pending && coreIsNewerVersion(pending.version, installedVersion)) {
+        logUpdate('skip cache cleanup — newer update pending', {
+            installedVersion,
+            pendingVersion: pending.version,
+        });
+        return;
+    }
+    if (pending) {
         clearPendingUpdate();
     }
     cleanupOldUpdates(installedVersion);

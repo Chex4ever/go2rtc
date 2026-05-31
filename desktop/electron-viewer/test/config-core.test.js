@@ -137,3 +137,19 @@ describe('resolveLogoPath', () => {
         fs.rmSync(tmp, {recursive: true, force: true});
     });
 });
+
+describe('logoDataUrl', () => {
+    it('embeds logo as a data URL for remote viewer pages', () => {
+        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'logo-data-test-'));
+        const logo = path.join(tmp, 'logo.png');
+        fs.writeFileSync(logo, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+        const url = core.logoDataUrl(
+            {logoFile: 'logo.png'},
+            [tmp],
+            (p) => fs.existsSync(p),
+            (p) => fs.readFileSync(p),
+        );
+        assert.match(url, /^data:image\/png;base64,/);
+        fs.rmSync(tmp, {recursive: true, force: true});
+    });
+});
