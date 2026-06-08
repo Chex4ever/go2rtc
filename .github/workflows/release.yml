@@ -264,6 +264,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Resolve version
         id: ver
@@ -338,13 +341,45 @@ jobs:
           EOF
           cat release-manifest.json
 
+      - name: Resolve previous tag
+        id: prev
+        shell: bash
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          PREV=$(git tag --list 'v*' --sort=-v:refname | grep -Fxv "$TAG" | head -1 || true)
+          echo "tag=${PREV}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        run: |
+          node scripts/generate-release-notes.mjs \
+            --dist dist \
+            --version "${{ steps.ver.outputs.version }}" \
+            --tag "${{ steps.ver.outputs.tag }}" \
+            --changelog docs/CHANGELOG_VIEWER.md \
+            --out release-notes.md \
+            --repo "${{ github.repository }}" \
+            --prev-tag "${{ steps.prev.outputs.tag }}"
+
+      - name: Stage release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-upload
+          mkdir -p release-upload
+          while IFS= read -r -d '' f; do
+            rel="${f#dist/}"
+            mkdir -p "release-upload/$(dirname "$rel")"
+            cp "$f" "release-upload/$rel"
+          done < <(find dist -type f ! -name '*.sha256' -print0)
+          cp release-manifest.json release-upload/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: ${{ steps.ver.outputs.tag }}
-          generate_release_notes: true
+          name: Release ${{ steps.ver.outputs.tag }}
+          body_path: release-notes.md
+          generate_release_notes: false
           files: |
-            dist/**/*
-            release-manifest.json
-          fail_on_unmatched_files: false
+            release-upload/**/*
+          fail_on_unmatched_files: true

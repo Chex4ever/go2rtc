@@ -15,7 +15,7 @@ File: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 
 1. **build-go2rtc** — Windows (amd64, 386) + Linux (amd64, arm64) with embedded version `-X internal/app.Version=…`
 2. **build-desktop** — Windows NSIS installer (`npm ci` + `npm run dist`)
-3. **publish** — Upload assets + `release-manifest.json` to GitHub Release
+3. **publish** — Merge artifacts, build `release-manifest.json`, generate `release-notes.md`, upload binaries (no `*.sha256` sidecars) to GitHub Release
 
 ### Asset names (important)
 
@@ -26,6 +26,20 @@ Windows 64-bit binary must match:
 Example: `go2rtc_1.2.1_windows_amd64.exe`
 
 The update API picks assets by substring `windows_amd64`.
+
+## Release page format
+
+Since **v1.2.35**, the publish job runs [`scripts/generate-release-notes.mjs`](../scripts/generate-release-notes.mjs):
+
+1. Reads the matching section from [`docs/CHANGELOG_VIEWER.md`](CHANGELOG_VIEWER.md) (`## X.Y.Z`).
+2. Scans built files under `dist/` (sidecar `*.sha256` used only to fill the table).
+3. Writes `release-notes.md` with a [Furnace-style](https://github.com/tildearrow/furnace/releases) **Downloads** table: `File | Size | CRC32 | SHA-256` (truncated hash in the table; full values in a collapsible block).
+4. Lists **Autoupdate metadata** separately (`release-manifest.json`, shell manifests, patch zips).
+5. Uploads binaries via `softprops/action-gh-release` with `body_path: release-notes.md` and `generate_release_notes: false`.
+
+CI still **builds** `*.sha256` sidecars for `release-manifest.json` and updater verification; they are **not** attached as release download assets.
+
+**Authoring:** add or edit the `## X.Y.Z` block in `CHANGELOG_VIEWER.md` before tagging — that text becomes the release description.
 
 ## Auto-update configuration
 
@@ -93,7 +107,11 @@ See [VIEWER_API.md](VIEWER_API.md).
 1. Bump `desktop/electron-viewer/package.json` version if needed.
 2. Commit; tag: `git tag v1.2.1 && git push origin v1.2.1`
 3. Wait for **Release** workflow on GitHub Actions.
-4. On each site:
+4. Open the GitHub Release page — it should show:
+   - **Changelog** from `docs/CHANGELOG_VIEWER.md` for that version.
+   - **Downloads** table: `File | Size | CRC32 | SHA-256` (like [Furnace releases](https://github.com/tildearrow/furnace/releases)); full SHA-256 in a collapsible section.
+   - **No separate `*.sha256` attachments** — checksums live in the release notes, not as extra assets.
+5. On each site:
    - Set `viewer.go2rtc.github` to your repo (or copy binaries from the release).
    - Copy Camera Wall installer to a path referenced by `viewer.desktop.installer`.
    - Restart go2rtc.
@@ -172,7 +190,7 @@ Viewer UI is embedded in `go2rtc.exe` — a **server-only** hotfix is enough for
    ```
 
 5. Wait for **Release** workflow; confirm assets (`go2rtc_X.Y.Z_windows_amd64.exe`, `go2rtc-updater.exe`, installer filename contains `X.Y.Z`); hit `/api/viewer/desktop/update` and check `"version"` matches installer, not just tag.
-6. Release notes: start with **Hotfix:** and list what changed.
+6. Release notes: add `## X.Y.Z` to `CHANGELOG_VIEWER.md` (CI copies it to the GitHub release page).
 
 Sites with `updater.github: Chex4ever/go2rtc` and `auto_apply: true` apply server binaries on schedule. Desktop: **Check for updates** or startup check.
 

@@ -214,7 +214,7 @@ If **Tile debug** shows `no`, replace `go2rtc.exe` with a current build and relo
 
 ### Publishing via GitHub (CI/CD)
 
-Push tag `v1.2.4` → GitHub Actions workflow **Release** builds binaries + installer and attaches them to a GitHub Release.
+Push tag `v1.2.4` → GitHub Actions workflow **Release** builds binaries + installer and publishes a GitHub Release. The release page shows the changelog from `docs/CHANGELOG_VIEWER.md` and a downloads table with **CRC32** and **SHA-256** columns (no separate `.sha256` files). See [RELEASE_CI.md — Release page format](RELEASE_CI.md#release-page-format).
 
 On each site, in `go2rtc.yaml` (no manual installer copy required):
 

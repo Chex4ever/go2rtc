@@ -1,5 +1,10 @@
 # Camera wall & desktop changelog
 
+## 1.2.35 (2026-06-04)
+
+- **CI:** GitHub release page — changelog from this file plus Furnace-style downloads table (`File | Size | CRC32 | SHA-256`); full SHA-256 in collapsible section; no separate `.sha256` release assets.
+- **Docs:** `RELEASE_CI.md`, `UPDATER_SERVICE.md`, `ELECTRON_VIEWER.md`, `scripts/README.md` updated for the new release layout.
+
 ## 1.2.34 (2026-05-27)
 
 - **Fix:** Fullscreen focus — preview stays visible until main stream plays (no black flash); same main/preview stream keeps one connection (layout animation only).

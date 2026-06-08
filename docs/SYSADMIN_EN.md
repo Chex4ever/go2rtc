@@ -200,7 +200,7 @@ updater:
 
 See [UPDATER_SERVICE.md](UPDATER_SERVICE.md).
 
-> **Windows Defender:** `go2rtc-updater.exe` may be flagged as `Trojan:Win32/Wacatac.C!ml` (false positive). Verify SHA256 from GitHub Releases; see [UPDATER_SERVICE.md — Windows Defender](UPDATER_SERVICE.md#windows-defender-trojanwin32wacatacml).
+> **Windows Defender:** `go2rtc-updater.exe` may be flagged as `Trojan:Win32/Wacatac.C!ml` (false positive). Verify SHA-256 from the release notes table on [GitHub Releases](https://github.com/Chex4ever/go2rtc/releases); see [UPDATER_SERVICE.md — Windows Defender](UPDATER_SERVICE.md#windows-defender-trojanwin32wacatacml).
 
 ### 3. Add camera streams
 

@@ -45,7 +45,7 @@ viewer:
     notes: "Optional text shown in the update dialog"
 ```
 
-Response includes `"source": "github"` and a `download_url` pointing at the latest release asset (Camera Wall Setup `.exe`).
+Response includes `"source": "github"`, `release_url` (release page with CRC32/SHA-256 table in the notes), and a `download_url` pointing at the latest release asset (Camera Wall Setup `.exe`).
 
 **Local mirror on disk:**
 

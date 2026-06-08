@@ -8,6 +8,17 @@ The project has to use the latest versions of go due to dependencies on third-pa
 
 The project uses [UPX](https://github.com/upx/upx) to compress binaries for Linux. The project does not use compression for Windows due to false antivirus alarms. The project does not use compression for macOS due to broken result.
 
+## Release notes (`generate-release-notes.mjs`)
+
+CI uses this script when publishing a tag. It reads `docs/CHANGELOG_VIEWER.md` for the version section, scans built artifacts under `dist/`, and writes `release-notes.md` with a Furnace-style table: **File | Size | CRC32 | SHA-256** (full SHA-256 in a collapsible block). Sidecar `*.sha256` files are used only at build time; they are not uploaded as release assets.
+
+```bash
+node scripts/generate-release-notes.mjs \
+  --dist dist --version 1.2.34 --tag v1.2.34 \
+  --changelog docs/CHANGELOG_VIEWER.md \
+  --out release-notes.md --prev-tag v1.2.33
+```
+
 ## Useful commands
 
 ```

@@ -92,16 +92,14 @@ See also [RELEASE_CI.md](RELEASE_CI.md).
 
 **This is a known false positive** for unsigned auto-update utilities. `go2rtc-updater.exe` downloads `go2rtc.exe` from your configured GitHub release, verifies SHA256 when configured, stops the `go2rtc` Windows service, replaces the binary, and starts the service again. That pattern matches what Microsoft’s ML heuristic (`Wacatac.C!ml`) often flags.
 
-The official build is published only on [GitHub Releases](https://github.com/Chex4ever/go2rtc/releases) as `go2rtc-updater.exe` with a matching `go2rtc-updater.exe.sha256` file.
+The official build is published only on [GitHub Releases](https://github.com/Chex4ever/go2rtc/releases) as `go2rtc-updater.exe`. SHA-256 and CRC32 for each asset are listed in the release notes table (not as separate `.sha256` download files).
 
 ### Verify before you run
 
-On the server (PowerShell):
+On the server (PowerShell), compare with the **Full SHA-256 checksums** section on the same GitHub release page:
 
 ```powershell
-$hash = (Get-FileHash .\go2rtc-updater.exe -Algorithm SHA256).Hash.ToLower()
-Get-Content .\go2rtc-updater.exe.sha256
-# Compare with the .sha256 file from the same GitHub release
+(Get-FileHash .\go2rtc-updater.exe -Algorithm SHA256).Hash.ToLower()
 ```
 
 ### Allow on a trusted server
